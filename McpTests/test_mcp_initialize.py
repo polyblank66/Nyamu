@@ -25,7 +25,7 @@ async def test_mcp_initialize_success(unity_state_manager):
         assert result["protocolVersion"] == "2024-11-05"
         assert "capabilities" in result
         assert "serverInfo" in result
-        assert result["serverInfo"]["name"] == "YamuServer"
+        assert result["serverInfo"]["name"] == "NyamuServer"
         assert result["serverInfo"]["version"] == "1.0.0"
 
         # Check that capabilities contain expected tools

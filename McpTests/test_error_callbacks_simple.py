@@ -142,7 +142,7 @@ async def test_normal_vs_error_execution_speed():
         start_time = time.time()
         normal_response = await client.run_tests(
             test_mode="EditMode",
-            test_filter="YamuTests.PassingTest1",
+            test_filter="NyamuTests.PassingTest1",
             timeout=15
         )
         normal_time = time.time() - start_time

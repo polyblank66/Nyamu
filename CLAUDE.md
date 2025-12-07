@@ -2,7 +2,7 @@ Check out Design.md for the project design and goal definitions.
 
 # About MCP
 
-- This project uses the Yamu MCP server, which enables triggering compilations
+- This project uses the Nnyamu MCP server, which enables triggering compilations
   and retrieving compilation errors from the Unity Editor.
 - Iterate through the edit-compile-debug cycle until all errors are resolved.
 

@@ -2,16 +2,16 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Yamu
+namespace Nyamu
 {
     /// <summary>
-    /// Project Settings provider for Yamu MCP server configuration
+    /// Project Settings provider for Nyamu MCP server configuration
     /// </summary>
-    public class YamuSettingsProvider : SettingsProvider
+    public class NyamuSettingsProvider : SettingsProvider
     {
         private SerializedObject _settings;
 
-        public YamuSettingsProvider(string path, SettingsScope scope)
+        public NyamuSettingsProvider(string path, SettingsScope scope)
             : base(path, scope) { }
 
         /// <summary>
@@ -19,22 +19,22 @@ namespace Yamu
         /// </summary>
         public static bool IsSettingsAvailable()
         {
-            return YamuSettings.Instance != null;
+            return NyamuSettings.Instance != null;
         }
 
         /// <summary>
         /// Create the settings provider for Unity's Project Settings window
         /// </summary>
         [SettingsProvider]
-        public static SettingsProvider CreateYamuSettingsProvider()
+        public static SettingsProvider CreateNyamuSettingsProvider()
         {
             if (IsSettingsAvailable())
             {
-                var provider = new YamuSettingsProvider("Project/Yamu MCP Server", SettingsScope.Project);
+                var provider = new NyamuSettingsProvider("Project/Nyamu MCP Server", SettingsScope.Project);
 
                 // Keywords for search functionality in Project Settings
                 provider.keywords = new[] {
-                    "Yamu", "MCP", "Response", "Limit", "Character", "Truncation", "Message", "Server", "Port", "Debug", "Logs"
+                    "Nyamu", "MCP", "Response", "Limit", "Character", "Truncation", "Message", "Server", "Port", "Debug", "Logs"
                 };
 
                 return provider;
@@ -52,19 +52,19 @@ namespace Yamu
             // Initialize serialized object if needed
             if (_settings == null)
             {
-                var settings = YamuSettings.Instance;
+                var settings = NyamuSettings.Instance;
                 _settings = new SerializedObject(settings);
             }
 
             _settings.Update();
 
             // Header
-            EditorGUILayout.LabelField("Yamu MCP Server Configuration", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Nyamu MCP Server Configuration", EditorStyles.boldLabel);
             EditorGUILayout.Space();
 
             // Help box with information
             EditorGUILayout.HelpBox(
-                "Configure response character limits for the Yamu MCP server. " +
+                "Configure response character limits for the Nyamu MCP server. " +
                 "The MCP server will truncate responses that exceed the specified limit to prevent overwhelming AI agents.",
                 MessageType.Info);
 
@@ -101,7 +101,7 @@ namespace Yamu
             var enableDebugLogsProp = _settings.FindProperty("enableDebugLogs");
             EditorGUILayout.PropertyField(enableDebugLogsProp, new GUIContent(
                 "Enable Debug Logs",
-                "Enable debug logging for YamuServer HTTP handlers"));
+                "Enable debug logging for NyamuServer HTTP handlers"));
 
             EditorGUILayout.Space();
 
@@ -111,7 +111,7 @@ namespace Yamu
             var serverPortProp = _settings.FindProperty("serverPort");
             EditorGUILayout.PropertyField(serverPortProp, new GUIContent(
                 "Server Port",
-                "TCP port for the Yamu MCP server (default: 17932)"));
+                "TCP port for the Nyamu MCP server (default: 17932)"));
 
             EditorGUILayout.Space();
 
@@ -120,7 +120,7 @@ namespace Yamu
             {
                 EditorGUILayout.LabelField("Current Settings:", EditorStyles.boldLabel, GUILayout.Width(120));
 
-                var settings = YamuSettings.Instance;
+                var settings = NyamuSettings.Instance;
                 var overhead = EstimateResponseOverhead(settings);
                 var availableForContent = Mathf.Max(0, settings.responseCharacterLimit - overhead);
 
@@ -134,9 +134,9 @@ namespace Yamu
                 if (GUILayout.Button("Reset to Defaults", GUILayout.Width(150)))
                 {
                     if (EditorUtility.DisplayDialog("Reset Settings",
-                        "Reset all Yamu settings to default values?", "Reset", "Cancel"))
+                        "Reset all Nyamu settings to default values?", "Reset", "Cancel"))
                     {
-                        YamuSettings.Instance.ResetToDefaults();
+                        NyamuSettings.Instance.ResetToDefaults();
                         _settings.Update(); // Refresh the serialized object
                     }
                 }
@@ -145,9 +145,9 @@ namespace Yamu
 
                 if (GUILayout.Button("Save Settings", GUILayout.Width(100)))
                 {
-                    YamuSettings.Instance.Save();
+                    NyamuSettings.Instance.Save();
                     EditorUtility.DisplayDialog("Settings Saved",
-                        "Yamu settings have been saved successfully.", "OK");
+                        "Nyamu settings have been saved successfully.", "OK");
                 }
             }
 
@@ -158,7 +158,7 @@ namespace Yamu
         /// <summary>
         /// Estimate the overhead of MCP response structure
         /// </summary>
-        private int EstimateResponseOverhead(YamuSettings settings)
+        private int EstimateResponseOverhead(NyamuSettings settings)
         {
             // Estimate JSON structure overhead for typical MCP response
             var sampleResponse = "{\"jsonrpc\":\"2.0\",\"id\":999999,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"\"}]}}";
@@ -177,7 +177,7 @@ namespace Yamu
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
             // Ensure settings instance exists when provider is activated
-            var settings = YamuSettings.Instance;
+            var settings = NyamuSettings.Instance;
             _settings = new SerializedObject(settings);
         }
 
@@ -190,7 +190,7 @@ namespace Yamu
             if (_settings != null && _settings.hasModifiedProperties)
             {
                 _settings.ApplyModifiedProperties();
-                YamuSettings.Instance.Save();
+                NyamuSettings.Instance.Save();
             }
         }
     }

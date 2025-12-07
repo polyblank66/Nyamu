@@ -69,8 +69,8 @@
       },
       "url": "https://packages.unity.com"
     },
-    "jp.keijiro.yamu": {
-      "version": "file:jp.keijiro.yamu",
+    "dev.polyblank.nyamu": {
+      "version": "file:dev.polyblank.nyamu",
       "depth": 0,
       "source": "embedded",
       "dependencies": {

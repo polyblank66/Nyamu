@@ -102,7 +102,7 @@ async def test_error_callbacks_vs_normal_timeout(unity_helper, unity_state_manag
         start_time = time.time()
         response = await client.run_tests(
             test_mode="EditMode",
-            test_filter="YamuTests.PassingTest1",
+            test_filter="NyamuTests.PassingTest1",
             timeout=10
         )
         normal_execution_time = time.time() - start_time
@@ -235,7 +235,7 @@ async def test_error_state_reset_between_runs(unity_helper, unity_state_manager,
         # First, run a normal test to ensure clean state
         response = await client.run_tests(
             test_mode="EditMode",
-            test_filter="YamuTests.PassingTest1",
+            test_filter="NyamuTests.PassingTest1",
             timeout=10
         )
         assert "Passed: 1" in response["result"]["content"][0]["text"]
@@ -293,7 +293,7 @@ public class ErrorStateResetTest
         # Run a normal test again - error state should be reset
         response = await client.run_tests(
             test_mode="EditMode",
-            test_filter="YamuTests.PassingTest1",
+            test_filter="NyamuTests.PassingTest1",
             timeout=10
         )
         assert "Passed: 1" in response["result"]["content"][0]["text"]

@@ -15,7 +15,7 @@ async def test_large_error_message_truncation(mcp_client, unity_state_manager):
     # Run the Unity test that generates a large error message (~50,000 characters)
     response = await mcp_client.run_tests(
         test_mode="EditMode",
-        test_filter="YamuTests.LargeErrorMessageTest",
+        test_filter="NyamuTests.LargeErrorMessageTest",
         timeout=60
     )
 
@@ -38,7 +38,7 @@ async def test_large_error_message_truncation(mcp_client, unity_state_manager):
     assert "Test Results:" in response_text
     assert "Total: 1" in response_text
     assert "Failed: 1" in response_text
-    assert "YamuTests.LargeErrorMessageTest" in response_text
+    assert "NyamuTests.LargeErrorMessageTest" in response_text
 
     # Verify response truncation is working
     # The default character limit is 25,000, so response should be significantly less than the original ~50,000
@@ -77,7 +77,7 @@ async def test_normal_test_not_truncated(mcp_client, unity_state_manager):
     # Run a normal test that should have a small response
     response = await mcp_client.run_tests(
         test_mode="EditMode",
-        test_filter="YamuTests.PassingTest1",
+        test_filter="NyamuTests.PassingTest1",
         timeout=60
     )
 
@@ -109,7 +109,7 @@ async def test_truncation_preserves_json_structure(mcp_client, unity_state_manag
     # Run the large error test
     response = await mcp_client.run_tests(
         test_mode="EditMode",
-        test_filter="YamuTests.LargeErrorMessageTest",
+        test_filter="NyamuTests.LargeErrorMessageTest",
         timeout=60
     )
 

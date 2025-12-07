@@ -2,13 +2,13 @@ using UnityEngine;
 using UnityEditor;
 using System.IO;
 
-namespace Yamu
+namespace Nyamu
 {
     /// <summary>
-    /// Settings for Yamu MCP server configuration
+    /// Settings for Nyamu MCP server configuration
     /// </summary>
     [System.Serializable]
-    public class YamuSettings : ScriptableObject
+    public class NyamuSettings : ScriptableObject
     {
         [Header("Response Configuration")]
         [Tooltip("Maximum characters in complete MCP response (default: 25000)")]
@@ -23,20 +23,20 @@ namespace Yamu
         public string truncationMessage = "\n\n... (response truncated due to length limit)";
 
         [Header("Debug Configuration")]
-        [Tooltip("Enable debug logging for YamuServer HTTP handlers")]
+        [Tooltip("Enable debug logging for NyamuServer HTTP handlers")]
         public bool enableDebugLogs = false;
 
         [Header("Server Configuration")]
-        [Tooltip("TCP port for the Yamu MCP server (default: 17932)")]
+        [Tooltip("TCP port for the Nyamu MCP server (default: 17932)")]
         public int serverPort = 17932;
 
         // Singleton pattern for easy access
-        private static YamuSettings _instance;
+        private static NyamuSettings _instance;
 
         /// <summary>
-        /// Get the singleton instance of YamuSettings
+        /// Get the singleton instance of NyamuSettings
         /// </summary>
-        public static YamuSettings Instance
+        public static NyamuSettings Instance
         {
             get
             {
@@ -51,15 +51,15 @@ namespace Yamu
         /// <summary>
         /// Load existing settings or create new ones with defaults
         /// </summary>
-        private static YamuSettings LoadOrCreateSettings()
+        private static NyamuSettings LoadOrCreateSettings()
         {
             // Try to load existing settings from Editor folder
-            var settings = AssetDatabase.LoadAssetAtPath<YamuSettings>("Assets/Editor/YamuSettings.asset");
+            var settings = AssetDatabase.LoadAssetAtPath<NyamuSettings>("Assets/Editor/NyamuSettings.asset");
 
             if (settings == null)
             {
                 // Create new settings with defaults
-                settings = CreateInstance<YamuSettings>();
+                settings = CreateInstance<NyamuSettings>();
 
                 // Ensure Editor directory exists
                 var editorPath = "Assets/Editor";
@@ -70,11 +70,11 @@ namespace Yamu
                 }
 
                 // Save to Assets/Editor folder
-                var assetPath = Path.Combine(editorPath, "YamuSettings.asset");
+                var assetPath = Path.Combine(editorPath, "NyamuSettings.asset");
                 AssetDatabase.CreateAsset(settings, assetPath);
                 AssetDatabase.SaveAssets();
 
-                Debug.Log("Created new Yamu settings with default values at " + assetPath);
+                Debug.Log("Created new Nyamu settings with default values at " + assetPath);
             }
 
             return settings;

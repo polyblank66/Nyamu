@@ -1,5 +1,5 @@
 """
-MCP Client for interacting with YAMU MCP Server
+MCP Client for interacting with NYAMU MCP Server
 """
 
 import json
@@ -21,7 +21,7 @@ class MCPClient:
         if mcp_server_path is None:
             # Default path relative to project root
             project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            mcp_server_path = os.path.join(project_root, "Packages", "jp.keijiro.yamu", "Node", "mcp-server.js")
+            mcp_server_path = os.path.join(project_root, "Packages", "dev.polyblank.nyamu", "Node", "mcp-server.js")
 
         self.mcp_server_path = mcp_server_path
         self.process = None

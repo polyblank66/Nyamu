@@ -1,5 +1,5 @@
 //
-// YamuServer.cs - Yamu MCP (Model Context Protocol) Server
+// NyamuServer.cs - Nyamu MCP (Model Context Protocol) Server
 //
 // This file implements an HTTP server that enables external tools to interact with Unity Editor
 // for compilation and test execution via MCP protocol. The server runs on a background thread
@@ -34,13 +34,13 @@ using System;
 using UnityEditor.TestTools.TestRunner.Api;
 using System.Linq;
 
-namespace Yamu
+namespace Nyamu
 {
     // ============================================================================
     // CONFIGURATION AND CONSTANTS
     // ============================================================================
 
-    // Configuration constants for the Yamu MCP server
+    // Configuration constants for the Nyamu MCP server
     static class Constants
     {
         public const int ServerPort = 17932;
@@ -202,7 +202,7 @@ namespace Yamu
 
             _shouldStop = false;
             _listener = new HttpListener();
-            int port = YamuSettings.Instance.serverPort;
+            int port = NyamuSettings.Instance.serverPort;
             _listener.Prefixes.Add($"http://localhost:{port}/");
             _listener.Start();
 
@@ -343,9 +343,9 @@ namespace Yamu
 
         static string HandleCompileAndWaitRequest()
         {
-            if (YamuSettings.Instance.enableDebugLogs)
+            if (NyamuSettings.Instance.enableDebugLogs)
             {
-                Debug.Log($"[YamuServer][Debug] Entering HandleCompileAndWaitRequest");
+                Debug.Log($"[NyamuServer][Debug] Entering HandleCompileAndWaitRequest");
             }
             _compileRequestTime = DateTime.Now;
             lock (_mainThreadActionQueue)
@@ -399,9 +399,9 @@ namespace Yamu
 
         static string HandleCompileStatusRequest()
         {
-            if (YamuSettings.Instance.enableDebugLogs)
+            if (NyamuSettings.Instance.enableDebugLogs)
             {
-                Debug.Log($"[YamuServer][Debug] Entering HandleCompileStatusRequest");
+                Debug.Log($"[NyamuServer][Debug] Entering HandleCompileStatusRequest");
             }
             var status = _isCompiling || EditorApplication.isCompiling ? "compiling" : "idle";
             var statusResponse = new CompileStatusResponse
@@ -416,9 +416,9 @@ namespace Yamu
 
         static string HandleRunTestsRequest(HttpListenerRequest request)
         {
-            if (YamuSettings.Instance.enableDebugLogs)
+            if (NyamuSettings.Instance.enableDebugLogs)
             {
-                Debug.Log($"[YamuServer][Debug] Entering HandleRunTestsRequest");
+                Debug.Log($"[NyamuServer][Debug] Entering HandleRunTestsRequest");
             }
             var query = request.Url.Query ?? "";
             var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
@@ -459,9 +459,9 @@ namespace Yamu
 
         static string HandleTestStatusRequest()
         {
-            if (YamuSettings.Instance.enableDebugLogs)
+            if (NyamuSettings.Instance.enableDebugLogs)
             {
-                Debug.Log($"[YamuServer][Debug] Entering HandleTestStatusRequest");
+                Debug.Log($"[NyamuServer][Debug] Entering HandleTestStatusRequest");
             }
             var status = _isRunningTests ? "running" : "idle";
             var statusResponse = new TestStatusResponse
@@ -479,9 +479,9 @@ namespace Yamu
 
         static string HandleEditorStatusRequest()
         {
-            if (YamuSettings.Instance.enableDebugLogs)
+            if (NyamuSettings.Instance.enableDebugLogs)
             {
-                Debug.Log($"[YamuServer][Debug] Entering HandleEditorStatusRequest");
+                Debug.Log($"[NyamuServer][Debug] Entering HandleEditorStatusRequest");
             }
             var statusResponse = new EditorStatusResponse
             {
@@ -494,9 +494,9 @@ namespace Yamu
 
         static string HandleMcpSettingsRequest()
         {
-            if (YamuSettings.Instance.enableDebugLogs)
+            if (NyamuSettings.Instance.enableDebugLogs)
             {
-                Debug.Log($"[YamuServer][Debug] Entering HandleMcpSettingsRequest");
+                Debug.Log($"[NyamuServer][Debug] Entering HandleMcpSettingsRequest");
             }
             lock (_settingsLock)
             {
@@ -512,7 +512,7 @@ namespace Yamu
                         {
                             try
                             {
-                                var settings = YamuSettings.Instance;
+                                var settings = NyamuSettings.Instance;
                                 settingsResult = new McpSettingsResponse
                                 {
                                     responseCharacterLimit = settings.responseCharacterLimit,
@@ -522,7 +522,7 @@ namespace Yamu
                             }
                             catch (System.Exception ex)
                             {
-                                Debug.LogError($"[YamuServer] Failed to load Yamu settings: {ex.Message}");
+                                Debug.LogError($"[NyamuServer] Failed to load Nyamu settings: {ex.Message}");
                                 // Use default settings as fallback
                                 settingsResult = new McpSettingsResponse
                                 {
@@ -567,9 +567,9 @@ namespace Yamu
 
         static string HandleCancelTestsRequest(HttpListenerRequest request)
         {
-            if (YamuSettings.Instance.enableDebugLogs)
+            if (NyamuSettings.Instance.enableDebugLogs)
             {
-                Debug.Log($"[YamuServer][Debug] Entering HandleCancelTestsRequest");
+                Debug.Log($"[NyamuServer][Debug] Entering HandleCancelTestsRequest");
             }
             try
             {
@@ -606,7 +606,7 @@ namespace Yamu
 
                 if (cancelResult)
                 {
-                    Debug.Log($"[YamuServer] Test run cancellation requested for ID: {guidToCancel}");
+                    Debug.Log($"[NyamuServer] Test run cancellation requested for ID: {guidToCancel}");
                     return $"{{\"status\":\"ok\", \"message\":\"Test run cancellation requested for ID: {guidToCancel}\", \"guid\":\"{guidToCancel}\"}}";
                 }
                 else
@@ -616,7 +616,7 @@ namespace Yamu
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[YamuServer] Error cancelling tests: {ex.Message}");
+                Debug.LogError($"[NyamuServer] Error cancelling tests: {ex.Message}");
                 return $"{{\"status\":\"error\", \"message\":\"Failed to cancel tests: {ex.Message}\"}}";
             }
         }
@@ -639,7 +639,7 @@ namespace Yamu
         {
             try
             {
-                var settings = YamuSettings.Instance;
+                var settings = NyamuSettings.Instance;
                 var newSettings = new McpSettingsResponse
                 {
                     responseCharacterLimit = settings.responseCharacterLimit,
@@ -654,7 +654,7 @@ namespace Yamu
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[YamuServer] Failed to refresh cached Yamu settings: {ex.Message}");
+                Debug.LogError($"[NyamuServer] Failed to refresh cached Nyamu settings: {ex.Message}");
             }
         }
 
@@ -683,9 +683,9 @@ namespace Yamu
 
         static string HandleRefreshAssetsRequest(HttpListenerRequest request)
         {
-            if (YamuSettings.Instance.enableDebugLogs)
+            if (NyamuSettings.Instance.enableDebugLogs)
             {
-                Debug.Log($"[YamuServer][Debug] Entering HandleRefreshAssetsRequest");
+                Debug.Log($"[NyamuServer][Debug] Entering HandleRefreshAssetsRequest");
             }
             // Parse force parameter from query string
             bool force = request.Url.Query.Contains("force=true");
@@ -739,7 +739,7 @@ namespace Yamu
                             _isMonitoringRefresh = false;
                             _unityIsUpdating = false;
                         }
-                        Debug.LogError($"[YamuServer] AssetDatabase.Refresh failed: {ex.Message}");
+                        Debug.LogError($"[NyamuServer] AssetDatabase.Refresh failed: {ex.Message}");
                     }
                 });
             }
@@ -760,7 +760,7 @@ namespace Yamu
                 return;
 
             if (!_shouldStop)
-                Debug.LogError($"[YamuServer] YamuServer error: {ex.Message}");
+                Debug.LogError($"[NyamuServer] NyamuServer error: {ex.Message}");
         }
 
         // ========================================================================
@@ -781,7 +781,7 @@ namespace Yamu
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[YamuServer] Failed to start test execution: {ex.Message}");
+                Debug.LogError($"[NyamuServer] Failed to start test execution: {ex.Message}");
             }
             finally
             {
@@ -822,7 +822,7 @@ namespace Yamu
 
             if (waited >= maxWait)
             {
-                Debug.LogWarning("[YamuServer] Timed out waiting for asset refresh to complete before running tests");
+                Debug.LogWarning("[NyamuServer] Timed out waiting for asset refresh to complete before running tests");
             }
         }
 
@@ -851,7 +851,7 @@ namespace Yamu
                     EditorSettings.enterPlayModeOptionsEnabled = true;
                     EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload | EnterPlayModeOptions.DisableSceneReload;
 
-                    Debug.Log("[YamuServer] Overriding Enter Play Mode settings to disable domain reload for PlayMode tests");
+                    Debug.Log("[NyamuServer] Overriding Enter Play Mode settings to disable domain reload for PlayMode tests");
                 }
 
                 var api = ScriptableObject.CreateInstance<TestRunnerApi>();
@@ -882,11 +882,11 @@ namespace Yamu
                 _currentTestRunId = api.Execute(new ExecutionSettings(filterObj));
                 apiExecuteCalled = true; // If we reach here, api.Execute was called successfully
 
-                Debug.Log($"[YamuServer] Started test execution with ID: {_currentTestRunId}");
+                Debug.Log($"[NyamuServer] Started test execution with ID: {_currentTestRunId}");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[YamuServer] Failed to start test execution: {ex.Message}");
+                Debug.LogError($"[NyamuServer] Failed to start test execution: {ex.Message}");
                 _testResults = new TestResults
                 {
                     totalTests = 0,
@@ -935,7 +935,7 @@ namespace Yamu
 
         public void RunFinished(ITestResultAdaptor result)
         {
-            Debug.Log($"[YamuServer] Test run finished with status: {result.TestStatus}, ID: {Server._currentTestRunId}");
+            Debug.Log($"[NyamuServer] Test run finished with status: {result.TestStatus}, ID: {Server._currentTestRunId}");
 
             var results = new List<TestResult>();
             CollectTestResults(result, results);
@@ -961,7 +961,7 @@ namespace Yamu
             {
                 EditorSettings.enterPlayModeOptionsEnabled = _originalEnterPlayModeOptionsEnabled;
                 EditorSettings.enterPlayModeOptions = _originalEnterPlayModeOptions;
-                Debug.Log("[YamuServer] Restored original Enter Play Mode settings after PlayMode test completion");
+                Debug.Log("[NyamuServer] Restored original Enter Play Mode settings after PlayMode test completion");
             }
         }
 
@@ -981,7 +981,7 @@ namespace Yamu
 
         public void OnError(string errorDetails)
         {
-            Debug.LogError($"[YamuServer] Test execution error occurred: {errorDetails}");
+            Debug.LogError($"[NyamuServer] Test execution error occurred: {errorDetails}");
 
             // Store error information for status endpoint
             Server._testExecutionError = errorDetails;

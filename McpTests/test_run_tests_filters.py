@@ -16,7 +16,7 @@ async def test_run_tests_filter_single_test(mcp_client, unity_state_manager):
     # Test specific EditMode test
     response = await mcp_client.run_tests(
         test_mode="EditMode",
-        test_filter="YamuTests.PassingTest1",
+        test_filter="NyamuTests.PassingTest1",
         timeout=60
     )
 
@@ -43,7 +43,7 @@ async def test_run_tests_filter_multiple_tests_pipe_separator(mcp_client, unity_
     # Test multiple EditMode tests using pipe separator
     response = await mcp_client.run_tests(
         test_mode="EditMode",
-        test_filter="YamuTests.PassingTest1|YamuTests.PassingTest2",
+        test_filter="NyamuTests.PassingTest1|NyamuTests.PassingTest2",
         timeout=60
     )
 
@@ -70,7 +70,7 @@ async def test_run_tests_filter_failing_test(mcp_client, unity_state_manager):
     # Test specific failing EditMode test
     response = await mcp_client.run_tests(
         test_mode="EditMode",
-        test_filter="YamuTests.FailingTest1",
+        test_filter="NyamuTests.FailingTest1",
         timeout=60
     )
 
@@ -88,7 +88,7 @@ async def test_run_tests_filter_failing_test(mcp_client, unity_state_manager):
     assert "Passed: 0" in content_text
     # Should show failure details
     assert "Failed Tests:" in content_text
-    assert "YamuTests.FailingTest1" in content_text
+    assert "NyamuTests.FailingTest1" in content_text
 
 
 @pytest.mark.mcp
@@ -100,7 +100,7 @@ async def test_run_tests_filter_playmode_with_namespace(mcp_client, unity_state_
     # Test specific PlayMode test with namespace
     response = await mcp_client.run_tests(
         test_mode="PlayMode",
-        test_filter="Yamu.Tests.YamuPlayModeTests.SimplePlayModeTest",
+        test_filter="NNyamu.Tests.NyamuPlayModeTests.SimplePlayModeTest",
         timeout=60
     )
 
@@ -203,11 +203,11 @@ async def test_run_tests_regex_filter_failing_tests(mcp_client, unity_state_mana
 @pytest.mark.asyncio
 async def test_run_tests_regex_filter_namespace_pattern(mcp_client, unity_state_manager):
     """Test using regex filter to match namespace patterns"""
-    # Test regex filter that matches tests in Yamu.Tests namespace
+    # Test regex filter that matches tests in Nyamu.Tests namespace
     response = await mcp_client.run_tests(
         test_mode="PlayMode",
         test_filter="",
-        test_filter_regex="Yamu\\.Tests\\..*",
+        test_filter_regex="Nyamu\\.Tests\\..*",
         timeout=60
     )
 
@@ -285,7 +285,7 @@ async def test_run_tests_both_filters_specified(mcp_client, unity_state_manager)
     # Test when both filters are provided - should use both
     response = await mcp_client.run_tests(
         test_mode="EditMode",
-        test_filter="YamuTests.PassingTest1",
+        test_filter="NyamuTests.PassingTest1",
         test_filter_regex=".*PassingTest.*",
         timeout=60
     )
@@ -311,14 +311,14 @@ async def test_run_tests_filter_consistency_with_direct_call(mcp_client, unity_s
     # Run test with filter via MCP
     mcp_response = await mcp_client.run_tests(
         test_mode="EditMode",
-        test_filter="YamuTests.PassingTest1",
+        test_filter="NyamuTests.PassingTest1",
         timeout=60
     )
 
     mcp_content = mcp_response["result"]["content"][0]["text"]
 
     # Verify the filtered test actually ran
-    assert "YamuTests.PassingTest1" in mcp_content or "Total: 1" in mcp_content
+    assert "NyamuTests.PassingTest1" in mcp_content or "Total: 1" in mcp_content
     assert "Test Results:" in mcp_content
 
     # Should show that filtering worked (not all tests ran)

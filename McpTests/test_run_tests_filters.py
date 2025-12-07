@@ -100,7 +100,7 @@ async def test_run_tests_filter_playmode_with_namespace(mcp_client, unity_state_
     # Test specific PlayMode test with namespace
     response = await mcp_client.run_tests(
         test_mode="PlayMode",
-        test_filter="Nyamu.Tests.NyamuPlayModeTests.SimplePlayModeTest",
+        test_filter="NNyamu.Tests.NyamuPlayModeTests.SimplePlayModeTest",
         timeout=60
     )
 
@@ -203,7 +203,7 @@ async def test_run_tests_regex_filter_failing_tests(mcp_client, unity_state_mana
 @pytest.mark.asyncio
 async def test_run_tests_regex_filter_namespace_pattern(mcp_client, unity_state_manager):
     """Test using regex filter to match namespace patterns"""
-    # Test regex filter that matches tests in Nyamu.Tests namespace
+    # Test regex filter that matches tests in NNyamu.Tests namespace
     response = await mcp_client.run_tests(
         test_mode="PlayMode",
         test_filter="",

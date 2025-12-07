@@ -53,7 +53,7 @@ async def test_mcp_initialize_with_session_client(mcp_client, unity_state_manage
     result = response["result"]
     assert result["protocolVersion"] == "2024-11-05"
     assert "serverInfo" in result
-    assert result["serverInfo"]["name"] == "YamuServer"
+    assert result["serverInfo"]["name"] == "NyamuServer"
 
 
 @pytest.mark.mcp

@@ -8,7 +8,7 @@
   ],
   "license": "Unlicense",
   "name": "dev.polyblank.nyamu",
-  "repository": "github:keijiro/Yamu",
+  "repository": "github:polyblank/Nyamu",
   "unity": "6000.0",
   "unityRelease": "0f1",
   "version": "1.0.2"

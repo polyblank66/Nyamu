@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "Yamu": {
+    "Nyamu": {
       "command": "node",
-      "args": ["Packages/jp.keijiro.yamu/Node/mcp-server.js"],
+      "args": ["Packages/dev.polyblank.nyamu/Node/mcp-server.js"],
       "timeout": 30000
     }
   }

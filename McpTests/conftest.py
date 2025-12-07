@@ -1,5 +1,5 @@
 """
-Pytest configuration and fixtures for YAMU MCP Server tests
+Pytest configuration and fixtures for NYAMU MCP Server tests
 """
 
 import pytest

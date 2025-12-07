@@ -203,11 +203,11 @@ async def test_run_tests_regex_filter_failing_tests(mcp_client, unity_state_mana
 @pytest.mark.asyncio
 async def test_run_tests_regex_filter_namespace_pattern(mcp_client, unity_state_manager):
     """Test using regex filter to match namespace patterns"""
-    # Test regex filter that matches tests in NNyamu.Tests namespace
+    # Test regex filter that matches tests in Nyamu.Tests namespace
     response = await mcp_client.run_tests(
         test_mode="PlayMode",
         test_filter="",
-        test_filter_regex="Yamu\\.Tests\\..*",
+        test_filter_regex="Nyamu\\.Tests\\..*",
         timeout=60
     )
 

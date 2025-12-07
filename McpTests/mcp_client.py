@@ -1,5 +1,5 @@
 """
-MCP Client for interacting with YAMU MCP Server
+MCP Client for interacting with NYAMU MCP Server
 """
 
 import json

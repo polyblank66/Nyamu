@@ -216,7 +216,7 @@ class MCPServer {
         this.capabilities = {
             tools: {
                 compile_and_wait: {
-                    description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with YAMU project open.",
+                    description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with NYAMU project open.",
                     inputSchema: {
                         type: "object",
                         properties: {
@@ -787,7 +787,7 @@ class MCPServer {
                 `Unity Editor HTTP server unavailable at ${this.unityServerUrl}`,
                 {
                     errorType: 'unity_server_unavailable',
-                    instructions: 'INSTRUCTIONS FOR LLM: 1) Verify Unity Editor is running and NYAMU project is open 2) Check if Unity HTTP server is active (should start automatically) 3) Test with: curl http://localhost:17932/compile-status 4) If Unity is running but server is down, restart Unity Editor',
+                    instructions: 'INSTRUCTIONS FOR LLM: 1) Verify Unity Editor is running and NNYAMU project is open 2) Check if Unity HTTP server is active (should start automatically) 3) Test with: curl http://localhost:17932/compile-status 4) If Unity is running but server is down, restart Unity Editor',
                     retryable: false,
                     originalError: error.message
                 }

@@ -1,6 +1,6 @@
-# Yamu
+# Nnyamu
 
-**Yamu** (Yet Another Minimal MCP server for Unity) is an experimental MCP
+**Nnyamu** (Yet Another Minimal MCP server for Unity) is an experimental MCP
 (Model Context Protocol) server that enables AI coding agents to interact with
 Unity projects.
 
@@ -24,9 +24,9 @@ Unity projects.
 
 ### Response Character Limits
 
-Yamu provides configurable character limits for MCP server responses to prevent overwhelming AI agents with overly long responses. This is particularly useful when dealing with large compilation errors or test outputs.
+Nnyamu provides configurable character limits for MCP server responses to prevent overwhelming AI agents with overly long responses. This is particularly useful when dealing with large compilation errors or test outputs.
 
-**Configuration Location**: Unity Project Settings → "Yamu MCP Server"
+**Configuration Location**: Unity Project Settings → "Nnyamu MCP Server"
 
 **Settings**:
 - **Response Character Limit**: Maximum characters in complete MCP response (default: 25000)
@@ -54,7 +54,7 @@ MCP.
 
 ### 1. Install the Package
 
-You can install the Yamu package (`jp.keijiro.yamu`) via the "Keijiro" scoped
+You can install the Nnyamu package (`jp.keijiro.Nnyamu`) via the "Keijiro" scoped
 registry using the Unity Package Manager. To add the registry to your project,
 follow [these instructions].
 
@@ -63,17 +63,17 @@ follow [these instructions].
 
 ### 2. Add the MCP Server to the AI Agent
 
-You can either follow the steps in [`yamu-mcp-setup.md`] manually, or let the
+You can either follow the steps in [`Nnyamu-mcp-setup.md`] manually, or let the
 AI agent do it for you. For example, if you're using Gemini CLI:
 
 ```
-You're Gemini CLI. Follow yamu-mcp-setup.md
+You're Gemini CLI. Follow Nnyamu-mcp-setup.md
 ```
 
 The "You're ---" statement is important, as some AI agents don't know what they
 are unless explicitly told.
 
-**Note**: You’ll need to update this configuration each time you upgrade Yamu.
+**Note**: You’ll need to update this configuration each time you upgrade Nnyamu.
 You can simply run the same prompt again to refresh it.
 
-[`yamu-mcp-setup.md`]: Packages/jp.keijiro.yamu/yamu-mcp-setup.md
+[`Nnyamu-mcp-setup.md`]: Packages/jp.keijiro.Nnyamu/Nnyamu-mcp-setup.md

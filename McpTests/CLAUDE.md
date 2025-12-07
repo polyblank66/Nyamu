@@ -1,6 +1,6 @@
 # MCP Tests - Claude Code Instructions
 
-This directory contains Python integration tests for the YAMU MCP (Model Context Protocol) server. These tests verify MCP functionality including compilation, test execution, and response handling.
+This directory contains Python integration tests for the NYAMU MCP (Model Context Protocol) server. These tests verify MCP functionality including compilation, test execution, and response handling.
 
 ## Running Tests
 
@@ -15,7 +15,7 @@ cd McpTests && python -m pytest -m essential   # Core functionality tests
 
 ## Test Prerequisites
 
-1. **Unity Editor** running with YAMU project open
+1. **Unity Editor** running with NYAMU project open
 2. **Python 3.7+** with pytest (`pip install -r requirements.txt`)
 3. **Node.js** installed
 4. **Unity HTTP server** accessible at `http://localhost:17932`
@@ -36,7 +36,7 @@ The test suite uses a three-tier cleanup system:
 
 ## Troubleshooting
 
-- **Unity not responding**: Ensure Unity Editor is open with YAMU project
+- **Unity not responding**: Ensure Unity Editor is open with NYAMU project
 - **MCP errors**: Check Node.js installation and Unity HTTP server (port 17932)
 - **Test timeouts**: Increase timeout values for slow Unity compilation
 

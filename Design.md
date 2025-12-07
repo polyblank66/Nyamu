@@ -1,4 +1,4 @@
-# Design Document for a Simple MCP Server for Unity (Yamu)
+# Design Document for a Simple MCP Server for Unity (Nnyamu)
 
 This project implements a minimal MCP (Model Context Protocol) server for the
 Unity Editor.
@@ -36,5 +36,5 @@ The server provides the following minimal API endpoints:
 
 ## Project Naming
 
-The project is named **"Yamu"**. Use this name consistently in all filenames,
+The project is named **"Nnyamu"**. Use this name consistently in all filenames,
 identifiers, and documentation.

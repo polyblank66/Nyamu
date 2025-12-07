@@ -3,9 +3,9 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace Yamu.Tests
+namespace Nyamu.Tests
 {
-    public class YamuPlayModeTests
+    public class NyamuPlayModeTests
     {
         [UnityTest]
         public IEnumerator SimplePlayModeTest()

@@ -2,12 +2,12 @@
   "author": "Keijiro Takahashi",
   "dependencies": { "com.unity.test-framework": "1.4.6" },
   "description": "Yet another minimal MCP server for Unity.",
-  "displayName": "Yamu",
+  "displayName": "Nyamu",
   "keywords": [
     "unity"
   ],
   "license": "Unlicense",
-  "name": "jp.keijiro.yamu",
+  "name": "dev.polyblank.nyamu",
   "repository": "github:keijiro/Yamu",
   "unity": "6000.0",
   "unityRelease": "0f1",

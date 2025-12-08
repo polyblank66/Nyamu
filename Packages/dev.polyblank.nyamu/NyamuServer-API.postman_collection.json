@@ -1,0 +1,680 @@
+{
+	"info": {
+		"_postman_id": "nyamu-server-api-collection",
+		"name": "Nyamu MCP Server API",
+		"description": "HTTP API for interacting with Unity Editor via Nyamu MCP Server. This server runs on localhost:17932 and provides endpoints for compilation, testing, and editor state management.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "nyamu-mcp"
+	},
+	"item": [
+		{
+			"name": "Compilation",
+			"item": [
+				{
+					"name": "Compile and Wait",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/compile-and-wait",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"compile-and-wait"
+							]
+						},
+						"description": "Triggers Unity script compilation and waits for it to start. Returns immediately after compilation begins.\n\n**Response Examples:**\n- Success: `{\"status\":\"ok\", \"message\":\"Compilation started.\"}`\n- Warning: `{\"status\":\"warning\", \"message\":\"Compilation may not have started.\"}`"
+					},
+					"response": [
+						{
+							"name": "Success - Compilation Started",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/compile-and-wait",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-and-wait"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"Compilation started.\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Compile Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/compile-status",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"compile-status"
+							]
+						},
+						"description": "Gets the current compilation status, including any errors from the last compilation.\n\n**Response Fields:**\n- `status`: \"compiling\" or \"idle\"\n- `isCompiling`: boolean - whether compilation is currently active\n- `lastCompileTime`: ISO timestamp of last compilation finish\n- `errors`: array of compilation errors (file, line, message)"
+					},
+					"response": [
+						{
+							"name": "Idle - No Errors",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/compile-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"idle\",\n    \"isCompiling\": false,\n    \"lastCompileTime\": \"2025-12-08 12:30:45\",\n    \"errors\": []\n}"
+						},
+						{
+							"name": "Compiling",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/compile-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"compiling\",\n    \"isCompiling\": true,\n    \"lastCompileTime\": \"2025-12-08 12:25:30\",\n    \"errors\": []\n}"
+						},
+						{
+							"name": "With Compilation Errors",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/compile-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"idle\",\n    \"isCompiling\": false,\n    \"lastCompileTime\": \"2025-12-08 12:30:45\",\n    \"errors\": [\n        {\n            \"file\": \"Assets/Scripts/Example.cs\",\n            \"line\": 42,\n            \"message\": \"CS0103: The name 'variableName' does not exist in the current context\"\n        }\n    ]\n}"
+						}
+					]
+				}
+			],
+			"description": "Endpoints for managing Unity script compilation"
+		},
+		{
+			"name": "Testing",
+			"item": [
+				{
+					"name": "Run Tests",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/run-tests?mode=EditMode&filter=&filter_regex=",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"run-tests"
+							],
+							"query": [
+								{
+									"key": "mode",
+									"value": "EditMode",
+									"description": "Test mode: \"EditMode\" or \"PlayMode\" (default: EditMode)"
+								},
+								{
+									"key": "filter",
+									"value": "",
+									"description": "Test name filter (e.g., \"MyTestClass.MyTest\")"
+								},
+								{
+									"key": "filter_regex",
+									"value": "",
+									"description": "Regex pattern for filtering tests (e.g., \"Nyamu\\\\.Tests\\\\..*\")"
+								}
+							]
+						},
+						"description": "Starts Unity Test Runner execution. Supports both EditMode and PlayMode tests with optional filtering.\n\n**Query Parameters:**\n- `mode` (optional): \"EditMode\" or \"PlayMode\" (default: \"EditMode\")\n- `filter` (optional): Exact test name filter (e.g., \"Namespace.ClassName.TestName\")\n- `filter_regex` (optional): .NET Regex pattern for test names\n\n**Response:**\n- Success: `{\"status\":\"ok\", \"message\":\"Test execution started.\"}`\n- Already running: `{\"status\":\"warning\", \"message\":\"Tests are already running...\"}`"
+					},
+					"response": [
+						{
+							"name": "Success - EditMode",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/run-tests?mode=EditMode",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"run-tests"
+									],
+									"query": [
+										{
+											"key": "mode",
+											"value": "EditMode"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"Test execution started.\"\n}"
+						},
+						{
+							"name": "Success - PlayMode with Filter",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/run-tests?mode=PlayMode&filter=NyamuTests.PassingTest1",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"run-tests"
+									],
+									"query": [
+										{
+											"key": "mode",
+											"value": "PlayMode"
+										},
+										{
+											"key": "filter",
+											"value": "NyamuTests.PassingTest1"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"Test execution started.\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Test Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/test-status",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"test-status"
+							]
+						},
+						"description": "Gets the current test execution status and results from the last test run.\n\n**Response Fields:**\n- `status`: \"running\" or \"idle\"\n- `isRunning`: boolean - whether tests are currently executing\n- `lastTestTime`: ISO timestamp of last test completion\n- `testResults`: object with test statistics and individual results\n  - `totalTests`, `passedTests`, `failedTests`, `skippedTests`\n  - `duration`: total execution time in seconds\n  - `results`: array of individual test results\n- `testRunId`: unique GUID for the test run\n- `hasError`: boolean - whether test execution had errors\n- `errorMessage`: error description if hasError is true"
+					},
+					"response": [
+						{
+							"name": "Idle - Tests Completed",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/test-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"test-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"idle\",\n    \"isRunning\": false,\n    \"lastTestTime\": \"2025-12-08 12:35:20\",\n    \"testResults\": {\n        \"totalTests\": 5,\n        \"passedTests\": 4,\n        \"failedTests\": 1,\n        \"skippedTests\": 0,\n        \"duration\": 2.345,\n        \"results\": [\n            {\n                \"name\": \"NyamuTests.PassingTest1\",\n                \"outcome\": \"Passed\",\n                \"message\": \"\",\n                \"duration\": 0.123\n            },\n            {\n                \"name\": \"NyamuTests.FailingTest\",\n                \"outcome\": \"Failed\",\n                \"message\": \"Expected: 5 But was: 3\",\n                \"duration\": 0.089\n            }\n        ]\n    },\n    \"testRunId\": \"abc123def456\",\n    \"hasError\": false,\n    \"errorMessage\": null\n}"
+						},
+						{
+							"name": "Running",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/test-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"test-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"running\",\n    \"isRunning\": true,\n    \"lastTestTime\": \"2025-12-08 12:30:15\",\n    \"testResults\": null,\n    \"testRunId\": \"xyz789abc123\",\n    \"hasError\": false,\n    \"errorMessage\": null\n}"
+						}
+					]
+				},
+				{
+					"name": "Cancel Tests",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/cancel-tests?guid=",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"cancel-tests"
+							],
+							"query": [
+								{
+									"key": "guid",
+									"value": "",
+									"description": "Test run GUID to cancel (optional - uses current test run if not provided)"
+								}
+							]
+						},
+						"description": "Cancels a running Unity test execution using Unity's TestRunnerApi.\n\n**Query Parameters:**\n- `guid` (optional): Test run GUID to cancel. If not provided, cancels the current running test.\n\n**Note:** Currently only EditMode tests can be cancelled due to Unity API limitations.\n\n**Response Examples:**\n- Success: `{\"status\":\"ok\", \"message\":\"Test run cancellation requested...\", \"guid\":\"...\"}`\n- No tests running: `{\"status\":\"warning\", \"message\":\"No test run currently active.\"}`\n- Failed: `{\"status\":\"error\", \"message\":\"Failed to cancel test run...\"}`"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/cancel-tests",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"cancel-tests"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"Test run cancellation requested for ID: abc123def456\",\n    \"guid\": \"abc123def456\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Endpoints for managing Unity Test Runner execution"
+		},
+		{
+			"name": "Asset Management",
+			"item": [
+				{
+					"name": "Refresh Assets",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/refresh-assets?force=false",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"refresh-assets"
+							],
+							"query": [
+								{
+									"key": "force",
+									"value": "false",
+									"description": "Set to 'true' to force asset reimport (ImportAssetOptions.ForceUpdate)"
+								}
+							]
+						},
+						"description": "Triggers Unity AssetDatabase refresh. Use force=true for stronger refresh (required after file deletions to prevent CS2001 errors).\n\n**Query Parameters:**\n- `force` (optional): \"true\" to use ImportAssetOptions.ForceUpdate\n\n**Recommended Workflow:**\n1. Make file system changes\n2. Call refresh-assets (force=true for deletions)\n3. Wait for MCP responsiveness\n4. Call compile-and-wait\n\n**Response:**\n- Success: `{\"status\":\"ok\", \"message\":\"Asset database refreshed.\"}`\n- Already running: `{\"status\":\"warning\", \"message\":\"Asset refresh already in progress...\"}`"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/refresh-assets?force=false",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"refresh-assets"
+									],
+									"query": [
+										{
+											"key": "force",
+											"value": "false"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"Asset database refreshed.\"\n}"
+						},
+						{
+							"name": "Force Refresh",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/refresh-assets?force=true",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"refresh-assets"
+									],
+									"query": [
+										{
+											"key": "force",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"Asset database refreshed.\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Endpoints for Unity asset database management"
+		},
+		{
+			"name": "Editor Status",
+			"item": [
+				{
+					"name": "Editor Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/editor-status",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"editor-status"
+							]
+						},
+						"description": "Gets the current Unity Editor state including compilation, test execution, and play mode status.\n\n**Response Fields:**\n- `isCompiling`: boolean - whether scripts are currently compiling\n- `isRunningTests`: boolean - whether tests are currently executing\n- `isPlaying`: boolean - whether Unity is in Play mode"
+					},
+					"response": [
+						{
+							"name": "Idle",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/editor-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"editor-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"isCompiling\": false,\n    \"isRunningTests\": false,\n    \"isPlaying\": false\n}"
+						},
+						{
+							"name": "Compiling and Running Tests",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/editor-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"editor-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"isCompiling\": true,\n    \"isRunningTests\": true,\n    \"isPlaying\": false\n}"
+						}
+					]
+				},
+				{
+					"name": "MCP Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/mcp-settings",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"mcp-settings"
+							]
+						},
+						"description": "Gets the current Nyamu MCP server settings configured in Unity.\n\n**Response Fields:**\n- `responseCharacterLimit`: maximum response length before truncation\n- `enableTruncation`: whether response truncation is enabled\n- `truncationMessage`: message appended when responses are truncated\n\n**Note:** Settings are cached and refreshed every 2 seconds."
+					},
+					"response": [
+						{
+							"name": "Default Settings",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/mcp-settings",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"mcp-settings"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"responseCharacterLimit\": 25000,\n    \"enableTruncation\": true,\n    \"truncationMessage\": \"\\n\\n... (response truncated due to length limit)\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Endpoints for querying Unity Editor and MCP server status"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:17932",
+			"type": "string"
+		},
+		{
+			"key": "serverPort",
+			"value": "17932",
+			"type": "string"
+		}
+	]
+}

@@ -9,7 +9,7 @@ Example:
   "mcpServers": {
     "Nyamu": {
       "command": "node",
-      "args": ["Library/PackageCache/jp.keijiro.Nyamu@(HASH)/Node/mcp-server.js"]
+      "args": ["Library/PackageCache/dev.polyblank.nyamu@(HASH)/Node/mcp-server.js"]
     }
   }
 }

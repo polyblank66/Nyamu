@@ -9,24 +9,24 @@ Unity/Editor
 - Normal Unity build pipeline applies; no custom post?processors are required for just compiling scripts and running tests.
 
 Nyamu MCP server (in?Editor HTTP + MCP bridge)
-- The in?Editor HTTP server is implemented by Packages\jp.keijiro.Nyamu\Editor\NyamuServer.cs.
+- The in?Editor HTTP server is implemented by Packages\dev.polyblank.nyamu\Editor\NyamuServer.cs.
   - Port: 17932 (Constants.ServerPort). Key endpoints:
     - GET /compile-status > current compile/test state JSON
     - GET /compile-and-wait > triggers compile and waits; returns summary (succeeds even if no changes)
-    - GET /run-tests?mode=EditMode|PlayMode&filter=… > starts Unity Test Runner
+    - GET /run-tests?mode=EditMode|PlayMode&filter=ï¿½ > starts Unity Test Runner
     - GET /test-status > current test run status/results
     - POST /refresh-assets with JSON { force: bool } > asset database refresh (force=true after deletions)
 - During domain reloads/compilation/asset refresh the HTTP server restarts; external calls can fail transiently. This is expected.
-  - If you’re calling tools programmatically, implement retries with a small backoff (2–5 s) for HTTP failures. See Packages\jp.keijiro.Nyamu\Nyamu-mcp-setup.md for the canonical blurb about handling “MCP Error -32603: HTTP request failed”.
+  - If youï¿½re calling tools programmatically, implement retries with a small backoff (2ï¿½5 s) for HTTP failures. See Packages\dev.polyblank.nyamu\Nyamu-mcp-setup.md for the canonical blurb about handling ï¿½MCP Error -32603: HTTP request failedï¿½.
 
 Agent/CLI MCP registration
-- The Node-side MCP bridge is Packages\jp.keijiro.Nyamu\Node\mcp-server.js which proxies to the Unity HTTP server at http://localhost:17932.
+- The Node-side MCP bridge is Packages\dev.polyblank.nyamu\Node\mcp-server.js which proxies to the Unity HTTP server at http://localhost:17932.
 - To use from an AI agent that supports MCP, add an entry similar to:
   {
     "mcpServers": {
       "Nyamu": {
         "command": "node",
-        "args": ["Library/PackageCache/jp.keijiro.Nyamu@(HASH)/Node/mcp-server.js"]
+        "args": ["Library/PackageCache/dev.polyblank.nyamu@(HASH)/Node/mcp-server.js"]
       }
     }
   }
@@ -38,7 +38,7 @@ Local Python tooling (optional but useful)
 - McpTests contains a thin client (McpTests/mcp_client.py) to call the MCP server from Python.
 - Requirements are listed in McpTests/README.md (pip install -r requirements.txt).
 
-2) Testing: how this project’s tests work
+2) Testing: how this projectï¿½s tests work
 
 Test stacks present
 - Unity Test Runner (EditMode/PlayMode) run by Nyamu HTTP endpoints and by MCP.
@@ -52,7 +52,7 @@ Unity Test Runner via MCP
       compile_result = await client.compile_and_wait(timeout=30)
       test_result = await client.run_tests(test_mode="PlayMode", test_filter="", timeout=60)
 - Important:
-  - After deleting files, you MUST call refresh_assets(force=true) before compiling to avoid stale references/CS2001. After creating new files, refresh_assets(force=false) is sufficient. Pure content edits don’t require a refresh.
+  - After deleting files, you MUST call refresh_assets(force=true) before compiling to avoid stale references/CS2001. After creating new files, refresh_assets(force=false) is sufficient. Pure content edits donï¿½t require a refresh.
   - Nyamu server may restart while compiling/refreshing; re?try on transient HTTP errors.
 
 Python pytest suite (McpTests)
@@ -80,7 +80,7 @@ Python pytest suite (McpTests)
     - Delete file > delete file + its .meta > refresh_assets(force=true) > compile_and_wait
     - Modify contents only > compile_and_wait is enough (no refresh)
 - Verified example run:
-  - A simple smoke test was executed locally with pytest and passed, confirming the Python test harness is wired correctly in this environment. Note that real tests will be skipped if the Unity HTTP server isn’t running, by design of the autouse health check.
+  - A simple smoke test was executed locally with pytest and passed, confirming the Python test harness is wired correctly in this environment. Note that real tests will be skipped if the Unity HTTP server isnï¿½t running, by design of the autouse health check.
 
 Unity tests directly from HTTP
 - You can also cURL the in?Editor server:
@@ -95,7 +95,7 @@ Unity tests directly from HTTP
 Project layout quick map
 - Assets/Tests: Unity test scripts
 - Assets/TestModule: Sample assembly/asmdef used by tests
-- Packages/jp.keijiro.Nyamu: Editor server (C#), Node MCP bridge, and docs
+- Packages/dev.polyblank.nyamu: Editor server (C#), Node MCP bridge, and docs
 - McpTests/: Python integration tests and helpers
 
 Editor server internals worth knowing (NyamuServer.cs)
@@ -107,7 +107,7 @@ Common pitfalls and how to avoid
 - Transient HTTP errors during compile/refresh/test start are expected. Implement retries with backoff.
 - Always refresh after file deletions (force=true) to prevent CS2001 and dangling GUID references in the asset DB. The Python helpers already bake this in.
 - When touching files under Assets/, also consider .meta files: delete them alongside the file or the asset DB will retain entries.
-- When the package hash changes (Library/PackageCache/jp.keijiro.Nyamu@(HASH)), update any agent/CLI registrations that hardcode that path.
+- When the package hash changes (Library/PackageCache/dev.polyblank.nyamu@(HASH)), update any agent/CLI registrations that hardcode that path.
 
 Debugging tips
 - Check the Unity console for errors during compile/test; correlate with HTTP endpoints:
@@ -118,7 +118,7 @@ Debugging tips
 
 Code style/formatting guidelines in this repo
 - C#: follow standard Unity/Rider defaults; no custom analyzers are enforced. Keep MonoBehaviour fields that you want editable marked public or [SerializeField].
-- Python: black/pep8 is fine; fixtures are organized and used extensively—prefer composition over ad?hoc sleeps and direct HTTP calls.
+- Python: black/pep8 is fine; fixtures are organized and used extensivelyï¿½prefer composition over ad?hoc sleeps and direct HTTP calls.
 
 Appendix: handy snippets
 - Programmatic MCP usage from Python (see McpTests/MCP_USAGE_EXAMPLES.md for more):
@@ -134,4 +134,4 @@ Appendix: handy snippets
 - Raw HTTP test kick:
   powershell -Command "curl http://localhost:17932/compile-and-wait"
 
-That’s it—this captures the non?obvious workflow details unique to this project. Keep this file updated as the server’s endpoints/behavior evolves.
+Thatï¿½s itï¿½this captures the non?obvious workflow details unique to this project. Keep this file updated as the serverï¿½s endpoints/behavior evolves.

@@ -7,9 +7,9 @@ Example:
 ```
 {
   "mcpServers": {
-    "Nnyamu": {
+    "Nyamu": {
       "command": "node",
-      "args": ["Library/PackageCache/jp.keijiro.Nnyamu@(HASH)/Node/mcp-server.js"]
+      "args": ["Library/PackageCache/jp.keijiro.Nyamu@(HASH)/Node/mcp-server.js"]
     }
   }
 }
@@ -21,12 +21,12 @@ The location of the **per-project agent settings file** depends on the AI agent
 you're using. For Claude Code, the file is usually `.mcp.json` at the project
 root. For Gemini CLI, the most common location is `.gemini/settings.json`.
 
-If the file already contains a `Nnyamu` entry in the `mcpServers` section, you
+If the file already contains a `Nyamu` entry in the `mcpServers` section, you
 only need to update the `(HASH)` in the `args` field.
 
 ## Important: Understanding MCP Error -32603
 
-When using Nnyamu MCP tools, you may encounter **MCP Error -32603** with message "Tool execution failed: HTTP request failed". **This is expected behavior**, not a bug.
+When using Nyamu MCP tools, you may encounter **MCP Error -32603** with message "Tool execution failed: HTTP request failed". **This is expected behavior**, not a bug.
 
 ### Why This Happens:
 - Unity's HTTP server **automatically restarts** during script compilation

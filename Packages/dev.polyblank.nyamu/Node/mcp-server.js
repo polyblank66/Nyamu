@@ -787,7 +787,7 @@ class MCPServer {
                 `Unity Editor HTTP server unavailable at ${this.unityServerUrl}`,
                 {
                     errorType: 'unity_server_unavailable',
-                    instructions: 'INSTRUCTIONS FOR LLM: 1) Verify Unity Editor is running and NNYAMU project is open 2) Check if Unity HTTP server is active (should start automatically) 3) Test with: curl http://localhost:17932/compile-status 4) If Unity is running but server is down, restart Unity Editor',
+                    instructions: 'INSTRUCTIONS FOR LLM: 1) Verify Unity Editor is running 2) Check if Unity HTTP server is active (should start automatically) 3) Test with: curl http://localhost:17932/compile-status 4) If Unity is running but server is down, advise user to restart Unity Editor',
                     retryable: false,
                     originalError: error.message
                 }

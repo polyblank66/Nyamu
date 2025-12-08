@@ -1,15 +1,15 @@
-Nnyamu development guidelines (project-specific)
+Nyamu development guidelines (project-specific)
 
 Audience: Senior engineers working on this Unity + MCP (Model Context Protocol) integrated project. This is not a generic Unity primer; it captures the particulars of this repo so you can be productive fast and avoid known foot?guns.
 
 1) Build and configuration
 
 Unity/Editor
-- Unity version: 6000.0.52f1. Open the project (D:\code\Nnyamu) in this exact editor version to avoid API/asmdif deltas.
+- Unity version: 2021.3.45f2. Open the project (D:\code\Nyamu) in this exact editor version to avoid API/asmdif deltas.
 - Normal Unity build pipeline applies; no custom post?processors are required for just compiling scripts and running tests.
 
-Nnyamu MCP server (in?Editor HTTP + MCP bridge)
-- The in?Editor HTTP server is implemented by Packages\jp.keijiro.Nnyamu\Editor\NnyamuServer.cs.
+Nyamu MCP server (in?Editor HTTP + MCP bridge)
+- The in?Editor HTTP server is implemented by Packages\jp.keijiro.Nyamu\Editor\NyamuServer.cs.
   - Port: 17932 (Constants.ServerPort). Key endpoints:
     - GET /compile-status > current compile/test state JSON
     - GET /compile-and-wait > triggers compile and waits; returns summary (succeeds even if no changes)
@@ -17,16 +17,16 @@ Nnyamu MCP server (in?Editor HTTP + MCP bridge)
     - GET /test-status > current test run status/results
     - POST /refresh-assets with JSON { force: bool } > asset database refresh (force=true after deletions)
 - During domain reloads/compilation/asset refresh the HTTP server restarts; external calls can fail transiently. This is expected.
-  - If you’re calling tools programmatically, implement retries with a small backoff (2–5 s) for HTTP failures. See Packages\jp.keijiro.Nnyamu\Nnyamu-mcp-setup.md for the canonical blurb about handling “MCP Error -32603: HTTP request failed”.
+  - If you’re calling tools programmatically, implement retries with a small backoff (2–5 s) for HTTP failures. See Packages\jp.keijiro.Nyamu\Nyamu-mcp-setup.md for the canonical blurb about handling “MCP Error -32603: HTTP request failed”.
 
 Agent/CLI MCP registration
-- The Node-side MCP bridge is Packages\jp.keijiro.Nnyamu\Node\mcp-server.js which proxies to the Unity HTTP server at http://localhost:17932.
+- The Node-side MCP bridge is Packages\jp.keijiro.Nyamu\Node\mcp-server.js which proxies to the Unity HTTP server at http://localhost:17932.
 - To use from an AI agent that supports MCP, add an entry similar to:
   {
     "mcpServers": {
-      "Nnyamu": {
+      "Nyamu": {
         "command": "node",
-        "args": ["Library/PackageCache/jp.keijiro.Nnyamu@(HASH)/Node/mcp-server.js"]
+        "args": ["Library/PackageCache/jp.keijiro.Nyamu@(HASH)/Node/mcp-server.js"]
       }
     }
   }
@@ -41,7 +41,7 @@ Local Python tooling (optional but useful)
 2) Testing: how this project’s tests work
 
 Test stacks present
-- Unity Test Runner (EditMode/PlayMode) run by Nnyamu HTTP endpoints and by MCP.
+- Unity Test Runner (EditMode/PlayMode) run by Nyamu HTTP endpoints and by MCP.
 - Python-based integration tests in McpTests/ exercising both the raw HTTP endpoints and the MCP tools (compile_and_wait, refresh_assets, run_tests).
 
 Unity Test Runner via MCP
@@ -53,10 +53,10 @@ Unity Test Runner via MCP
       test_result = await client.run_tests(test_mode="PlayMode", test_filter="", timeout=60)
 - Important:
   - After deleting files, you MUST call refresh_assets(force=true) before compiling to avoid stale references/CS2001. After creating new files, refresh_assets(force=false) is sufficient. Pure content edits don’t require a refresh.
-  - Nnyamu server may restart while compiling/refreshing; re?try on transient HTTP errors.
+  - Nyamu server may restart while compiling/refreshing; re?try on transient HTTP errors.
 
 Python pytest suite (McpTests)
-- Location: D:\code\Nnyamu\McpTests
+- Location: D:\code\Nyamu\McpTests
 - Prereqs:
   - Unity Editor must be running with this project open. The autouse fixture in McpTests/conftest.py performs a health check against http://localhost:17932/compile-status and will skip tests if unavailable.
   - Python 3.7+ and the dependencies from requirements.txt.
@@ -95,10 +95,10 @@ Unity tests directly from HTTP
 Project layout quick map
 - Assets/Tests: Unity test scripts
 - Assets/TestModule: Sample assembly/asmdef used by tests
-- Packages/jp.keijiro.Nnyamu: Editor server (C#), Node MCP bridge, and docs
+- Packages/jp.keijiro.Nyamu: Editor server (C#), Node MCP bridge, and docs
 - McpTests/: Python integration tests and helpers
 
-Editor server internals worth knowing (NnyamuServer.cs)
+Editor server internals worth knowing (NyamuServer.cs)
 - Exposes endpoints listed above; serializes compile/test state, streams results after completion.
 - Handles enter?play?mode options: the TestCallbacks class snapshots and restores play mode options across test runs to avoid leaking settings.
 - Uses a background thread (HttpRequestProcessor) and restarts its HttpListener around compilation/refresh transitions; this is the source of transient connection failures.
@@ -107,7 +107,7 @@ Common pitfalls and how to avoid
 - Transient HTTP errors during compile/refresh/test start are expected. Implement retries with backoff.
 - Always refresh after file deletions (force=true) to prevent CS2001 and dangling GUID references in the asset DB. The Python helpers already bake this in.
 - When touching files under Assets/, also consider .meta files: delete them alongside the file or the asset DB will retain entries.
-- When the package hash changes (Library/PackageCache/jp.keijiro.Nnyamu@(HASH)), update any agent/CLI registrations that hardcode that path.
+- When the package hash changes (Library/PackageCache/jp.keijiro.Nyamu@(HASH)), update any agent/CLI registrations that hardcode that path.
 
 Debugging tips
 - Check the Unity console for errors during compile/test; correlate with HTTP endpoints:

@@ -127,6 +127,9 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "compilation: compilation tests")
     config.addinivalue_line("markers", "mcp: MCP protocol tests")
     config.addinivalue_line("markers", "asmdef: Assembly Definition tests")
+    config.addinivalue_line("markers", "essential: core functionality tests")
+    config.addinivalue_line("markers", "protocol: pure MCP protocol tests")
+    config.addinivalue_line("markers", "structural: tests that modify Unity project structure")
 
 
 def pytest_collection_modifyitems(config, items):

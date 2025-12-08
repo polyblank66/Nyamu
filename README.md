@@ -1,8 +1,7 @@
-# Nnyamu
+# Nyamu
 
-**Nnyamu** (Yet Another Minimal MCP server for Unity) is an experimental MCP
-(Model Context Protocol) server that enables AI coding agents to interact with
-Unity projects.
+**Nyamu** is minimal MCP server for Unity designed to give coding agents a tool to check script compilation.
+Based on Yamu project from Keijiro Takahashi.
 
 ## Features
 
@@ -24,9 +23,9 @@ Unity projects.
 
 ### Response Character Limits
 
-Nnyamu provides configurable character limits for MCP server responses to prevent overwhelming AI agents with overly long responses. This is particularly useful when dealing with large compilation errors or test outputs.
+Nyamu provides configurable character limits for MCP server responses to prevent overwhelming AI agents with overly long responses. This is particularly useful when dealing with large compilation errors or test outputs.
 
-**Configuration Location**: Unity Project Settings → "Nnyamu MCP Server"
+**Configuration Location**: Unity Project Settings → "Nyamu MCP Server"
 
 **Settings**:
 - **Response Character Limit**: Maximum characters in complete MCP response (default: 25000)
@@ -44,36 +43,30 @@ MCP.
 
 ## Prerequisites
 
-- **Platform**: macOS (only tested platform)
+- **Platform**: Windows (only tested platform)
 - **Node.js**: Required to run the intermediate server
-  ```bash
-  brew install node
-  ```
+
 
 ## Installation
 
 ### 1. Install the Package
 
-You can install the Nnyamu package (`jp.keijiro.Nnyamu`) via the "Keijiro" scoped
-registry using the Unity Package Manager. To add the registry to your project,
-follow [these instructions].
-
-[these instructions]:
-  https://gist.github.com/keijiro/f8c7e8ff29bfe63d86b888901b82644c
+You can install the Nyamu package (`dev.polyblank.nyamu`)...
+TODO: provide git link acceptable by Unity Package Manager
 
 ### 2. Add the MCP Server to the AI Agent
 
-You can either follow the steps in [`Nnyamu-mcp-setup.md`] manually, or let the
+You can either follow the steps in [`nyamu-mcp-setup.md`] manually, or let the
 AI agent do it for you. For example, if you're using Gemini CLI:
 
 ```
-You're Gemini CLI. Follow Nnyamu-mcp-setup.md
+You're Gemini CLI. Follow nyamu-mcp-setup.md
 ```
 
 The "You're ---" statement is important, as some AI agents don't know what they
 are unless explicitly told.
 
-**Note**: You’ll need to update this configuration each time you upgrade Nnyamu.
+**Note**: You’ll need to update this configuration each time you upgrade Nyamu.
 You can simply run the same prompt again to refresh it.
 
-[`Nnyamu-mcp-setup.md`]: Packages/jp.keijiro.Nnyamu/Nnyamu-mcp-setup.md
+[`nyamu-mcp-setup.md`]: Packages/dev.polyblank.nyamu/nyamu-mcp-setup.md

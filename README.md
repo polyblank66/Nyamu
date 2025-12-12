@@ -3,6 +3,24 @@
 **Nyamu** is minimal MCP server for Unity designed to give coding agents a tool to check script compilation.
 Based on Yamu project from Keijiro Takahashi.
 
+## Installation
+
+### Install via Unity Package Manager (Git URL)
+
+1. Open Unity Editor
+2. Open **Window → Package Manager**
+3. Click the **+** button in the top-left corner
+4. Select **Add package from git URL...**
+5. Enter the following URL:
+   ```
+   https://github.com/polyblank66/Nyamu.git?path=/Packages/dev.polyblank.nyamu
+   ```
+6. Click **Add**
+
+Unity will install the Yamu package directly from the GitHub repository.
+
+**Note**: Requires Unity 2021.3 or later.
+
 ## Features
 
 - `compile_and_wait` - Triggers Unity Editor compilation, waits for completion,
@@ -70,3 +88,4 @@ are unless explicitly told.
 You can simply run the same prompt again to refresh it.
 
 [`nyamu-mcp-setup.md`]: Packages/dev.polyblank.nyamu/nyamu-mcp-setup.md
+

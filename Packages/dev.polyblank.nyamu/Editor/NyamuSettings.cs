@@ -10,6 +10,8 @@ namespace Nyamu
     [System.Serializable]
     public class NyamuSettings : ScriptableObject
     {
+        private const string SettingsPath = "ProjectSettings/NyamuSettings.json";
+
         [Header("Response Configuration")]
         [Tooltip("Maximum characters in complete MCP response (default: 25000)")]
         public int responseCharacterLimit = 25000;
@@ -53,28 +55,20 @@ namespace Nyamu
         /// </summary>
         private static NyamuSettings LoadOrCreateSettings()
         {
-            // Try to load existing settings from Editor folder
-            var settings = AssetDatabase.LoadAssetAtPath<NyamuSettings>("Assets/Editor/NyamuSettings.asset");
+            EnsureSettingsDirectory();
 
-            if (settings == null)
+            var settings = CreateInstance<NyamuSettings>();
+
+            if (File.Exists(SettingsPath))
             {
-                // Create new settings with defaults
-                settings = CreateInstance<NyamuSettings>();
-
-                // Ensure Editor directory exists
-                var editorPath = "Assets/Editor";
-                if (!Directory.Exists(editorPath))
-                {
-                    Directory.CreateDirectory(editorPath);
-                    AssetDatabase.Refresh();
-                }
-
-                // Save to Assets/Editor folder
-                var assetPath = Path.Combine(editorPath, "NyamuSettings.asset");
-                AssetDatabase.CreateAsset(settings, assetPath);
-                AssetDatabase.SaveAssets();
-
-                Debug.Log("Created new Nyamu settings with default values at " + assetPath);
+                var json = File.ReadAllText(SettingsPath);
+                EditorJsonUtility.FromJsonOverwrite(json, settings);
+            }
+            else
+            {
+                var json = EditorJsonUtility.ToJson(settings, true);
+                File.WriteAllText(SettingsPath, json);
+                Debug.Log($"Created new Nyamu settings with default values at {SettingsPath}");
             }
 
             return settings;
@@ -85,8 +79,19 @@ namespace Nyamu
         /// </summary>
         public void Save()
         {
-            EditorUtility.SetDirty(this);
-            AssetDatabase.SaveAssets();
+            EnsureSettingsDirectory();
+            var json = EditorJsonUtility.ToJson(this, true);
+            File.WriteAllText(SettingsPath, json);
+            Debug.Log("Nyamu settings saved to " + SettingsPath);
+        }
+
+        private static void EnsureSettingsDirectory()
+        {
+            var directory = Path.GetDirectoryName(SettingsPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
         }
 
         /// <summary>

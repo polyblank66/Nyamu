@@ -4,6 +4,8 @@
 
 ## Compatibility with Coding Agents and Tools
 
+Prompt: Check scripts compilation with nyamu mcp tool
+
 | Tool                 | Result | Tool Version               | Nyamu Version | Test Date  | Notes                                            |
 |----------------------|--------|----------------------------|---------------|------------|--------------------------------------------------|
 | Claude Code          | ✅      | 2.0.69                     | 0.1.0         | 2025-12-13 | Best compatibility observed since the early days |

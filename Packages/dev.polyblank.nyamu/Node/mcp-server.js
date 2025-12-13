@@ -310,6 +310,38 @@ class MCPServer {
                         },
                         required: []
                     }
+                },
+                compile_shader: {
+                    description: "Compile a single shader with fuzzy name matching. Shows all matches but auto-compiles best match. Returns compilation errors/warnings and time. LLM HINTS: Fuzzy search supported - exact names not required.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            shader_name: {
+                                type: "string",
+                                description: "Shader name to search for (fuzzy matching). Example: 'Standard', 'unlit', 'custom/myshader'"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 30)",
+                                default: 30
+                            }
+                        },
+                        required: ["shader_name"]
+                    }
+                },
+                compile_all_shaders: {
+                    description: "Compile all shaders in Unity project. Returns per-shader results with errors/warnings. WARNING: Can take long for large projects. LLM HINTS: Use compile_shader for specific shaders instead.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 120)",
+                                default: 120
+                            }
+                        },
+                        required: []
+                    }
                 }
             }
         };
@@ -403,6 +435,10 @@ class MCPServer {
                     return await this.callTestStatus(id);
                 case 'tests_cancel':
                     return await this.callTestsCancel(id, args.test_run_guid || '');
+                case 'compile_shader':
+                    return await this.callCompileShader(id, args.shader_name, args.timeout || 30);
+                case 'compile_all_shaders':
+                    return await this.callCompileAllShaders(id, args.timeout || 120);
                 default:
                     return {
                         jsonrpc: '2.0',
@@ -729,6 +765,124 @@ class MCPServer {
         }
     }
 
+    async callCompileShader(id, shaderName, timeoutSeconds) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const requestBody = JSON.stringify({ shaderName: shaderName });
+            const compileResponse = await this.makeHttpPostRequest('/compile-shader', requestBody);
+
+            const formattedText = this.formatShaderCompileResponse(compileResponse);
+            const finalText = this.responseFormatter.formatResponse(formattedText);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: finalText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to compile shader: ${error.message}`);
+        }
+    }
+
+    async callCompileAllShaders(id, timeoutSeconds) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const compileResponse = await this.makeHttpRequest('/compile-all-shaders');
+
+            const formattedText = this.formatCompileAllShadersResponse(compileResponse);
+            const finalText = this.responseFormatter.formatResponse(formattedText);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: finalText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to compile all shaders: ${error.message}`);
+        }
+    }
+
+    formatShaderCompileResponse(response) {
+        let text = '';
+
+        if (response.status === 'error') {
+            return `Error: ${response.message}`;
+        }
+
+        if (response.allMatches && response.allMatches.length > 1) {
+            text += `Found ${response.allMatches.length} matching shaders:\n`;
+            response.allMatches.forEach((match, idx) => {
+                const prefix = idx === 0 ? '✓ AUTO-SELECTED' : '  ';
+                text += `${prefix} [Score: ${match.matchScore}] ${match.name}\n`;
+                text += `    Path: ${match.path}\n`;
+            });
+            text += '\n';
+        }
+
+        if (response.result) {
+            const result = response.result;
+            text += `Shader: ${result.shaderName}\n`;
+            text += `Path: ${result.shaderPath}\n`;
+            text += `Compilation Time: ${result.compilationTime.toFixed(2)}s\n`;
+            text += `Status: ${result.hasErrors ? '❌ FAILED' : '✓ SUCCESS'}\n`;
+
+            if (result.targetPlatforms && result.targetPlatforms.length > 0) {
+                text += `Target Platforms: ${result.targetPlatforms.join(', ')}\n`;
+            }
+
+            if (result.hasErrors || result.hasWarnings) {
+                text += `Errors: ${result.errorCount}, Warnings: ${result.warningCount}\n\n`;
+
+                if (result.errors && result.errors.length > 0) {
+                    text += 'ERRORS:\n';
+                    result.errors.forEach(err => {
+                        text += `  ${err.file}:${err.line} - ${err.message}\n`;
+                        if (err.messageDetails) {
+                            text += `    Details: ${err.messageDetails}\n`;
+                        }
+                    });
+                }
+
+                if (result.warnings && result.warnings.length > 0) {
+                    text += '\nWARNINGS:\n';
+                    result.warnings.forEach(warn => {
+                        text += `  ${warn.file}:${warn.line} - ${warn.message}\n`;
+                    });
+                }
+            }
+        }
+
+        return text;
+    }
+
+    formatCompileAllShadersResponse(response) {
+        let text = `Shader Compilation Summary:\n`;
+        text += `Total Shaders: ${response.totalShaders}\n`;
+        text += `Successful: ${response.successfulCompilations}\n`;
+        text += `Failed: ${response.failedCompilations}\n`;
+        text += `Total Time: ${response.totalCompilationTime.toFixed(2)}s\n\n`;
+
+        if (response.results && response.failedCompilations > 0) {
+            text += 'FAILED SHADERS:\n';
+            response.results.filter(r => r.hasErrors).forEach(result => {
+                text += `\n❌ ${result.shaderName}\n`;
+                text += `   Path: ${result.shaderPath}\n`;
+                text += `   Errors: ${result.errorCount}\n`;
+
+                if (result.errors && result.errors.length > 0) {
+                    result.errors.slice(0, 3).forEach(err => {
+                        text += `   - ${err.file}:${err.line}: ${err.message}\n`;
+                    });
+                    if (result.errors.length > 3) {
+                        text += `   ... and ${result.errors.length - 3} more errors\n`;
+                    }
+                }
+            });
+        }
+
+        return text;
+    }
+
     formatTestResults(statusResponse) {
         if (!statusResponse.testResults) {
             return 'Test execution completed but no results available.';
@@ -775,6 +929,43 @@ class MCPServer {
                 reject(this.createUnityTimeoutError());
             });
 
+            req.end();
+        });
+    }
+
+    makeHttpPostRequest(path, body) {
+        return new Promise((resolve, reject) => {
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(body)
+                }
+            };
+
+            const req = http.request(`${this.unityServerUrl}${path}`, options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(data);
+                        resolve(parsed);
+                    } catch (error) {
+                        reject(new Error(`Invalid JSON response: ${data}`));
+                    }
+                });
+            });
+
+            req.on('error', (error) => {
+                reject(this.createUnityServerError(error));
+            });
+
+            req.setTimeout(15000, () => {
+                req.destroy();
+                reject(this.createUnityTimeoutError());
+            });
+
+            req.write(body);
             req.end();
         });
     }

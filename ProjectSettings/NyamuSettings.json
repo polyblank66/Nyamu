@@ -7,7 +7,7 @@
         "responseCharacterLimit": 25000,
         "enableTruncation": true,
         "truncationMessage": "\n\n... (response truncated due to length limit)",
-        "enableDebugLogs": false,
+        "enableDebugLogs": true,
         "serverPort": 17932
     }
 }

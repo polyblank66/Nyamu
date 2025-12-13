@@ -615,6 +615,21 @@ async function runTests(mode = 'EditMode') {
 - CORS enabled for all origins (development convenience)
 - Not intended for production/public exposure
 
+## Important: Understanding MCP Error -32603
+
+When using Nyamu MCP tools, you may encounter **MCP Error -32603** with message "Tool execution failed: HTTP request failed". **This is expected behavior**, not a bug.
+
+### Why This Happens:
+- Unity's HTTP server **automatically restarts** during script compilation
+- Unity's HTTP server **restarts** during asset database refresh operations
+- This prevents interference with Unity's compilation process
+
+### How to Handle:
+1. **Expect the error** - It means Unity is compiling/refreshing
+2. **Wait 2-5 seconds** - Allow compilation to progress
+3. **Retry the command** - The HTTP server will be available again
+4. **Repeat as needed** - Until success or reasonable timeout
+
 ## Additional Resources
 
 - **Unity Test Framework:** https://docs.unity3d.com/Manual/testing-editortestsrunner.html

@@ -3,6 +3,16 @@
 **Nyamu** is minimal MCP server for Unity designed to give coding agents a tool to check script compilation.
 Based on Yamu project from Keijiro Takahashi.
 
+## Compatibility with Coding Agents and Tools
+
+| Tool                 | Result | Tool Version               | Nyamu Version | Test Date  | Notes                                            |
+|----------------------|--------|----------------------------|---------------|------------|--------------------------------------------------|
+| Claude Code          | ✅      | 2.0.69                     | 0.1.0         | 2025-12-13 | Best compatibility observed since the early days |
+| Zed                  | ✅      | 0.216.1                    | 0.1.0         | 2025-12-13 |                                                  |
+| Rider + AI Assistant | ✅      | 2025.3.0.4 + 253.28294.360 | 0.1.0         | 2025-12-13 |                                                  |
+| Rider + Junie        | ❌      | 2025.3.0.4 + 253.549.29    | 0.1.0         | 2025-12-13 | Error in the settings for the yamu tool          |
+| Codex                | ❌      | 0.72.0                     | 0.1.0         | 2025-12-13 | Tool is not visible via the `/mcp` command       |
+
 ## Installation
 
 ### Install via Unity Package Manager (Git URL)

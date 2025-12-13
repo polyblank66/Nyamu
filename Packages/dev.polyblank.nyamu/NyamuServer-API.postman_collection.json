@@ -172,6 +172,264 @@
 			"description": "Endpoints for managing Unity script compilation"
 		},
 		{
+			"name": "Shader Compilation",
+			"item": [
+				{
+					"name": "Compile Shader",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"shaderName\": \"test\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:17932/compile-shader",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"compile-shader"
+							]
+						},
+						"description": "Compiles a single shader using fuzzy name matching. Shows all matches but auto-compiles the best match.\n\n**Request Body:**\n- `shaderName` (required): Shader name to search for (fuzzy matching supported)\n\n**Response Fields:**\n- `status`: \"ok\", \"warning\", or \"error\"\n- `message`: Human-readable message\n- `allMatches`: Array of all matching shaders with match scores\n- `bestMatch`: The shader that was selected for compilation\n- `result`: Compilation result with errors/warnings, compilation time, and target platforms"
+					},
+					"response": [
+						{
+							"name": "Success - Shader Compiled",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"shaderName\": \"test\"\n}"
+								},
+								"url": {
+									"raw": "http://localhost:17932/compile-shader",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-shader"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"Compiled shader: Custom/TestShader\",\n    \"allMatches\": [\n        {\n            \"name\": \"Custom/TestShader\",\n            \"path\": \"Assets/TestShader.shader\",\n            \"matchScore\": 90\n        }\n    ],\n    \"bestMatch\": {\n        \"name\": \"Custom/TestShader\",\n        \"path\": \"Assets/TestShader.shader\",\n        \"matchScore\": 90\n    },\n    \"result\": {\n        \"shaderName\": \"Custom/TestShader\",\n        \"shaderPath\": \"Assets/TestShader.shader\",\n        \"hasErrors\": false,\n        \"hasWarnings\": false,\n        \"errorCount\": 0,\n        \"warningCount\": 0,\n        \"errors\": [],\n        \"warnings\": [],\n        \"compilationTime\": 10.48,\n        \"targetPlatforms\": [\"Unknown\"]\n    }\n}"
+						},
+						{
+							"name": "Error - Compilation Failed",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"shaderName\": \"broken\"\n}"
+								},
+								"url": {
+									"raw": "http://localhost:17932/compile-shader",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-shader"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"error\",\n    \"message\": \"Compiled shader: Custom/BrokenShader\",\n    \"allMatches\": [\n        {\n            \"name\": \"Custom/BrokenShader\",\n            \"path\": \"Assets/BrokenShader.shader\",\n            \"matchScore\": 90\n        }\n    ],\n    \"bestMatch\": {\n        \"name\": \"Custom/BrokenShader\",\n        \"path\": \"Assets/BrokenShader.shader\",\n        \"matchScore\": 90\n    },\n    \"result\": {\n        \"shaderName\": \"Custom/BrokenShader\",\n        \"shaderPath\": \"Assets/BrokenShader.shader\",\n        \"hasErrors\": true,\n        \"hasWarnings\": false,\n        \"errorCount\": 1,\n        \"warningCount\": 0,\n        \"errors\": [\n            {\n                \"message\": \"Unexpected token struct. Expected one of: ',' ';'\",\n                \"messageDetails\": \"\",\n                \"file\": \"\",\n                \"line\": 17,\n                \"platform\": \"25\"\n            }\n        ],\n        \"warnings\": [],\n        \"compilationTime\": 0.13,\n        \"targetPlatforms\": [\"Unknown\"]\n    }\n}"
+						},
+						{
+							"name": "Error - Shader Not Found",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"shaderName\": \"nonexistent\"\n}"
+								},
+								"url": {
+									"raw": "http://localhost:17932/compile-shader",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-shader"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"error\",\n    \"message\": \"No shaders found matching 'nonexistent'\",\n    \"allMatches\": []\n}"
+						}
+					]
+				},
+				{
+					"name": "Compile All Shaders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/compile-all-shaders",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"compile-all-shaders"
+							]
+						},
+						"description": "Compiles all shaders in the Unity project. Returns per-shader results with errors/warnings.\n\n**Warning:** Can take a long time for projects with many shaders (10+ seconds per shader).\n\n**Response Fields:**\n- `status`: \"ok\" (all success), \"warning\" (mixed results), or \"error\"\n- `totalShaders`: Total number of shaders compiled\n- `successfulCompilations`: Number of shaders that compiled without errors\n- `failedCompilations`: Number of shaders with compilation errors\n- `totalCompilationTime`: Total time spent compiling all shaders (seconds)\n- `results`: Array of per-shader compilation results"
+					},
+					"response": [
+						{
+							"name": "Success - All Shaders OK",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/compile-all-shaders",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-all-shaders"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"totalShaders\": 1,\n    \"successfulCompilations\": 1,\n    \"failedCompilations\": 0,\n    \"totalCompilationTime\": 10.41,\n    \"results\": [\n        {\n            \"shaderName\": \"Custom/TestShader\",\n            \"shaderPath\": \"Assets/TestShader.shader\",\n            \"hasErrors\": false,\n            \"hasWarnings\": false,\n            \"errorCount\": 0,\n            \"warningCount\": 0,\n            \"errors\": [],\n            \"warnings\": [],\n            \"compilationTime\": 10.41,\n            \"targetPlatforms\": [\"Unknown\"]\n        }\n    ]\n}"
+						},
+						{
+							"name": "Warning - Mixed Results",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/compile-all-shaders",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-all-shaders"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"warning\",\n    \"totalShaders\": 2,\n    \"successfulCompilations\": 1,\n    \"failedCompilations\": 1,\n    \"totalCompilationTime\": 10.54,\n    \"results\": [\n        {\n            \"shaderName\": \"Custom/BrokenShader\",\n            \"shaderPath\": \"Assets/BrokenShader.shader\",\n            \"hasErrors\": true,\n            \"hasWarnings\": false,\n            \"errorCount\": 1,\n            \"warningCount\": 0,\n            \"errors\": [\n                {\n                    \"message\": \"Unexpected token struct. Expected one of: ',' ';'\",\n                    \"messageDetails\": \"\",\n                    \"file\": \"\",\n                    \"line\": 17,\n                    \"platform\": \"25\"\n                }\n            ],\n            \"warnings\": [],\n            \"compilationTime\": 0.10,\n            \"targetPlatforms\": [\"Unknown\"]\n        },\n        {\n            \"shaderName\": \"Custom/TestShader\",\n            \"shaderPath\": \"Assets/TestShader.shader\",\n            \"hasErrors\": false,\n            \"hasWarnings\": false,\n            \"errorCount\": 0,\n            \"warningCount\": 0,\n            \"errors\": [],\n            \"warnings\": [],\n            \"compilationTime\": 10.44,\n            \"targetPlatforms\": [\"Unknown\"]\n        }\n    ]\n}"
+						},
+						{
+							"name": "Success - No Shaders",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/compile-all-shaders",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-all-shaders"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"totalShaders\": 0,\n    \"successfulCompilations\": 0,\n    \"failedCompilations\": 0,\n    \"totalCompilationTime\": 0.02,\n    \"results\": []\n}"
+						}
+					]
+				}
+			],
+			"description": "Endpoints for Unity shader compilation with fuzzy search and error reporting"
+		},
+		{
 			"name": "Testing",
 			"item": [
 				{

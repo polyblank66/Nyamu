@@ -101,7 +101,7 @@ To work with multiple Unity Editor instances at the same time:
    ```json
    {
      "mcpServers": {
-       "Yamu-ProjectA": {
+       "Nyamu-ProjectA": {
          "command": "node",
          "args": [
            "path/to/ProjectA/Library/PackageCache/dev.polyblank.nyamu@(HASH)/Node/mcp-server.js",
@@ -109,7 +109,7 @@ To work with multiple Unity Editor instances at the same time:
            "17932"
          ]
        },
-       "Yamu-ProjectB": {
+       "Nyamu-ProjectB": {
          "command": "node",
          "args": [
            "path/to/ProjectB/Library/PackageCache/dev.polyblank.nyamu@(HASH)/Node/mcp-server.js",

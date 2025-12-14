@@ -213,6 +213,8 @@ class MCPServer {
         this.unityServerUrl = `http://localhost:${port}`;
         this.configManager = new ConfigManager(this.unityServerUrl);
         this.responseFormatter = null; // Will be initialized after first config load
+        this.stdinBuffer = Buffer.alloc(0);
+        this.activeProtocol = null; // 'content-length' | 'newline'
         this.capabilities = {
             tools: {
                 compile_and_wait: {
@@ -1022,12 +1024,12 @@ class MCPServer {
     }
 
     start() {
-        process.stdin.setEncoding('utf8');
-        process.stdin.on('readable', () => {
-            const chunk = process.stdin.read();
-            if (chunk !== null) {
-                this.processInput(chunk);
-            }
+        this.stdinBuffer = Buffer.alloc(0);
+
+        process.stdin.on('data', (chunk) => {
+            const bufferChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'utf8');
+            this.stdinBuffer = Buffer.concat([this.stdinBuffer, bufferChunk]);
+            this.processInputBuffer();
         });
 
         process.stdin.on('end', () => {
@@ -1035,28 +1037,235 @@ class MCPServer {
         });
     }
 
-    async processInput(input) {
-        const lines = input.trim().split('\n');
+    processInputBuffer() {
+        while (true) {
+            this.stripIgnorablePrefix();
 
-        for (const line of lines) {
-            if (line.trim() === '') continue;
+            if (this.stdinBuffer.length === 0) {
+                return;
+            }
 
-            try {
-                const request = JSON.parse(line);
-                const response = await this.handleRequest(request);
-                process.stdout.write(JSON.stringify(response) + '\n');
-            } catch (error) {
-                const errorResponse = {
-                    jsonrpc: '2.0',
-                    id: null,
-                    error: {
-                        code: -32700,
-                        message: 'Parse error'
-                    }
-                };
-                process.stdout.write(JSON.stringify(errorResponse) + '\n');
+            if (this.activeProtocol === 'content-length') {
+                const framedMessage = this.tryConsumeFramedMessage();
+                if (framedMessage === null) {
+                    return;
+                }
+                this.handleIncomingMessage(framedMessage, 'content-length');
+                continue;
+            }
+
+            if (this.activeProtocol === 'newline') {
+                const lineMessage = this.tryConsumeLineMessage();
+                if (lineMessage === null) {
+                    return;
+                }
+                if (!lineMessage) {
+                    continue;
+                }
+                this.handleIncomingMessage(lineMessage, 'newline');
+                continue;
+            }
+
+            const firstByte = this.stdinBuffer[0];
+            if (firstByte === 0x7b || firstByte === 0x5b) { // '{' or '['
+                const jsonLine = this.tryConsumeLineMessage();
+                if (jsonLine === null) {
+                    return;
+                }
+                if (!jsonLine) {
+                    continue;
+                }
+                this.activeProtocol = 'newline';
+                this.handleIncomingMessage(jsonLine, 'newline');
+                continue;
+            }
+
+            const framed = this.tryConsumeFramedMessage();
+            if (framed === null) {
+                return;
+            }
+            this.activeProtocol = 'content-length';
+            this.handleIncomingMessage(framed, 'content-length');
+        }
+    }
+
+    stripIgnorablePrefix() {
+        // Remove UTF-8 BOM if present
+        if (this.stdinBuffer.length >= 3 &&
+            this.stdinBuffer[0] === 0xEF &&
+            this.stdinBuffer[1] === 0xBB &&
+            this.stdinBuffer[2] === 0xBF) {
+            this.stdinBuffer = this.stdinBuffer.slice(3);
+        }
+
+        let dropCount = 0;
+        while (dropCount < this.stdinBuffer.length) {
+            const byte = this.stdinBuffer[dropCount];
+            if (byte === 0x0d || byte === 0x0a || byte === 0x09 || byte === 0x20) {
+                dropCount++;
+                continue;
+            }
+            break;
+        }
+
+        if (dropCount > 0) {
+            this.stdinBuffer = this.stdinBuffer.slice(dropCount);
+        }
+    }
+
+    tryConsumeLineMessage() {
+        const newlineIndex = this.stdinBuffer.indexOf(0x0a);
+        if (newlineIndex === -1) {
+            return null;
+        }
+
+        const lineBuffer = this.stdinBuffer.slice(0, newlineIndex);
+        this.stdinBuffer = this.stdinBuffer.slice(newlineIndex + 1);
+
+        let line = lineBuffer.toString('utf8');
+        if (line.endsWith('\r')) {
+            line = line.slice(0, -1);
+        }
+
+        return line.trim();
+    }
+
+    tryConsumeFramedMessage() {
+        let headerEnd = this.stdinBuffer.indexOf('\r\n\r\n');
+        let delimiterLength = 4;
+
+        if (headerEnd === -1) {
+            headerEnd = this.stdinBuffer.indexOf('\n\n');
+            delimiterLength = 2;
+        }
+
+        if (headerEnd === -1) {
+            return null;
+        }
+
+        const headerText = this.stdinBuffer.slice(0, headerEnd).toString('utf8');
+        const headerLines = headerText.split(/\r?\n/);
+        let contentLength = null;
+
+        for (const line of headerLines) {
+            const separatorIndex = line.indexOf(':');
+            if (separatorIndex === -1) {
+                continue;
+            }
+
+            const key = line.slice(0, separatorIndex).trim().toLowerCase();
+            if (key === 'content-length') {
+                const rawValue = line.slice(separatorIndex + 1).trim();
+                const parsed = parseInt(rawValue, 10);
+                if (!Number.isNaN(parsed) && parsed >= 0) {
+                    contentLength = parsed;
+                    break;
+                }
             }
         }
+
+        if (contentLength === null) {
+            return null;
+        }
+
+        const totalLength = headerEnd + delimiterLength + contentLength;
+        if (this.stdinBuffer.length < totalLength) {
+            return null;
+        }
+
+        const bodyBuffer = this.stdinBuffer.slice(headerEnd + delimiterLength, totalLength);
+        this.stdinBuffer = this.stdinBuffer.slice(totalLength);
+        return bodyBuffer.toString('utf8');
+    }
+
+    handleIncomingMessage(rawMessage, protocol) {
+        let request;
+        try {
+            request = JSON.parse(rawMessage);
+        } catch (_) {
+            this.sendParseError(protocol);
+            return;
+        }
+
+        Promise.resolve(this.handleRequest(request))
+            .then((response) => {
+                if (response) {
+                    this.sendJsonResponse(response, protocol);
+                }
+            })
+            .catch((error) => {
+                const id = (request && typeof request === 'object') ? (request.id ?? null) : null;
+                this.sendRpcError(id, error, protocol);
+            });
+    }
+
+    sendJsonResponse(payload, protocol = this.activeProtocol || 'newline') {
+        const json = JSON.stringify(payload);
+
+        if (protocol === 'content-length') {
+            const byteLength = Buffer.byteLength(json, 'utf8');
+            this.writeStdoutData(`Content-Length: ${byteLength}\r\n\r\n`);
+            this.writeStdoutData(json);
+        } else {
+            this.writeStdoutData(`${json}\n`);
+        }
+    }
+
+    writeStdoutData(data) {
+        const writer = typeof global.safeStdoutWrite === 'function'
+            ? global.safeStdoutWrite
+            : (chunk) => process.stdout.write(chunk);
+        writer(data);
+    }
+
+    sendParseError(protocol) {
+        const response = {
+            jsonrpc: '2.0',
+            id: null,
+            error: {
+                code: -32700,
+                message: 'Parse error'
+            }
+        };
+        this.sendJsonResponse(response, protocol);
+    }
+
+    sendRpcError(id, error, protocol) {
+        const response = {
+            jsonrpc: '2.0',
+            id,
+            error: this.formatErrorObject(error)
+        };
+        this.sendJsonResponse(response, protocol);
+    }
+
+    formatErrorObject(error) {
+        if (error instanceof UnityUnavailableError) {
+            return {
+                code: -32001,
+                message: error.message,
+                data: error.data
+            };
+        }
+
+        if (error instanceof UnityRestartingError) {
+            return {
+                code: -32002,
+                message: error.message,
+                data: error.data
+            };
+        }
+
+        const errorPayload = {
+            code: -32603,
+            message: (error && error.message) ? error.message : 'Internal error'
+        };
+
+        if (error && error.data) {
+            errorPayload.data = error.data;
+        }
+
+        return errorPayload;
     }
 }
 

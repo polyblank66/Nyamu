@@ -1,0 +1,128 @@
+using UnityEngine;
+using UnityEditor;
+using System.IO;
+using System.Text;
+using System;
+
+namespace Nyamu
+{
+#if UNITY_EDITOR_WIN
+
+    // Automatically generates a .bat file for MCP integration on Unity load
+    // The .bat file provides a convenient entry point for Claude Code MCP configuration
+    static class NyamuBatGenerator
+    {
+        // Entry point - runs automatically when Unity Editor loads
+        [InitializeOnLoadMethod]
+        static void GenerateBatFile()
+        {
+            try
+            {
+                var mcpServerPath = FindMcpServerPath();
+                if (string.IsNullOrEmpty(mcpServerPath))
+                {
+                    Debug.LogWarning("[NyamuBatGenerator] Could not locate mcp-server.js. Bat file generation skipped.");
+                    return;
+                }
+
+                var batContent = GenerateBatContent(mcpServerPath);
+                WriteBatFile(batContent);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[NyamuBatGenerator] Unexpected error during bat file generation: {ex.Message}");
+            }
+        }
+
+        // Locates mcp-server.js in either embedded package or PackageCache
+        static string FindMcpServerPath()
+        {
+            try
+            {
+                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+
+                // Check embedded package first (dev mode)
+                var embeddedPath = Path.Combine(projectRoot, "Packages", "dev.polyblank.nyamu", "Node", "mcp-server.js");
+                if (File.Exists(embeddedPath))
+                    return embeddedPath;
+
+                // Search PackageCache (production)
+                var packageCacheRoot = Path.Combine(projectRoot, "Library", "PackageCache");
+                if (Directory.Exists(packageCacheRoot))
+                {
+                    var packageDirs = Directory.GetDirectories(packageCacheRoot, "dev.polyblank.nyamu@*");
+                    foreach (var packageDir in packageDirs)
+                    {
+                        var cachedPath = Path.Combine(packageDir, "Node", "mcp-server.js");
+                        if (File.Exists(cachedPath))
+                            return cachedPath;
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[NyamuBatGenerator] Failed to locate mcp-server.js: {ex.Message}");
+                return null;
+            }
+        }
+
+        // Generates .bat file content with proper MCP protocol compliance
+        static string GenerateBatContent(string mcpServerPath)
+        {
+            // @echo off prevents stdout pollution
+            // Quoted path handles spaces
+            // %* forwards all command-line arguments
+            return $"@echo off{Environment.NewLine}node \"{mcpServerPath}\" %*{Environment.NewLine}";
+        }
+
+        // Writes .bat file to .nyamu/nyamu.bat (idempotent)
+        static void WriteBatFile(string content)
+        {
+            try
+            {
+                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var outputDir = Path.Combine(projectRoot, ".nyamu");
+                Directory.CreateDirectory(outputDir);
+
+                var batFilePath = Path.Combine(outputDir, "nyamu.bat");
+
+                if (!ShouldWriteFile(batFilePath, content))
+                {
+                    if (NyamuSettings.Instance.enableDebugLogs)
+                        Debug.Log($"[NyamuBatGenerator] Bat file already up to date: {batFilePath}");
+                    return;
+                }
+
+                var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+                File.WriteAllText(batFilePath, content, encoding);
+
+                Debug.Log($"[NyamuBatGenerator] Generated bat file: {batFilePath}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[NyamuBatGenerator] Failed to write bat file: {ex.Message}");
+            }
+        }
+
+        // Checks if file needs to be written (idempotency)
+        static bool ShouldWriteFile(string filePath, string newContent)
+        {
+            if (!File.Exists(filePath))
+                return true;
+
+            try
+            {
+                var existingContent = File.ReadAllText(filePath);
+                return existingContent != newContent;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+    }
+
+#endif
+}

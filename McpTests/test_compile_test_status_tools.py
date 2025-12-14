@@ -131,14 +131,15 @@ async def test_compile_status_response_structure(mcp_client, unity_state_manager
     status_data = json.loads(status_text)
 
     # Check required fields
-    required_fields = ["status", "isCompiling", "lastCompileTime", "errors"]
+    required_fields = ["status", "isCompiling", "lastCompilationTime", "lastCompilationRequestTime", "errors"]
     for field in required_fields:
         assert field in status_data
 
     # Check field types
     assert isinstance(status_data["status"], str)
     assert isinstance(status_data["isCompiling"], bool)
-    assert isinstance(status_data["lastCompileTime"], str)
+    assert isinstance(status_data["lastCompilationTime"], str)
+    assert isinstance(status_data["lastCompilationRequestTime"], str)
     assert isinstance(status_data["errors"], list)
 
 

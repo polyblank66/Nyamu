@@ -88,7 +88,8 @@ namespace Nyamu
     {
         public string status;
         public bool isCompiling;
-        public string lastCompileTime;
+        public string lastCompilationTime;
+        public string lastCompilationRequestTime;
         public CompileError[] errors;
     }
 
@@ -585,17 +586,19 @@ namespace Nyamu
 
             var status = _isCompiling || EditorApplication.isCompiling ? "compiling" : "idle";
 
-            DateTime lastCompileTimeCopy;
+            DateTime lastCompileTimeCopy, compileRequestTimeCopy;
             lock (_timestampLock)
             {
                 lastCompileTimeCopy = _lastCompileTime;
+                compileRequestTimeCopy = _compileRequestTime;
             }
 
             var statusResponse = new CompileStatusResponse
             {
                 status = status,
                 isCompiling = _isCompiling || EditorApplication.isCompiling,
-                lastCompileTime = lastCompileTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
+                lastCompilationTime = lastCompileTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
+                lastCompilationRequestTime = compileRequestTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
                 errors = _compilationErrors.ToArray()
             };
             return JsonUtility.ToJson(statusResponse);

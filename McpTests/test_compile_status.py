@@ -19,7 +19,8 @@ def test_compile_status_endpoint():
     data = response.json()
     assert "status" in data
     assert "isCompiling" in data
-    assert "lastCompileTime" in data
+    assert "lastCompilationTime" in data
+    assert "lastCompilationRequestTime" in data
     assert "errors" in data
 
     # Status should be either "idle" or "compiling"
@@ -36,14 +37,15 @@ def test_compile_status_response_structure():
     data = response.json()
 
     # Check all required fields are present
-    required_fields = ["status", "isCompiling", "lastCompileTime", "errors"]
+    required_fields = ["status", "isCompiling", "lastCompilationTime", "lastCompilationRequestTime", "errors"]
     for field in required_fields:
         assert field in data
 
     # Check field types
     assert isinstance(data["status"], str)
     assert isinstance(data["isCompiling"], bool)
-    assert isinstance(data["lastCompileTime"], str)
+    assert isinstance(data["lastCompilationTime"], str)
+    assert isinstance(data["lastCompilationRequestTime"], str)
     assert isinstance(data["errors"], list)
 
     # If there are errors, they should have proper structure
@@ -102,5 +104,6 @@ def test_compile_status_multiple_requests():
     for data in responses:
         assert "status" in data
         assert "isCompiling" in data
-        assert "lastCompileTime" in data
+        assert "lastCompilationTime" in data
+        assert "lastCompilationRequestTime" in data
         assert "errors" in data

@@ -307,6 +307,9 @@ namespace Nyamu
         static McpSettingsResponse _cachedSettings;
         static DateTime _lastSettingsRefresh = DateTime.MinValue;
 
+        // Timestamp cache for thread-safe access
+        internal static readonly object _timestampLock = new object();
+
         // Shutdown coordination
         static volatile bool _shouldStop;
 
@@ -337,6 +340,9 @@ namespace Nyamu
 
         static void Initialize()
         {
+            // Load cached timestamps BEFORE cleanup (so they're not lost)
+            LoadTimestampsCache();
+
             Cleanup();
 
             _shouldStop = false;
@@ -362,6 +368,9 @@ namespace Nyamu
         static void Cleanup()
         {
             _shouldStop = true;
+
+            // Save timestamps before shutdown/domain reload
+            SaveTimestampsCache();
 
             if (_listener?.IsListening == true)
             {
@@ -418,7 +427,12 @@ namespace Nyamu
         static void OnCompilationFinished(string assemblyPath, CompilerMessage[] messages)
         {
             _isCompiling = false;
-            _lastCompileTime = DateTime.Now;
+
+            lock (_timestampLock)
+            {
+                _lastCompileTime = DateTime.Now;
+            }
+
             _compilationErrors.Clear();
             foreach (var msg in messages)
             {
@@ -430,6 +444,9 @@ namespace Nyamu
                         message = msg.message
                     });
             }
+
+            // Save cache after compilation completes
+            SaveTimestampsCache();
         }
 
         // ========================================================================
@@ -496,13 +513,20 @@ namespace Nyamu
             {
                 Debug.Log($"[NyamuServer][Debug] Entering HandleCompileAndWaitRequest");
             }
-            _compileRequestTime = DateTime.Now;
+
+            DateTime compileRequestTimeCopy;
+            lock (_timestampLock)
+            {
+                _compileRequestTime = DateTime.Now;
+                compileRequestTimeCopy = _compileRequestTime;
+            }
+
             lock (_mainThreadActionQueue)
             {
                 _mainThreadActionQueue.Enqueue(() => CompilationPipeline.RequestScriptCompilation());
             }
 
-            var (success, message) = WaitForCompilationToStart(_compileRequestTime, TimeSpan.FromSeconds(Constants.CompileTimeoutSeconds));
+            var (success, message) = WaitForCompilationToStart(compileRequestTimeCopy, TimeSpan.FromSeconds(Constants.CompileTimeoutSeconds));
             return success ? Constants.JsonResponses.CompileStarted : $"{{\"status\":\"warning\", \"message\":\"{message}\"}}";
         }
 
@@ -537,7 +561,13 @@ namespace Nyamu
                 if (_isCompiling || EditorApplication.isCompiling)
                     return (true, "Compilation started.");
 
-                if (_lastCompileTime > requestTime)
+                DateTime lastCompileTimeCopy;
+                lock (_timestampLock)
+                {
+                    lastCompileTimeCopy = _lastCompileTime;
+                }
+
+                if (lastCompileTimeCopy > requestTime)
                     return (true, "Compilation completed quickly.");
 
                 Thread.Sleep(Constants.ThreadSleepMilliseconds);
@@ -552,12 +582,20 @@ namespace Nyamu
             {
                 Debug.Log($"[NyamuServer][Debug] Entering HandleCompileStatusRequest");
             }
+
             var status = _isCompiling || EditorApplication.isCompiling ? "compiling" : "idle";
+
+            DateTime lastCompileTimeCopy;
+            lock (_timestampLock)
+            {
+                lastCompileTimeCopy = _lastCompileTime;
+            }
+
             var statusResponse = new CompileStatusResponse
             {
                 status = status,
                 isCompiling = _isCompiling || EditorApplication.isCompiling,
-                lastCompileTime = _lastCompileTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                lastCompileTime = lastCompileTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
                 errors = _compilationErrors.ToArray()
             };
             return JsonUtility.ToJson(statusResponse);
@@ -612,12 +650,20 @@ namespace Nyamu
             {
                 Debug.Log($"[NyamuServer][Debug] Entering HandleTestStatusRequest");
             }
+
             var status = _isRunningTests ? "running" : "idle";
+
+            DateTime lastTestTimeCopy;
+            lock (_timestampLock)
+            {
+                lastTestTimeCopy = _lastTestTime;
+            }
+
             var statusResponse = new TestStatusResponse
             {
                 status = status,
                 isRunning = _isRunningTests,
-                lastTestTime = _lastTestTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                lastTestTime = lastTestTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
                 testResults = _testResults,
                 testRunId = _currentTestRunId,
                 hasError = _hasTestExecutionError,
@@ -1055,6 +1101,68 @@ namespace Nyamu
             }
         }
 
+        static void LoadTimestampsCache()
+        {
+            try
+            {
+                var cache = NyamuServerCache.Load();
+                lock (_timestampLock)
+                {
+                    _lastCompileTime = ParseDateTime(cache.lastCompilationTime);
+                    _compileRequestTime = ParseDateTime(cache.lastCompilationRequestTime);
+                    _lastTestTime = ParseDateTime(cache.lastTestRunTime);
+                }
+
+                if (NyamuSettings.Instance.enableDebugLogs)
+                {
+                    Debug.Log($"[NyamuServer] Restored timestamps from cache - " +
+                             $"LastCompile: {_lastCompileTime:yyyy-MM-dd HH:mm:ss}, " +
+                             $"CompileRequest: {_compileRequestTime:yyyy-MM-dd HH:mm:ss}, " +
+                             $"LastTest: {_lastTestTime:yyyy-MM-dd HH:mm:ss}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[NyamuServer] Failed to load timestamp cache: {ex.Message}");
+            }
+        }
+
+        internal static void SaveTimestampsCache()
+        {
+            try
+            {
+                lock (_timestampLock)
+                {
+                    var cache = new NyamuServerCache
+                    {
+                        lastCompilationTime = _lastCompileTime.ToString("o"),
+                        lastCompilationRequestTime = _compileRequestTime.ToString("o"),
+                        lastTestRunTime = _lastTestTime.ToString("o")
+                    };
+                    NyamuServerCache.Save(cache);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[NyamuServer] Failed to save timestamp cache: {ex.Message}");
+            }
+        }
+
+        static DateTime ParseDateTime(string str)
+        {
+            if (string.IsNullOrEmpty(str))
+                return DateTime.MinValue;
+
+            try
+            {
+                return DateTime.Parse(str);
+            }
+            catch
+            {
+                return DateTime.MinValue;
+            }
+        }
+
         static void MonitorRefreshCompletion()
         {
             // Update cached state (this runs on main thread)
@@ -1349,7 +1457,14 @@ namespace Nyamu
                 results = results.ToArray()
             };
 
-            Server._lastTestTime = DateTime.Now;
+            lock (Server._timestampLock)
+            {
+                Server._lastTestTime = DateTime.Now;
+            }
+
+            // Save cache after test run completes
+            Server.SaveTimestampsCache();
+
             // Mark as complete LAST to ensure results are available
             Server._isRunningTests = false;
 

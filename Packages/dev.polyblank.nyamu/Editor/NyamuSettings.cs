@@ -90,6 +90,28 @@ namespace Nyamu
 #endif
         }
 
+        /// <summary>
+        /// Reload settings from disk
+        /// </summary>
+        public void Reload()
+        {
+            if (File.Exists(SettingsPath))
+            {
+                var json = File.ReadAllText(SettingsPath);
+                EditorJsonUtility.FromJsonOverwrite(json, this);
+                Debug.Log("Nyamu settings reloaded from " + SettingsPath);
+
+#if UNITY_EDITOR_WIN
+                // Regenerate bat file with updated port
+                NyamuBatGenerator.RegenerateBatFile();
+#endif
+            }
+            else
+            {
+                Debug.LogWarning("Settings file not found at " + SettingsPath);
+            }
+        }
+
         private static void EnsureSettingsDirectory()
         {
             var directory = Path.GetDirectoryName(SettingsPath);

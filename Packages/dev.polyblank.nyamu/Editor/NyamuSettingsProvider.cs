@@ -141,6 +141,12 @@ namespace Nyamu
                     }
                 }
 
+                if (GUILayout.Button("Reload from Disk", GUILayout.Width(150)))
+                {
+                    NyamuSettings.Instance.Reload();
+                    _settings.Update(); // Refresh the serialized object
+                }
+
                 GUILayout.FlexibleSpace();
 
                 if (GUILayout.Button("Save Settings", GUILayout.Width(100)))

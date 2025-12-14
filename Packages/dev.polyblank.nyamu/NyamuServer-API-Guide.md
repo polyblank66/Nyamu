@@ -28,8 +28,8 @@ The collection includes:
 
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
-| `/compile-and-wait` | GET | Trigger compilation | None |
-| `/compile-status` | GET | Get compilation status | None |
+| `/compilation-trigger` | GET | Trigger compilation | None |
+| `/compilation-status` | GET | Get compilation status | None |
 | `/run-tests` | GET | Execute Unity tests | `mode`, `filter`, `filter_regex` |
 | `/test-status` | GET | Get test execution status | None |
 | `/refresh-assets` | GET | Refresh asset database | `force` |
@@ -39,8 +39,8 @@ The collection includes:
 
 ## Endpoint Details
 
-### 1. Compile and Wait
-**Endpoint:** `GET /compile-and-wait`
+### 1. Compilation Trigger
+**Endpoint:** `GET /compilation-trigger`
 
 Triggers Unity script compilation and waits for it to start.
 
@@ -59,8 +59,8 @@ Triggers Unity script compilation and waits for it to start.
 
 ---
 
-### 2. Compile Status
-**Endpoint:** `GET /compile-status`
+### 2. Compilation Status
+**Endpoint:** `GET /compilation-status`
 
 Gets current compilation status and errors from the last compilation.
 
@@ -69,7 +69,8 @@ Gets current compilation status and errors from the last compilation.
 {
     "status": "idle",
     "isCompiling": false,
-    "lastCompileTime": "2025-12-08 12:30:45",
+    "lastCompilationTime": "2025-12-08 12:30:45",
+    "lastCompilationRequestTime": "2025-12-08 12:30:40",
     "errors": [
         {
             "file": "Assets/Scripts/Example.cs",
@@ -83,7 +84,8 @@ Gets current compilation status and errors from the last compilation.
 **Fields:**
 - `status`: "compiling" or "idle"
 - `isCompiling`: boolean indicating active compilation
-- `lastCompileTime`: timestamp of last compilation completion
+- `lastCompilationTime`: timestamp of last compilation completion
+- `lastCompilationRequestTime`: timestamp when compilation was last requested
 - `errors`: array of compilation errors (empty if no errors)
 
 **Use Cases:**
@@ -219,7 +221,7 @@ Triggers Unity AssetDatabase refresh. Critical for file system changes.
 1. Make file system changes (create/delete/modify files)
 2. Call /refresh-assets (force=true if files were deleted)
 3. Wait for Unity to detect changes (monitor via /editor-status)
-4. Call /compile-and-wait to compile changes
+4. Call /compilation-trigger to compile changes
 ```
 
 **Examples:**
@@ -339,8 +341,8 @@ GET /cancel-tests?guid=abc123def456
 ```
 1. Modify C# scripts in your editor/IDE
 2. GET /refresh-assets
-3. GET /compile-and-wait
-4. Poll GET /compile-status until status="idle"
+3. GET /compilation-trigger
+4. Poll GET /compilation-status until status="idle"
 5. Check errors[] array for compilation errors
 6. If no errors: GET /run-tests?mode=EditMode
 7. Poll GET /test-status until isRunning=false
@@ -353,20 +355,20 @@ GET /cancel-tests?guid=abc123def456
 1. Create files on disk
 2. GET /refresh-assets?force=false
 3. Wait for Unity to import (check /editor-status)
-4. GET /compile-and-wait
+4. GET /compilation-trigger
 
 # After deleting files:
 1. Delete files on disk
 2. GET /refresh-assets?force=true  (force=true is critical!)
 3. Wait for Unity to process
-4. GET /compile-and-wait
+4. GET /compilation-trigger
 ```
 
 ### 3. Continuous Integration
 ```
 1. GET /editor-status (verify Unity is ready)
-2. GET /compile-and-wait
-3. Poll /compile-status (wait for completion)
+2. GET /compilation-trigger
+3. Poll /compilation-status (wait for completion)
 4. If errors exist: fail build
 5. GET /run-tests?mode=EditMode
 6. Poll /test-status (wait for completion)
@@ -438,10 +440,10 @@ Solution: Ensure Unity Editor is open with Nyamu project loaded
 
 ```bash
 # Check compile status
-curl http://localhost:17932/compile-status
+curl http://localhost:17932/compilation-status
 
 # Trigger compilation
-curl http://localhost:17932/compile-and-wait
+curl http://localhost:17932/compilation-trigger
 
 # Run all EditMode tests
 curl "http://localhost:17932/run-tests?mode=EditMode"
@@ -471,12 +473,12 @@ import time
 base_url = "http://localhost:17932"
 
 # Trigger compilation
-response = requests.get(f"{base_url}/compile-and-wait")
+response = requests.get(f"{base_url}/compilation-trigger")
 print(response.json())
 
 # Wait for compilation to complete
 while True:
-    status = requests.get(f"{base_url}/compile-status").json()
+    status = requests.get(f"{base_url}/compilation-status").json()
     if status["status"] == "idle":
         if status["errors"]:
             print("Compilation errors:")
@@ -515,11 +517,11 @@ const baseUrl = 'http://localhost:17932';
 
 async function compileAndWait() {
     // Trigger compilation
-    await axios.get(`${baseUrl}/compile-and-wait`);
+    await axios.get(`${baseUrl}/compilation-trigger`);
 
     // Poll for completion
     while (true) {
-        const response = await axios.get(`${baseUrl}/compile-status`);
+        const response = await axios.get(`${baseUrl}/compilation-status`);
         const status = response.data;
 
         if (status.status === 'idle') {

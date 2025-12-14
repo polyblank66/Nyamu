@@ -16,11 +16,22 @@ Prompt: Check scripts compilation with nyamu mcp tool
 
 ## Features
 
+### Script Compilation
 * `compile_and_wait` – Triggers Unity Editor compilation, waits for completion, and returns compilation results, including any errors.
 * `compile_status` – Returns the current compilation status without triggering a compilation. Includes compilation state, last compile time, and any errors.
+
+### Shader Compilation
+* `compile_shader` – Compiles a single shader by name with fuzzy matching support. Searches for shaders by partial name, handles case-insensitive matching, and returns detailed compilation results with error reporting.
+* `compile_all_shaders` – Compiles all shaders in the Unity project and returns a comprehensive summary with statistics (total, successful, failed), individual shader results, and detailed error information for failed shaders.
+
+### Testing
 * `run_tests` – Executes Unity Test Runner tests (EditMode and PlayMode) with real-time status monitoring and detailed result reporting. Supports filtering by test names and regex patterns.
 * `test_status` – Returns the current test execution status without running tests. Includes execution state, last test time, test results, and test run ID.
+
+### Asset Management
 * `refresh_assets` – Forces Unity to refresh the asset database. This is critical after file operations to ensure Unity detects file system changes (new, deleted, or moved files).
+
+### Editor Status
 * `editor_status` – Returns the current Unity Editor status, including compilation state, test execution state, and play mode state, for real-time monitoring.
 
 ## Installation

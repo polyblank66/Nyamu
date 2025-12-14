@@ -48,7 +48,29 @@ Unity will install the Nyamu package directly from the GitHub repository.
 
 ### 2. Add the MCP Server to the AI Agent
 
-You can either follow the steps in [`nyamu-mcp-setup.md`] manually, or let the AI agent do it for you. For example, if you’re using Gemini CLI:
+When you first open your Unity project with Nyamu installed, it automatically generates a `.nyamu/nyamu.bat` file. This bat file launches the MCP server with the correct configuration.
+
+**Option 1: Manual Setup (Recommended)**
+
+Add the bat file path to your MCP settings. For **Claude Code** (`.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "Nyamu": {
+      "command": "cmd.exe",
+      "args": ["/c", "D:\\code\\YourProject\\.nyamu\\nyamu.bat"],
+      "timeout": 30000
+    }
+  }
+}
+```
+
+Replace `D:\\code\\YourProject` with your actual project path.
+
+**Option 2: Let the AI Agent Configure Itself**
+
+Ask your AI agent to follow the setup instructions. For example, if you're using Gemini CLI:
 
 ```
 You're Gemini CLI. Follow nyamu-mcp-setup.md
@@ -56,7 +78,9 @@ You're Gemini CLI. Follow nyamu-mcp-setup.md
 
 The `"You're ---"` statement is important, as some AI agents do not know what they are unless explicitly told.
 
-**Note**: You’ll need to update this configuration each time you upgrade Nyamu. You can simply run the same prompt again to refresh it.
+For detailed setup instructions for different AI agents, see [`nyamu-mcp-setup.md`].
+
+**Note**: The bat file automatically updates when you change Nyamu settings (like the server port), so you typically only need to configure this once.
 
 ## Configuration
 
@@ -64,7 +88,7 @@ The `"You're ---"` statement is important, as some AI agents do not know what th
 
 Nyamu provides configurable character limits for MCP server responses to prevent overwhelming AI agents with excessively long outputs. This is particularly useful when dealing with large compilation errors or test results.
 
-Configuration is stored in `ProjectSettings/NyamuSettings.json` and can be shared through version control.
+Configuration is stored in `.nyamu/NyamuSettings.json` and can be edited manually or through Unity's Project Settings UI.
 
 **Configuration Location**: Unity → Project Settings → **Nyamu MCP Server**
 
@@ -92,30 +116,23 @@ To work with multiple Unity Editor instances at the same time:
 
 1. **Configure unique ports** for each Unity project:
 
-    * Project A: `serverPort: 17932`
-    * Project B: `serverPort: 17933`
+    * Project A: Unity → Project Settings → Nyamu MCP Server → Server Port: `17932`
+    * Project B: Unity → Project Settings → Nyamu MCP Server → Server Port: `17933`
 
-2. Provide the port settings through the `--port` argument in your coding agent’s MCP configuration.
-   If you are using a global, user-level configuration for all MCP tools, define multiple tools—one per Unity project. For example:
+2. Each project will automatically generate its own bat file with the correct port. Configure your AI agent with multiple MCP entries:
 
    ```json
    {
      "mcpServers": {
        "Nyamu-ProjectA": {
-         "command": "node",
-         "args": [
-           "path/to/ProjectA/Library/PackageCache/dev.polyblank.nyamu@(HASH)/Node/mcp-server.js",
-           "--port",
-           "17932"
-         ]
+         "command": "cmd.exe",
+         "args": ["/c", "D:\\code\\ProjectA\\.nyamu\\nyamu.bat"],
+         "timeout": 30000
        },
        "Nyamu-ProjectB": {
-         "command": "node",
-         "args": [
-           "path/to/ProjectB/Library/PackageCache/dev.polyblank.nyamu@(HASH)/Node/mcp-server.js",
-           "--port",
-           "17933"
-         ]
+         "command": "cmd.exe",
+         "args": ["/c", "D:\\code\\ProjectB\\.nyamu\\nyamu.bat"],
+         "timeout": 30000
        }
      }
    }
@@ -126,6 +143,8 @@ To work with multiple Unity Editor instances at the same time:
 Each AI agent session can now interact with its corresponding Unity Editor independently, enabling parallel development across multiple Unity projects.
 
 **Important**: Port conflicts will prevent `NyamuServer` from starting. Make sure each Unity Editor uses a unique port number.
+
+**Note**: The bat files automatically include the `--port` parameter from each project's settings, so you don't need to specify it manually in the MCP configuration.
 
 
 [`nyamu-mcp-setup.md`]: Packages/dev.polyblank.nyamu/nyamu-mcp-setup.md

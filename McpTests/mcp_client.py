@@ -16,21 +16,22 @@ class MCPClient:
         Initialize MCP client
 
         Args:
-            mcp_server_path: Path to MCP server (Node.js script)
+            mcp_server_path: Path to MCP server (nyamu.bat file)
         """
         if mcp_server_path is None:
-            # Default path relative to project root
+            # Default path to nyamu.bat relative to project root
             project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            mcp_server_path = os.path.join(project_root, "Packages", "dev.polyblank.nyamu", "Node", "mcp-server.js")
+            mcp_server_path = os.path.join(project_root, ".nyamu", "nyamu.bat")
 
         self.mcp_server_path = mcp_server_path
         self.process = None
         self.request_id = 0
 
     async def start(self):
-        """Start MCP server"""
+        """Start MCP server via nyamu.bat in stdio mode"""
+        # Launch nyamu.bat with stdin/stdout pipes (stdio mode)
         self.process = await asyncio.create_subprocess_exec(
-            "node", self.mcp_server_path,
+            self.mcp_server_path,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
@@ -42,11 +43,27 @@ class MCPClient:
     async def stop(self):
         """Stop MCP server"""
         if self.process:
-            self.process.terminate()
-            await self.process.wait()
+            # On Windows, kill the entire process tree (bat file spawns node.exe)
+            if sys.platform == "win32":
+                try:
+                    subprocess.run(
+                        ["taskkill", "/F", "/T", "/PID", str(self.process.pid)],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+                except:
+                    pass
+            else:
+                self.process.terminate()
+
+            try:
+                await asyncio.wait_for(self.process.wait(), timeout=2.0)
+            except asyncio.TimeoutError:
+                self.process.kill()
+                await self.process.wait()
 
     async def _send_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Send JSON-RPC request to MCP server"""
+        """Send JSON-RPC request to MCP server via stdio"""
         if not self.process:
             raise RuntimeError("MCP server not started")
 
@@ -60,12 +77,12 @@ class MCPClient:
         if params:
             request["params"] = params
 
-        # Send request
+        # Send request via stdin
         request_line = json.dumps(request) + "\n"
         self.process.stdin.write(request_line.encode())
         await self.process.stdin.drain()
 
-        # Get response
+        # Read response from stdout
         response_line = await self.process.stdout.readline()
         response_data = response_line.decode().strip()
 
@@ -212,6 +229,40 @@ class MCPClient:
             "name": "tests_cancel",
             "arguments": {
                 "test_run_guid": test_run_guid
+            }
+        })
+
+    async def compile_shader(self, shader_name: str, timeout: int = 30) -> Dict[str, Any]:
+        """Compile a single shader with fuzzy name matching
+
+        Args:
+            shader_name: Shader name to search for (supports fuzzy matching)
+            timeout: Timeout in seconds (default: 30)
+
+        Returns:
+            MCP response with shader compilation results
+        """
+        return await self._send_request("tools/call", {
+            "name": "compile_shader",
+            "arguments": {
+                "shader_name": shader_name,
+                "timeout": timeout
+            }
+        })
+
+    async def compile_all_shaders(self, timeout: int = 120) -> Dict[str, Any]:
+        """Compile all shaders in Unity project
+
+        Args:
+            timeout: Timeout in seconds (default: 120)
+
+        Returns:
+            MCP response with all shaders compilation results
+        """
+        return await self._send_request("tools/call", {
+            "name": "compile_all_shaders",
+            "arguments": {
+                "timeout": timeout
             }
         })
 

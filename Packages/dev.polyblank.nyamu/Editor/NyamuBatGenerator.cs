@@ -25,13 +25,20 @@ namespace Nyamu
                     return;
                 }
 
-                var batContent = GenerateBatContent(mcpServerPath);
+                var port = NyamuSettings.Instance.serverPort;
+                var batContent = GenerateBatContent(mcpServerPath, port);
                 WriteBatFile(batContent);
             }
             catch (Exception ex)
             {
                 Debug.LogWarning($"[NyamuBatGenerator] Unexpected error during bat file generation: {ex.Message}");
             }
+        }
+
+        // Public method to regenerate bat file (called when settings change)
+        public static void RegenerateBatFile()
+        {
+            GenerateBatFile();
         }
 
         // Locates mcp-server.js in either embedded package or PackageCache
@@ -69,12 +76,13 @@ namespace Nyamu
         }
 
         // Generates .bat file content with proper MCP protocol compliance
-        static string GenerateBatContent(string mcpServerPath)
+        static string GenerateBatContent(string mcpServerPath, int port)
         {
             // @echo off prevents stdout pollution
             // Quoted path handles spaces
-            // %* forwards all command-line arguments
-            return $"@echo off{Environment.NewLine}node \"{mcpServerPath}\" %*{Environment.NewLine}";
+            // --port parameter configures the Unity HTTP server port
+            // %* forwards all additional command-line arguments
+            return $"@echo off{Environment.NewLine}node \"{mcpServerPath}\" --port {port} %*{Environment.NewLine}";
         }
 
         // Writes .bat file to .nyamu/nyamu.bat (idempotent)

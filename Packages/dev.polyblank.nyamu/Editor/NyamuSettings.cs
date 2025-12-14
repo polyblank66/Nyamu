@@ -10,7 +10,7 @@ namespace Nyamu
     [System.Serializable]
     public class NyamuSettings : ScriptableObject
     {
-        private const string SettingsPath = "ProjectSettings/NyamuSettings.json";
+        private const string SettingsPath = ".nyamu/NyamuSettings.json";
 
         [Header("Response Configuration")]
         [Tooltip("Maximum characters in complete MCP response (default: 25000)")]
@@ -83,6 +83,11 @@ namespace Nyamu
             var json = EditorJsonUtility.ToJson(this, true);
             File.WriteAllText(SettingsPath, json);
             Debug.Log("Nyamu settings saved to " + SettingsPath);
+
+#if UNITY_EDITOR_WIN
+            // Regenerate bat file with updated port
+            NyamuBatGenerator.RegenerateBatFile();
+#endif
         }
 
         private static void EnsureSettingsDirectory()

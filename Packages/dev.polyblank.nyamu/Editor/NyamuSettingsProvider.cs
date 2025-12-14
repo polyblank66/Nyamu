@@ -58,9 +58,8 @@ namespace Nyamu
 
             _settings.Update();
 
-            // Header
-            EditorGUILayout.LabelField("Nyamu MCP Server Configuration", EditorStyles.boldLabel);
-            EditorGUILayout.Space();
+            // Response Configuration section
+            EditorGUILayout.LabelField("Response Configuration", EditorStyles.boldLabel);
 
             // Help box with information
             EditorGUILayout.HelpBox(
@@ -69,9 +68,6 @@ namespace Nyamu
                 MessageType.Info);
 
             EditorGUILayout.Space();
-
-            // Response Configuration section
-            EditorGUILayout.LabelField("Response Limits", EditorStyles.boldLabel);
 
             var characterLimitProp = _settings.FindProperty("responseCharacterLimit");
             EditorGUILayout.PropertyField(characterLimitProp, new GUIContent(
@@ -83,11 +79,7 @@ namespace Nyamu
                 "Enable Truncation",
                 "When enabled, responses exceeding the limit will be truncated. When disabled, no limits are applied."));
 
-            EditorGUILayout.Space();
-
             // Truncation Settings section
-            EditorGUILayout.LabelField("Truncation Settings", EditorStyles.boldLabel);
-
             var truncationMessageProp = _settings.FindProperty("truncationMessage");
             EditorGUILayout.PropertyField(truncationMessageProp, new GUIContent(
                 "Truncation Message",

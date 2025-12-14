@@ -12,24 +12,15 @@ namespace Nyamu
     {
         private const string SettingsPath = ".nyamu/NyamuSettings.json";
 
-        [Header("Response Configuration")]
-        [Tooltip("Maximum characters in complete MCP response (default: 25000)")]
         public int responseCharacterLimit = 25000;
 
-        [Tooltip("Enable response truncation when limit is exceeded")]
         public bool enableTruncation = true;
 
-        [Header("Truncation Settings")]
-        [Tooltip("Message appended when response is truncated")]
         [TextArea(2, 3)]
         public string truncationMessage = "\n\n... (response truncated due to length limit)";
 
-        [Header("Debug Configuration")]
-        [Tooltip("Enable debug logging for NyamuServer HTTP handlers")]
         public bool enableDebugLogs = false;
 
-        [Header("Server Configuration")]
-        [Tooltip("TCP port for the Nyamu MCP server (default: 17932)")]
         public int serverPort = 17932;
 
         // Singleton pattern for easy access

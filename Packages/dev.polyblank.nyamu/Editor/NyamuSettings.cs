@@ -79,6 +79,20 @@ namespace Nyamu
         /// </summary>
         public void Save()
         {
+            // Read old port from disk before saving
+            var oldPort = serverPort;
+            if (File.Exists(SettingsPath))
+            {
+                try
+                {
+                    var oldJson = File.ReadAllText(SettingsPath);
+                    var oldSettings = CreateInstance<NyamuSettings>();
+                    EditorJsonUtility.FromJsonOverwrite(oldJson, oldSettings);
+                    oldPort = oldSettings.serverPort;
+                }
+                catch { }
+            }
+
             EnsureSettingsDirectory();
             var json = EditorJsonUtility.ToJson(this, true);
             File.WriteAllText(SettingsPath, json);
@@ -88,6 +102,10 @@ namespace Nyamu
             // Regenerate bat file with updated port
             NyamuBatGenerator.RegenerateBatFile();
 #endif
+
+            // Restart server if port changed
+            if (oldPort != serverPort)
+                Server.Restart();
         }
 
         /// <summary>
@@ -97,6 +115,8 @@ namespace Nyamu
         {
             if (File.Exists(SettingsPath))
             {
+                var oldPort = serverPort;
+
                 var json = File.ReadAllText(SettingsPath);
                 EditorJsonUtility.FromJsonOverwrite(json, this);
                 Debug.Log("Nyamu settings reloaded from " + SettingsPath);
@@ -105,6 +125,10 @@ namespace Nyamu
                 // Regenerate bat file with updated port
                 NyamuBatGenerator.RegenerateBatFile();
 #endif
+
+                // Restart server if port changed
+                if (oldPort != serverPort)
+                    Server.Restart();
             }
             else
             {

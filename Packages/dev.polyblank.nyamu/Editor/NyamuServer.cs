@@ -198,6 +198,11 @@ namespace Nyamu
 
         static Server()
         {
+            Initialize();
+        }
+
+        static void Initialize()
+        {
             Cleanup();
 
             _shouldStop = false;
@@ -244,6 +249,14 @@ namespace Nyamu
                     catch { }
                 }
             }
+        }
+
+        // Public method to restart server (e.g., when port changes)
+        public static void Restart()
+        {
+            Debug.Log("[NyamuServer] Restarting server...");
+            Initialize();
+            Debug.Log($"[NyamuServer] Server restarted on port {NyamuSettings.Instance.serverPort}");
         }
 
         // ========================================================================

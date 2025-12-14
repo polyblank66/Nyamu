@@ -20,7 +20,7 @@ async def test_tools_list_success(mcp_client, unity_state_manager):
     result = response["result"]
     assert "tools" in result
     assert isinstance(result["tools"], list)
-    assert len(result["tools"]) >= 2  # Should have at least compile_and_wait and run_tests
+    assert len(result["tools"]) >= 2  # Should have at least compilation_trigger and run_tests
 
 
 @pytest.mark.mcp

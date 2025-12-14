@@ -33,7 +33,7 @@ async def test_mcp_initialize_success(unity_state_manager):
         assert "tools" in capabilities
 
         tools = capabilities["tools"]
-        assert "compile_and_wait" in tools
+        assert "compilation_trigger" in tools
         assert "run_tests" in tools
 
     finally:

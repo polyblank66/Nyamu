@@ -87,7 +87,7 @@ async def test_compile_and_wait_direct_tool_call(unity_state_manager):
 
     try:
         response = await client._send_request("tools/call", {
-            "name": "compile_and_wait",
+            "name": "compilation_trigger",
             "arguments": {
                 "timeout": 30
             }
@@ -112,7 +112,7 @@ async def test_compile_and_wait_invalid_parameters(unity_state_manager):
         # Test with negative timeout - should raise exception
         with pytest.raises(RuntimeError) as exc_info:
             await client._send_request("tools/call", {
-                "name": "compile_and_wait",
+                "name": "compilation_trigger",
                 "arguments": {
                     "timeout": -1
                 }

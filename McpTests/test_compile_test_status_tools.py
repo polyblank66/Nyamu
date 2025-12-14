@@ -13,11 +13,11 @@ from mcp_client import MCPClient
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_compile_status_tool_exists(mcp_client, unity_state_manager):
-    """Test that compile_status tool exists in tools list"""
+    """Test that compilation_status tool exists in tools list"""
     response = await mcp_client.list_tools()
     tools = response["result"]["tools"]
 
-    compile_status_tool = next((tool for tool in tools if tool["name"] == "compile_status"), None)
+    compile_status_tool = next((tool for tool in tools if tool["name"] == "compilation_status"), None)
     assert compile_status_tool is not None
 
     # Check tool structure
@@ -25,7 +25,7 @@ async def test_compile_status_tool_exists(mcp_client, unity_state_manager):
     assert "description" in compile_status_tool
     assert "inputSchema" in compile_status_tool
 
-    assert compile_status_tool["name"] == "compile_status"
+    assert compile_status_tool["name"] == "compilation_status"
     assert isinstance(compile_status_tool["description"], str)
     assert len(compile_status_tool["description"]) > 0
     assert "without triggering compilation" in compile_status_tool["description"]

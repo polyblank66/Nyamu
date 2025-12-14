@@ -158,13 +158,13 @@ class MCPClient:
         """Get list of available tools"""
         return await self._send_request("tools/list")
 
-    async def compile_and_wait(self, timeout: int = 30) -> Dict[str, Any]:
+    async def compilation_trigger(self, timeout: int = 30) -> Dict[str, Any]:
         """Start compilation and wait for completion
 
         Automatically retries on Unity HTTP server restart (-32603 errors).
         """
         return await self._send_unity_request_with_retry("tools/call", {
-            "name": "compile_and_wait",
+            "name": "compilation_trigger",
             "arguments": {"timeout": timeout}
         })
 
@@ -201,10 +201,10 @@ class MCPClient:
             "arguments": {}
         })
 
-    async def compile_status(self) -> Dict[str, Any]:
+    async def compilation_status(self) -> Dict[str, Any]:
         """Get compilation status without triggering compilation"""
         return await self._send_request("tools/call", {
-            "name": "compile_status",
+            "name": "compilation_status",
             "arguments": {}
         })
 
@@ -282,9 +282,9 @@ def run_sync_mcp_command(method: str, params: Dict[str, Any] = None) -> Dict[str
                 return await client.initialize()
             elif method == "tools/list":
                 return await client.list_tools()
-            elif method == "compile_and_wait":
+            elif method == "compilation_trigger":
                 timeout = (params or {}).get("timeout", 30)
-                return await client.compile_and_wait(timeout=timeout)
+                return await client.compilation_trigger(timeout=timeout)
             elif method == "run_tests":
                 return await client.run_tests(**(params or {}))
             elif method == "cancel_tests":

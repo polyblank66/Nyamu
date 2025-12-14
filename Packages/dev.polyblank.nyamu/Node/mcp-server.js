@@ -217,7 +217,7 @@ class MCPServer {
         this.activeProtocol = null; // 'content-length' | 'newline'
         this.capabilities = {
             tools: {
-                compile_and_wait: {
+                compilation_trigger: {
                     description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with NYAMU project open.",
                     inputSchema: {
                         type: "object",
@@ -283,7 +283,7 @@ class MCPServer {
                         required: []
                     }
                 },
-                compile_status: {
+                compilation_status: {
                     description: "Get current compilation status without triggering compilation. Returns compilation state, last compile time, and any compilation errors.",
                     inputSchema: {
                         type: "object",
@@ -423,7 +423,7 @@ class MCPServer {
 
         try {
             switch (name) {
-                case 'compile_and_wait':
+                case 'compilation_trigger':
                     return await this.callCompileAndWait(id, args.timeout || 30);
                 case 'run_tests':
                     return await this.callRunTests(id, args.test_mode || 'PlayMode', args.test_filter || '', args.test_filter_regex || '', args.timeout || 60);
@@ -431,7 +431,7 @@ class MCPServer {
                     return await this.callRefreshAssets(id, args.force || false);
                 case 'editor_status':
                     return await this.callEditorStatus(id);
-                case 'compile_status':
+                case 'compilation_status':
                     return await this.callCompileStatus(id);
                 case 'test_status':
                     return await this.callTestStatus(id);
@@ -483,7 +483,7 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Start compilation
-            const compileResponse = await this.makeHttpRequest('/compile-and-wait');
+            const compileResponse = await this.makeHttpRequest('/compilation-trigger');
 
             // C# side now ensures compilation has started, so we can immediately begin polling
 
@@ -494,7 +494,7 @@ class MCPServer {
             // Wait for compilation to complete
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/compile-status');
+                    const statusResponse = await this.makeHttpRequest('/compilation-status');
 
                     if (statusResponse.status === 'idle') {
 
@@ -688,8 +688,8 @@ class MCPServer {
             // Ensure response formatter is ready
             await this.ensureResponseFormatter();
 
-            // Call Unity compile-status endpoint
-            const statusResponse = await this.makeHttpRequest('/compile-status');
+            // Call Unity compilation-status endpoint
+            const statusResponse = await this.makeHttpRequest('/compilation-status');
 
             const formattedText = this.responseFormatter.formatJsonResponse(statusResponse);
 
@@ -980,7 +980,7 @@ class MCPServer {
                 `Unity Editor HTTP server unavailable at ${this.unityServerUrl}`,
                 {
                     errorType: 'unity_server_unavailable',
-                    instructions: 'INSTRUCTIONS FOR LLM: 1) Verify Unity Editor is running 2) Check if Unity HTTP server is active (should start automatically) 3) Test with: curl http://localhost:17932/compile-status 4) If Unity is running but server is down, advise user to restart Unity Editor',
+                    instructions: 'INSTRUCTIONS FOR LLM: 1) Verify Unity Editor is running 2) Check if Unity HTTP server is active (should start automatically) 3) Test with: curl http://localhost:17932/compilation-status 4) If Unity is running but server is down, advise user to restart Unity Editor',
                     retryable: false,
                     originalError: error.message
                 }
@@ -1016,7 +1016,7 @@ class MCPServer {
 
     async checkUnityServerHealth() {
         try {
-            const response = await this.makeHttpRequest('/compile-status');
+            const response = await this.makeHttpRequest('/compilation-status');
             return { available: true, response };
         } catch (error) {
             return { available: false, error };

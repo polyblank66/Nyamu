@@ -23,7 +23,7 @@ async def test_force_refresh_vs_regular_refresh(mcp_client, unity_helper, unity_
     await unity_helper.refresh_assets_if_available(force=False)
 
     # First compilation should have errors
-    response1 = await mcp_client.compile_and_wait(timeout=30)
+    response1 = await mcp_client.compilation_trigger(timeout=30)
     content_text1 = response1["result"]["content"][0]["text"]
     assert "Compilation completed with errors:" in content_text1
     assert "RefreshTestScript.cs" in content_text1
@@ -38,7 +38,7 @@ async def test_force_refresh_vs_regular_refresh(mcp_client, unity_helper, unity_
     await unity_helper.refresh_assets_if_available(force=False)
 
     # Try compilation - might still fail with CS2001
-    response2 = await mcp_client.compile_and_wait(timeout=30)
+    response2 = await mcp_client.compilation_trigger(timeout=30)
     content_text2 = response2["result"]["content"][0]["text"]
 
     # If regular refresh didn't work, try force refresh
@@ -49,7 +49,7 @@ async def test_force_refresh_vs_regular_refresh(mcp_client, unity_helper, unity_
         await unity_helper.refresh_assets_if_available(force=True)
 
         # Now compilation should succeed
-        response3 = await mcp_client.compile_and_wait(timeout=30)
+        response3 = await mcp_client.compilation_trigger(timeout=30)
         content_text3 = response3["result"]["content"][0]["text"]
         assert "Compilation completed successfully with no errors." in content_text3
     else:

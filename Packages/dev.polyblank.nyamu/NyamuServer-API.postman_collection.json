@@ -16,14 +16,14 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:17932/compile-and-wait",
+							"raw": "http://localhost:17932/compilation-trigger",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "17932",
 							"path": [
-								"compile-and-wait"
+								"compilation-trigger"
 							]
 						},
 						"description": "Triggers Unity script compilation and waits for it to start. Returns immediately after compilation begins.\n\n**Response Examples:**\n- Success: `{\"status\":\"ok\", \"message\":\"Compilation started.\"}`\n- Warning: `{\"status\":\"warning\", \"message\":\"Compilation may not have started.\"}`"
@@ -35,14 +35,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "http://localhost:17932/compile-and-wait",
+									"raw": "http://localhost:17932/compilation-trigger",
 									"protocol": "http",
 									"host": [
 										"localhost"
 									],
 									"port": "17932",
 									"path": [
-										"compile-and-wait"
+										"compilation-trigger"
 									]
 								}
 							},
@@ -66,14 +66,14 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:17932/compile-status",
+							"raw": "http://localhost:17932/compilation-status",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "17932",
 							"path": [
-								"compile-status"
+								"compilation-status"
 							]
 						},
 						"description": "Gets the current compilation status, including any errors from the last compilation.\n\n**Response Fields:**\n- `status`: \"compiling\" or \"idle\"\n- `isCompiling`: boolean - whether compilation is currently active\n- `lastCompileTime`: ISO timestamp of last compilation finish\n- `errors`: array of compilation errors (file, line, message)"
@@ -85,14 +85,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "http://localhost:17932/compile-status",
+									"raw": "http://localhost:17932/compilation-status",
 									"protocol": "http",
 									"host": [
 										"localhost"
 									],
 									"port": "17932",
 									"path": [
-										"compile-status"
+										"compilation-status"
 									]
 								}
 							},
@@ -114,14 +114,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "http://localhost:17932/compile-status",
+									"raw": "http://localhost:17932/compilation-status",
 									"protocol": "http",
 									"host": [
 										"localhost"
 									],
 									"port": "17932",
 									"path": [
-										"compile-status"
+										"compilation-status"
 									]
 								}
 							},
@@ -143,14 +143,14 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "http://localhost:17932/compile-status",
+									"raw": "http://localhost:17932/compilation-status",
 									"protocol": "http",
 									"host": [
 										"localhost"
 									],
 									"port": "17932",
 									"path": [
-										"compile-status"
+										"compilation-status"
 									]
 								}
 							},
@@ -709,7 +709,7 @@
 								}
 							]
 						},
-						"description": "Triggers Unity AssetDatabase refresh. Use force=true for stronger refresh (required after file deletions to prevent CS2001 errors).\n\n**Query Parameters:**\n- `force` (optional): \"true\" to use ImportAssetOptions.ForceUpdate\n\n**Recommended Workflow:**\n1. Make file system changes\n2. Call refresh-assets (force=true for deletions)\n3. Wait for MCP responsiveness\n4. Call compile-and-wait\n\n**Response:**\n- Success: `{\"status\":\"ok\", \"message\":\"Asset database refreshed.\"}`\n- Already running: `{\"status\":\"warning\", \"message\":\"Asset refresh already in progress...\"}`"
+						"description": "Triggers Unity AssetDatabase refresh. Use force=true for stronger refresh (required after file deletions to prevent CS2001 errors).\n\n**Query Parameters:**\n- `force` (optional): \"true\" to use ImportAssetOptions.ForceUpdate\n\n**Recommended Workflow:**\n1. Make file system changes\n2. Call refresh-assets (force=true for deletions)\n3. Wait for MCP responsiveness\n4. Call compilation-trigger\n\n**Response:**\n- Success: `{\"status\":\"ok\", \"message\":\"Asset database refreshed.\"}`\n- Already running: `{\"status\":\"warning\", \"message\":\"Asset refresh already in progress...\"}`"
 					},
 					"response": [
 						{

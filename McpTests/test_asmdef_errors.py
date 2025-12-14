@@ -41,7 +41,7 @@ public class DependencyError
         await unity_helper.refresh_assets_if_available()
 
         # Trigger compilation
-        response = await client.compile_and_wait(timeout=30)
+        response = await client.compilation_trigger(timeout=30)
         content_text = response["result"]["content"][0]["text"]
 
         # May or may not have errors depending on TestModule asmdef configuration
@@ -89,7 +89,7 @@ namespace TestModule
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -131,7 +131,7 @@ public class CircularTest
         await unity_helper.refresh_assets_if_available()
 
         # Trigger compilation
-        response = await client.compile_and_wait(timeout=30)
+        response = await client.compilation_trigger(timeout=30)
 
         # Should compile successfully (GameObject is available)
         assert response["jsonrpc"] == "2.0"
@@ -177,7 +177,7 @@ public class CollisionTest  // Same name as first script
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -203,7 +203,7 @@ async def test_asmdef_mixed_errors_and_valid_files(mcp_client, unity_helper, uni
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -256,7 +256,7 @@ public class LargeFileError
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
     content_text = response["result"]["content"][0]["text"]
 
     # Should contain compilation errors
@@ -281,7 +281,7 @@ async def test_asmdef_compilation_isolation(mcp_client, unity_helper, unity_stat
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
     content_text = response["result"]["content"][0]["text"]
 
     # Should have errors from TestModule but Assets should compile fine

@@ -17,8 +17,8 @@ Prompt: Check scripts compilation with nyamu mcp tool
 ## Features
 
 ### Script Compilation
-* `compile_and_wait` – Triggers Unity Editor compilation, waits for completion, and returns compilation results, including any errors.
-* `compile_status` – Returns the current compilation status without triggering a compilation. Includes compilation state, last compile time, and any errors.
+* `compilation_trigger` – Triggers Unity Editor compilation, waits for completion, and returns compilation results, including any errors.
+* `compilation_status` – Returns the current compilation status without triggering a compilation. Includes compilation state, last compile time, and any errors.
 
 ### Shader Compilation
 * `compile_shader` – Compiles a single shader by name with fuzzy matching support. Searches for shaders by partial name, handles case-insensitive matching, and returns detailed compilation results with error reporting.

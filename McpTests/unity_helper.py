@@ -121,7 +121,7 @@ class UnityStateManager:
         Ensures Unity compilation succeeds with no errors
         """
         try:
-            response = await self.mcp_client.compile_and_wait(timeout=timeout)
+            response = await self.mcp_client.compilation_trigger(timeout=timeout)
             if "result" in response and "content" in response["result"]:
                 content_text = response["result"]["content"][0]["text"]
                 # Check if compilation was successful

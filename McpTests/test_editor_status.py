@@ -165,7 +165,7 @@ async def test_editor_status_during_compilation(unity_state_manager):
     try:
         # Start compilation with client1
         compile_task = asyncio.create_task(
-            client1.compile_and_wait(timeout=30)
+            client1.compilation_trigger(timeout=30)
         )
 
         # Wait briefly for compilation to potentially start
@@ -206,7 +206,7 @@ async def test_editor_status_consistency_with_compile_status(mcp_client, unity_s
     """Test that editor_status isCompiling matches compile_status"""
     # Get both statuses
     editor_status = await mcp_client.editor_status()
-    compile_status_response = requests.get("http://localhost:17932/compile-status")
+    compile_status_response = requests.get("http://localhost:17932/compilation-status")
 
     editor_data = json.loads(editor_status["result"]["content"][0]["text"])
     compile_data = compile_status_response.json()

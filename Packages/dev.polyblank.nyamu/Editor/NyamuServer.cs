@@ -50,8 +50,8 @@ namespace Nyamu
 
         public static class Endpoints
         {
-            public const string CompileAndWait = "/compile-and-wait";
-            public const string CompileStatus = "/compile-status";
+            public const string CompileAndWait = "/compilation-trigger";
+            public const string CompileStatus = "/compilation-status";
             public const string RunTests = "/run-tests";
             public const string TestStatus = "/test-status";
             public const string RefreshAssets = "/refresh-assets";

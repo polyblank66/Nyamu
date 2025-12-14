@@ -21,7 +21,7 @@ async def test_modify_test_module_script_with_syntax_error(mcp_client, unity_hel
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -44,7 +44,7 @@ async def test_modify_test_module_script_with_missing_using(mcp_client, unity_he
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -66,7 +66,7 @@ async def test_modify_test_module_script_with_undefined_variable(mcp_client, uni
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -87,7 +87,7 @@ async def test_create_new_file_in_test_module_with_syntax_error(mcp_client, unit
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -109,7 +109,7 @@ async def test_create_new_file_in_test_module_with_missing_using(mcp_client, uni
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -130,7 +130,7 @@ async def test_create_valid_file_in_test_module(mcp_client, unity_helper, unity_
     await unity_helper.refresh_assets_if_available(force=True)
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -154,7 +154,7 @@ async def test_multiple_errors_in_test_module(mcp_client, unity_helper, unity_st
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -182,7 +182,7 @@ async def test_error_in_test_module_and_assets(mcp_client, unity_helper, unity_s
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -205,7 +205,7 @@ async def test_fix_error_in_test_module(mcp_client, unity_helper, unity_state_ma
     await unity_helper.refresh_assets_if_available()
 
     # First compilation should have errors
-    response1 = await mcp_client.compile_and_wait(timeout=30)
+    response1 = await mcp_client.compilation_trigger(timeout=30)
     content_text1 = response1["result"]["content"][0]["text"]
     assert "Compilation completed with errors:" in content_text1
 
@@ -214,7 +214,7 @@ async def test_fix_error_in_test_module(mcp_client, unity_helper, unity_state_ma
     await unity_helper.refresh_assets_if_available()
 
     # Second compilation should be successful
-    response2 = await mcp_client.compile_and_wait(timeout=30)
+    response2 = await mcp_client.compilation_trigger(timeout=30)
     content_text2 = response2["result"]["content"][0]["text"]
     assert "Compilation completed successfully with no errors." in content_text2
 
@@ -271,7 +271,7 @@ public class TestModuleComplex
     await unity_helper.refresh_assets_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compile_and_wait(timeout=30)
+    response = await mcp_client.compilation_trigger(timeout=30)
     content_text = response["result"]["content"][0]["text"]
 
     # Should contain multiple compilation errors

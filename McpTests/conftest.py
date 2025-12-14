@@ -114,7 +114,7 @@ def check_unity_running():
     # Check that Unity HTTP server is available
     import requests
     try:
-        response = requests.get("http://localhost:17932/compile-status", timeout=5)
+        response = requests.get("http://localhost:17932/compilation-status", timeout=5)
         if response.status_code != 200:
             pytest.skip("Unity HTTP server unavailable")
     except requests.exceptions.RequestException:

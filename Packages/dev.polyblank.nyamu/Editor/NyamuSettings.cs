@@ -154,17 +154,9 @@ namespace Nyamu
         /// </summary>
         private void OnValidate()
         {
-            // Ensure minimum limits
-            if (responseCharacterLimit < 1000)
-                responseCharacterLimit = 1000;
-
-            // Ensure truncation message is not too long (reserve space for content)
-            if (truncationMessage.Length > 500)
-                truncationMessage = truncationMessage.Substring(0, 500);
-
-            // Ensure valid port range
-            if (serverPort < 1024 || serverPort > 65535)
-                serverPort = 17932;
+            // Note: Validation is now handled in the UI layer (NyamuSettingsProvider)
+            // to ensure proper error messages are shown to the user.
+            // This method is kept empty to prevent auto-correction before UI validation.
         }
     }
 }

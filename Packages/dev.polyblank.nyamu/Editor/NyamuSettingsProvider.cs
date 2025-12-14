@@ -70,9 +70,16 @@ namespace Nyamu
             EditorGUILayout.Space();
 
             var characterLimitProp = _settings.FindProperty("responseCharacterLimit");
+            EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(characterLimitProp, new GUIContent(
                 "Response Character Limit",
                 "Maximum characters in complete MCP response including JSON structure. Default: 25000"));
+
+            // Validate response character limit
+            if (characterLimitProp.intValue < 1000)
+            {
+                EditorGUILayout.HelpBox("Response Character Limit must be at least 1000 characters.", MessageType.Error);
+            }
 
             var enableTruncationProp = _settings.FindProperty("enableTruncation");
             EditorGUILayout.PropertyField(enableTruncationProp, new GUIContent(
@@ -81,9 +88,16 @@ namespace Nyamu
 
             // Truncation Settings section
             var truncationMessageProp = _settings.FindProperty("truncationMessage");
+            EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(truncationMessageProp, new GUIContent(
                 "Truncation Message",
                 "Message appended to truncated responses to indicate content was cut off."));
+
+            // Validate truncation message length
+            if (truncationMessageProp.stringValue.Length > 500)
+            {
+                EditorGUILayout.HelpBox("Truncation Message must be 500 characters or less.", MessageType.Error);
+            }
 
             EditorGUILayout.Space();
 
@@ -101,9 +115,16 @@ namespace Nyamu
             EditorGUILayout.LabelField("Server Configuration", EditorStyles.boldLabel);
 
             var serverPortProp = _settings.FindProperty("serverPort");
+            EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(serverPortProp, new GUIContent(
                 "Server Port",
                 "TCP port for the Nyamu MCP server (default: 17932)"));
+
+            // Validate server port range
+            if (serverPortProp.intValue < 1024 || serverPortProp.intValue > 65535)
+            {
+                EditorGUILayout.HelpBox("Server Port must be between 1024 and 65535.", MessageType.Error);
+            }
 
             EditorGUILayout.Space();
 
@@ -143,14 +164,58 @@ namespace Nyamu
 
                 if (GUILayout.Button("Save Settings", GUILayout.Width(100)))
                 {
-                    NyamuSettings.Instance.Save();
-                    EditorUtility.DisplayDialog("Settings Saved",
-                        "Nyamu settings have been saved successfully.", "OK");
+                    // Get current values before validation
+                    var currentSettings = NyamuSettings.Instance;
+                    int originalPort = currentSettings.serverPort;
+                    int originalLimit = currentSettings.responseCharacterLimit;
+                    string originalMessage = currentSettings.truncationMessage;
+
+                    // Validate settings before saving
+                    string validationMessage = ValidateSettings(originalPort, originalLimit, originalMessage);
+                    if (!string.IsNullOrEmpty(validationMessage))
+                    {
+                        EditorUtility.DisplayDialog("Validation Error",
+                            validationMessage, "OK");
+                    }
+                    else
+                    {
+                        NyamuSettings.Instance.Save();
+                        EditorUtility.DisplayDialog("Settings Saved",
+                            "Nyamu settings have been saved successfully.", "OK");
+                    }
                 }
             }
 
             // Apply any changes made in the inspector
             _settings.ApplyModifiedProperties();
+        }
+
+        /// <summary>
+        /// Validate settings before saving
+        /// </summary>
+        private string ValidateSettings(int port, int characterLimit, string truncationMessage)
+        {
+            string errorMessage = "";
+
+            // Validate response character limit
+            if (characterLimit < 1000)
+            {
+                errorMessage += "- Response Character Limit must be at least 1000 characters.\n";
+            }
+
+            // Validate truncation message length
+            if (truncationMessage.Length > 500)
+            {
+                errorMessage += "- Truncation Message must be 500 characters or less.\n";
+            }
+
+            // Validate server port range
+            if (port < 1024 || port > 65535)
+            {
+                errorMessage += "- Server Port must be between 1024 and 65535.\n";
+            }
+
+            return string.IsNullOrEmpty(errorMessage) ? null : errorMessage.Trim();
         }
 
         /// <summary>

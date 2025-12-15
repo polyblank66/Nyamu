@@ -224,13 +224,18 @@ namespace Nyamu
     }
 
     [Serializable]
-    public class ShaderCompilationStatusResponse
+    public class NoneResult
+    {
+    }
+
+    [Serializable]
+    public class ShaderCompilationStatusResponse<T>
     {
         public string status;
         public bool isCompiling;
         public string lastCompilationType;
         public string lastCompilationTime;
-        public object lastCompilationResult;
+        public T lastCompilationResult;
     }
 
     // ============================================================================
@@ -367,7 +372,9 @@ namespace Nyamu
         static readonly object _shaderCompileLock = new object();
 
         // Shader compilation result tracking
-        static object _lastShaderCompilationResult = null;
+        static CompileShaderResponse _lastSingleShaderResult = null;
+        static CompileAllShadersResponse _lastAllShadersResult = null;
+        static CompileShadersRegexResponse _lastRegexShadersResult = null;
         static string _lastShaderCompilationType = "none";
         static DateTime _lastShaderCompilationTime = DateTime.MinValue;
         static readonly object _shaderCompilationResultLock = new object();
@@ -1410,7 +1417,9 @@ namespace Nyamu
             {
                 lock (_shaderCompilationResultLock)
                 {
-                    _lastShaderCompilationResult = response;
+                    _lastSingleShaderResult = response;
+                    _lastAllShadersResult = null;
+                    _lastRegexShadersResult = null;
                     _lastShaderCompilationType = "single";
                     _lastShaderCompilationTime = DateTime.Now;
                 }
@@ -1450,7 +1459,9 @@ namespace Nyamu
             {
                 lock (_shaderCompilationResultLock)
                 {
-                    _lastShaderCompilationResult = response;
+                    _lastSingleShaderResult = null;
+                    _lastAllShadersResult = response;
+                    _lastRegexShadersResult = null;
                     _lastShaderCompilationType = "all";
                     _lastShaderCompilationTime = DateTime.Now;
                 }
@@ -1508,7 +1519,9 @@ namespace Nyamu
             {
                 lock (_shaderCompilationResultLock)
                 {
-                    _lastShaderCompilationResult = response;
+                    _lastSingleShaderResult = null;
+                    _lastAllShadersResult = null;
+                    _lastRegexShadersResult = response;
                     _lastShaderCompilationType = "regex";
                     _lastShaderCompilationTime = DateTime.Now;
                 }
@@ -1527,27 +1540,72 @@ namespace Nyamu
             {
                 var status = _isCompilingShaders ? "compiling" : "idle";
 
-                object resultCopy;
+                CompileShaderResponse singleResult;
+                CompileAllShadersResponse allResult;
+                CompileShadersRegexResponse regexResult;
                 string typeCopy;
                 DateTime timeCopy;
 
                 lock (_shaderCompilationResultLock)
                 {
-                    resultCopy = _lastShaderCompilationResult;
+                    singleResult = _lastSingleShaderResult;
+                    allResult = _lastAllShadersResult;
+                    regexResult = _lastRegexShadersResult;
                     typeCopy = _lastShaderCompilationType;
                     timeCopy = _lastShaderCompilationTime;
                 }
 
-                var statusResponse = new ShaderCompilationStatusResponse
+                var timeString = timeCopy.ToString("yyyy-MM-dd HH:mm:ss");
+
+                if (singleResult != null)
+                {
+                    var response = new ShaderCompilationStatusResponse<CompileShaderResponse>
+                    {
+                        status = status,
+                        isCompiling = _isCompilingShaders,
+                        lastCompilationType = typeCopy,
+                        lastCompilationTime = timeString,
+                        lastCompilationResult = singleResult
+                    };
+                    return JsonUtility.ToJson(response);
+                }
+
+                if (allResult != null)
+                {
+                    var response = new ShaderCompilationStatusResponse<CompileAllShadersResponse>
+                    {
+                        status = status,
+                        isCompiling = _isCompilingShaders,
+                        lastCompilationType = typeCopy,
+                        lastCompilationTime = timeString,
+                        lastCompilationResult = allResult
+                    };
+                    return JsonUtility.ToJson(response);
+                }
+
+                if (regexResult != null)
+                {
+                    var response = new ShaderCompilationStatusResponse<CompileShadersRegexResponse>
+                    {
+                        status = status,
+                        isCompiling = _isCompilingShaders,
+                        lastCompilationType = typeCopy,
+                        lastCompilationTime = timeString,
+                        lastCompilationResult = regexResult
+                    };
+                    return JsonUtility.ToJson(response);
+                }
+
+                // No results available
+                var noneResponse = new ShaderCompilationStatusResponse<NoneResult>
                 {
                     status = status,
                     isCompiling = _isCompilingShaders,
                     lastCompilationType = typeCopy,
-                    lastCompilationTime = timeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
-                    lastCompilationResult = resultCopy
+                    lastCompilationTime = timeString,
+                    lastCompilationResult = new NoneResult()
                 };
-
-                return JsonUtility.ToJson(statusResponse);
+                return JsonUtility.ToJson(noneResponse);
             }
         }
 

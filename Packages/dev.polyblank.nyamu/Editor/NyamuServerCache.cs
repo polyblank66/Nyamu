@@ -24,13 +24,13 @@ namespace Nyamu
                     var json = File.ReadAllText(CachePath);
                     var cache = JsonUtility.FromJson<NyamuServerCache>(json);
 
-                    NyamuLog.Debug($"[Nyamu][ServerCache] Loaded cache from {CachePath}");
+                    NyamuLogger.LogDebug($"[Nyamu][ServerCache] Loaded cache from {CachePath}");
 
                     return cache;
                 }
                 catch (Exception ex)
                 {
-                    NyamuLog.Warning($"[Nyamu][ServerCache] Failed to load cache: {ex.Message}. Using defaults.");
+                    NyamuLogger.LogWarning($"[Nyamu][ServerCache] Failed to load cache: {ex.Message}. Using defaults.");
 
                     // Delete corrupt file
                     try
@@ -42,7 +42,7 @@ namespace Nyamu
             }
             else
             {
-                NyamuLog.Debug("[Nyamu][ServerCache] No cache file found, using defaults");
+                NyamuLogger.LogDebug("[Nyamu][ServerCache] No cache file found, using defaults");
             }
 
             return new NyamuServerCache();
@@ -56,11 +56,11 @@ namespace Nyamu
                 var json = JsonUtility.ToJson(cache, true);
                 File.WriteAllText(CachePath, json);
 
-                NyamuLog.Debug($"[Nyamu][ServerCache] Saved cache to {CachePath}");
+                NyamuLogger.LogDebug($"[Nyamu][ServerCache] Saved cache to {CachePath}");
             }
             catch (Exception ex)
             {
-                NyamuLog.Error($"[Nyamu][ServerCache] Failed to save cache: {ex.Message}");
+                NyamuLogger.LogError($"[Nyamu][ServerCache] Failed to save cache: {ex.Message}");
             }
         }
 
@@ -75,7 +75,7 @@ namespace Nyamu
                 }
                 catch (Exception ex)
                 {
-                    NyamuLog.Error($"[Nyamu][ServerCache] Failed to create cache directory: {ex.Message}");
+                    NyamuLogger.LogError($"[Nyamu][ServerCache] Failed to create cache directory: {ex.Message}");
                 }
             }
         }

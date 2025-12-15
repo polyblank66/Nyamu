@@ -21,7 +21,7 @@ namespace Nyamu
                 var mcpServerPath = FindMcpServerPath();
                 if (string.IsNullOrEmpty(mcpServerPath))
                 {
-                    NyamuLog.Warning("[Nyamu][BatGenerator] Could not locate mcp-server.js. Bat file generation skipped.");
+                    NyamuLogger.LogWarning("[Nyamu][BatGenerator] Could not locate mcp-server.js. Bat file generation skipped.");
                     return;
                 }
 
@@ -31,7 +31,7 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                NyamuLog.Warning($"[Nyamu][BatGenerator] Unexpected error during bat file generation: {ex.Message}");
+                NyamuLogger.LogWarning($"[Nyamu][BatGenerator] Unexpected error during bat file generation: {ex.Message}");
             }
         }
 
@@ -70,7 +70,7 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                NyamuLog.Warning($"[Nyamu][BatGenerator] Failed to locate mcp-server.js: {ex.Message}");
+                NyamuLogger.LogWarning($"[Nyamu][BatGenerator] Failed to locate mcp-server.js: {ex.Message}");
                 return null;
             }
         }
@@ -98,18 +98,18 @@ namespace Nyamu
 
                 if (!ShouldWriteFile(batFilePath, content))
                 {
-                    NyamuLog.Debug($"[Nyamu][BatGenerator] Bat file already up to date: {batFilePath}");
+                    NyamuLogger.LogDebug($"[Nyamu][BatGenerator] Bat file already up to date: {batFilePath}");
                     return;
                 }
 
                 var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
                 File.WriteAllText(batFilePath, content, encoding);
 
-                NyamuLog.Info($"[Nyamu][BatGenerator] Generated bat file: {batFilePath}");
+                NyamuLogger.LogInfo($"[Nyamu][BatGenerator] Generated bat file: {batFilePath}");
             }
             catch (Exception ex)
             {
-                NyamuLog.Warning($"[Nyamu][BatGenerator] Failed to write bat file: {ex.Message}");
+                NyamuLogger.LogWarning($"[Nyamu][BatGenerator] Failed to write bat file: {ex.Message}");
             }
         }
 

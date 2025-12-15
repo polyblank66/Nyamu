@@ -11,7 +11,7 @@ namespace Nyamu
     public class NyamuSettings : ScriptableObject
     {
         private const string SettingsPath = ".nyamu/NyamuSettings.json";
-        private const NyamuLog.LogLevel DefaultMinLogLevel = NyamuLog.LogLevel.Info;
+        private const NyamuLogger.LogLevel DefaultMinLogLevel = NyamuLogger.LogLevel.Info;
 
         public int responseCharacterLimit = 25000;
 
@@ -20,7 +20,7 @@ namespace Nyamu
         [TextArea(2, 3)]
         public string truncationMessage = "\n\n... (response truncated due to length limit)";
 
-        public NyamuLog.LogLevel minLogLevel = DefaultMinLogLevel;
+        public NyamuLogger.LogLevel minLogLevel = DefaultMinLogLevel;
 
         public int serverPort = 17932;
 
@@ -60,7 +60,7 @@ namespace Nyamu
             {
                 var json = EditorJsonUtility.ToJson(settings, true);
                 File.WriteAllText(SettingsPath, json);
-                NyamuLog.Info($"[Nyamu][Settings] Created new Nyamu settings with default values at {SettingsPath}");
+                NyamuLogger.LogInfo($"[Nyamu][Settings] Created new Nyamu settings with default values at {SettingsPath}");
             }
 
             return settings;
@@ -88,7 +88,7 @@ namespace Nyamu
             EnsureSettingsDirectory();
             var json = EditorJsonUtility.ToJson(this, true);
             File.WriteAllText(SettingsPath, json);
-            NyamuLog.Info("[Nyamu][Settings] Nyamu settings saved to " + SettingsPath);
+            NyamuLogger.LogInfo("[Nyamu][Settings] Nyamu settings saved to " + SettingsPath);
 
 #if UNITY_EDITOR_WIN
             // Regenerate bat file with updated port
@@ -111,7 +111,7 @@ namespace Nyamu
 
                 var json = File.ReadAllText(SettingsPath);
                 EditorJsonUtility.FromJsonOverwrite(json, this);
-                NyamuLog.Info("[Nyamu][Settings] Nyamu settings reloaded from " + SettingsPath);
+                NyamuLogger.LogInfo("[Nyamu][Settings] Nyamu settings reloaded from " + SettingsPath);
 
 #if UNITY_EDITOR_WIN
                 // Regenerate bat file with updated port
@@ -124,7 +124,7 @@ namespace Nyamu
             }
             else
             {
-                NyamuLog.Warning("[Nyamu][Settings] Settings file not found at " + SettingsPath);
+                NyamuLogger.LogWarning("[Nyamu][Settings] Settings file not found at " + SettingsPath);
             }
         }
 

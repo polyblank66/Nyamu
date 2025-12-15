@@ -1,10 +1,17 @@
 ﻿using System;
-using System.Diagnostics;
 using UnityEngine;
 
 namespace Nyamu
 {
-	public static class NyamuLog
+	/// <summary>
+	/// Custom logger to make it easy disable different log types
+	///
+	/// Implementation Details:
+	/// Any class whose name ends with "Logger" that implements a method starting with "Log" is ignored
+	/// by the console's double click, unless it is the last call in the stack trace.
+	/// https://www.reddit.com/r/Unity3D/comments/17eikh0/i_found_a_way_to_go_to_the_right_line_in_your/
+	/// </summary>
+	public static class NyamuLogger
 	{
 		public enum LogLevel
 		{
@@ -17,22 +24,22 @@ namespace Nyamu
 			None
 		}
 
-		public static void Debug(string message)
+		public static void LogDebug(string message)
 		{
 			LogInternal(message, LogLevel.Debug);
 		}
 
-		public static void Info(string message)
+		public static void LogInfo(string message)
 		{
 			LogInternal(message, LogLevel.Info);
 		}
 
-		public static void Warning(string message)
+		public static void LogWarning(string message)
 		{
 			LogInternal(message, LogLevel.Warning);
 		}
 
-		public static void Error(string message)
+		public static void LogError(string message)
 		{
 			LogInternal(message, LogLevel.Error);
 		}
@@ -42,12 +49,12 @@ namespace Nyamu
 			try
 			{
 				if (logLevel >= NyamuSettings.Instance.minLogLevel)
-					UnityEngine.Debug.unityLogger.Log(Map(logLevel), message);
+					Debug.unityLogger.Log(Map(logLevel), message);
 			}
 			catch (Exception e)
 			{
-				UnityEngine.Debug.unityLogger.Log(Map(logLevel), message);
-				UnityEngine.Debug.LogException(e);
+				Debug.unityLogger.Log(Map(logLevel), message);
+				Debug.LogException(e);
 			}
 		}
 

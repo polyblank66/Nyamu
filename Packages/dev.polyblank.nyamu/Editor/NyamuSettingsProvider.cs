@@ -116,7 +116,7 @@ namespace Nyamu
                 // Fallback (prevents NullReferenceException if Unity can't resolve the SerializedProperty)
                 var settings = NyamuSettings.Instance;
                 EditorGUI.BeginChangeCheck();
-                var newValue = (NyamuLog.LogLevel)EditorGUILayout.EnumPopup(
+                var newValue = (NyamuLogger.LogLevel)EditorGUILayout.EnumPopup(
                     new GUIContent("Minimum Log Level", "Only logs at or above this level will be emitted."),
                     settings.minLogLevel);
 

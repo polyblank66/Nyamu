@@ -24,26 +24,31 @@ namespace Nyamu
 			None
 		}
 
+		[HideInCallstack]
 		public static void LogDebug(string message)
 		{
 			LogInternal(message, LogLevel.Debug);
 		}
 
+		[HideInCallstack]
 		public static void LogInfo(string message)
 		{
 			LogInternal(message, LogLevel.Info);
 		}
 
+		[HideInCallstack]
 		public static void LogWarning(string message)
 		{
 			LogInternal(message, LogLevel.Warning);
 		}
 
+		[HideInCallstack]
 		public static void LogError(string message)
 		{
 			LogInternal(message, LogLevel.Error);
 		}
 
+		[HideInCallstack]
 		private static void LogInternal(string message, LogLevel logLevel)
 		{
 			try

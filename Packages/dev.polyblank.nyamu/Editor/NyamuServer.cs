@@ -1038,6 +1038,13 @@ namespace Nyamu
                 }
 
                 var bestMatch = matches[0];
+
+                EditorUtility.DisplayProgressBar(
+                    "Compiling Shader",
+                    $"Compiling: {bestMatch.name}",
+                    0.5f
+                );
+
                 var compileResult = CompileShaderAtPath(bestMatch.path);
 
                 return new CompileShaderResponse
@@ -1059,6 +1066,10 @@ namespace Nyamu
                     status = "error",
                     message = $"Shader compilation failed: {ex.Message}"
                 };
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
 
@@ -1131,6 +1142,12 @@ namespace Nyamu
 
                     var result = CompileShaderAtPath(path);
                     results.Add(result);
+
+                    EditorUtility.DisplayProgressBar(
+                        "Compiling Shaders",
+                        $"Compiling shader {i + 1}/{shaderGuids.Length}: {Path.GetFileName(path)}",
+                        (float)(i + 1) / shaderGuids.Length
+                    );
                 }
 
                 var totalTime = (DateTime.Now - startTime).TotalSeconds;
@@ -1159,6 +1176,10 @@ namespace Nyamu
                     totalCompilationTime = 0,
                     results = new ShaderCompileResult[0]
                 };
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
 
@@ -1295,6 +1316,12 @@ namespace Nyamu
                         failCount++;
                     else
                         successCount++;
+
+                    EditorUtility.DisplayProgressBar(
+                        "Compiling Shaders (Regex)",
+                        $"Compiling shader {i + 1}/{matchingShaders.Count}: {Path.GetFileName(shaderPath)}",
+                        (float)(i + 1) / matchingShaders.Count
+                    );
                 }
 
                 var totalTime = (DateTime.Now - startTime).TotalSeconds;
@@ -1324,6 +1351,10 @@ namespace Nyamu
                     totalCompilationTime = 0,
                     results = new ShaderCompileResult[0]
                 };
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
 

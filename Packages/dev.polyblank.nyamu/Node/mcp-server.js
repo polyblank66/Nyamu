@@ -820,7 +820,7 @@ class MCPServer {
         try {
             await this.ensureResponseFormatter();
 
-            const compileResponse = await this.makeHttpRequest('/compile-all-shaders');
+            const compileResponse = await this.makeHttpPostRequest('/compile-all-shaders', '{}');
 
             const formattedText = this.formatCompileAllShadersResponse(compileResponse);
             const finalText = this.responseFormatter.formatResponse(formattedText);
@@ -838,11 +838,8 @@ class MCPServer {
         try {
             await this.ensureResponseFormatter();
 
-            const response = await this.makeHttpRequest('/compile-shaders-regex', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pattern })
-            });
+            const requestBody = JSON.stringify({ pattern });
+            const response = await this.makeHttpPostRequest('/compile-shaders-regex', requestBody);
 
             const formattedText = this.formatCompileShadersRegexResponse(response);
             const finalText = this.responseFormatter.formatResponse(formattedText);

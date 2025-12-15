@@ -1405,6 +1405,16 @@ namespace Nyamu
                 _mainThreadActionQueue.Enqueue(() =>
                 {
                     response = CompileSingleShader(shaderName);
+
+                    lock (_shaderCompilationResultLock)
+                    {
+                        _lastSingleShaderResult = response;
+                        _lastAllShadersResult = null;
+                        _lastRegexShadersResult = null;
+                        _lastShaderCompilationType = "single";
+                        _lastShaderCompilationTime = DateTime.Now;
+                    }
+
                     lock (_shaderCompileLock) { _isCompilingShaders = false; }
                 });
             }
@@ -1414,17 +1424,7 @@ namespace Nyamu
                 Thread.Sleep(100);
 
             if (response != null)
-            {
-                lock (_shaderCompilationResultLock)
-                {
-                    _lastSingleShaderResult = response;
-                    _lastAllShadersResult = null;
-                    _lastRegexShadersResult = null;
-                    _lastShaderCompilationType = "single";
-                    _lastShaderCompilationTime = DateTime.Now;
-                }
                 return JsonUtility.ToJson(response);
-            }
 
             return "{\"status\":\"error\",\"message\":\"Timeout.\"}";
         }
@@ -1447,6 +1447,16 @@ namespace Nyamu
                 _mainThreadActionQueue.Enqueue(() =>
                 {
                     response = CompileAllShaders();
+
+                    lock (_shaderCompilationResultLock)
+                    {
+                        _lastSingleShaderResult = null;
+                        _lastAllShadersResult = response;
+                        _lastRegexShadersResult = null;
+                        _lastShaderCompilationType = "all";
+                        _lastShaderCompilationTime = DateTime.Now;
+                    }
+
                     lock (_shaderCompileLock) { _isCompilingShaders = false; }
                 });
             }
@@ -1456,17 +1466,7 @@ namespace Nyamu
                 Thread.Sleep(100);
 
             if (response != null)
-            {
-                lock (_shaderCompilationResultLock)
-                {
-                    _lastSingleShaderResult = null;
-                    _lastAllShadersResult = response;
-                    _lastRegexShadersResult = null;
-                    _lastShaderCompilationType = "all";
-                    _lastShaderCompilationTime = DateTime.Now;
-                }
                 return JsonUtility.ToJson(response);
-            }
 
             return "{\"status\":\"error\",\"message\":\"Timeout.\"}";
         }
@@ -1507,6 +1507,16 @@ namespace Nyamu
                 _mainThreadActionQueue.Enqueue(() =>
                 {
                     response = CompileShadersRegex(requestData.pattern);
+
+                    lock (_shaderCompilationResultLock)
+                    {
+                        _lastSingleShaderResult = null;
+                        _lastAllShadersResult = null;
+                        _lastRegexShadersResult = response;
+                        _lastShaderCompilationType = "regex";
+                        _lastShaderCompilationTime = DateTime.Now;
+                    }
+
                     lock (_shaderCompileLock) { _isCompilingShaders = false; }
                 });
             }
@@ -1516,17 +1526,7 @@ namespace Nyamu
                 Thread.Sleep(100);
 
             if (response != null)
-            {
-                lock (_shaderCompilationResultLock)
-                {
-                    _lastSingleShaderResult = null;
-                    _lastAllShadersResult = null;
-                    _lastRegexShadersResult = response;
-                    _lastShaderCompilationType = "regex";
-                    _lastShaderCompilationTime = DateTime.Now;
-                }
                 return JsonUtility.ToJson(response);
-            }
 
             return "{\"status\":\"error\",\"message\":\"Timeout.\"}";
         }

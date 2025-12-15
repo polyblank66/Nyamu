@@ -275,7 +275,14 @@ namespace Nyamu
             var targetLower = target.ToLower();
 
             if (queryLower == targetLower) return 100;
-            if (targetLower.Contains(queryLower)) return 90;
+
+            if (targetLower.Contains(queryLower))
+            {
+                var baseScore = 90;
+                var suffixLength = targetLower.Length - queryLower.Length;
+                var suffixPenalty = Math.Min(suffixLength, 15);
+                return baseScore - suffixPenalty;
+            }
 
             var distance = LevenshteinDistance(queryLower, targetLower);
             var maxLength = Math.Max(query.Length, target.Length);
@@ -1377,6 +1384,13 @@ namespace Nyamu
                 _isCompilingShaders = true;
             }
 
+            lock (_shaderCompilationResultLock)
+            {
+                _lastSingleShaderResult = null;
+                _lastAllShadersResult = null;
+                _lastRegexShadersResult = null;
+            }
+
             string shaderName = null;
             try
             {
@@ -1441,6 +1455,13 @@ namespace Nyamu
                 _isCompilingShaders = true;
             }
 
+            lock (_shaderCompilationResultLock)
+            {
+                _lastSingleShaderResult = null;
+                _lastAllShadersResult = null;
+                _lastRegexShadersResult = null;
+            }
+
             CompileAllShadersResponse response = null;
             lock (_mainThreadActionQueue)
             {
@@ -1481,6 +1502,13 @@ namespace Nyamu
                 if (_isCompilingShaders)
                     return "{\"status\":\"warning\",\"message\":\"Shader compilation already in progress.\"}";
                 _isCompilingShaders = true;
+            }
+
+            lock (_shaderCompilationResultLock)
+            {
+                _lastSingleShaderResult = null;
+                _lastAllShadersResult = null;
+                _lastRegexShadersResult = null;
             }
 
             CompileShadersRegexRequest requestData = null;

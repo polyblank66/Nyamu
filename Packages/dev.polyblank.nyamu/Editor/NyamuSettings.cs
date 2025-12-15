@@ -11,6 +11,7 @@ namespace Nyamu
     public class NyamuSettings : ScriptableObject
     {
         private const string SettingsPath = ".nyamu/NyamuSettings.json";
+        private const NyamuLog.LogLevel DefaultMinLogLevel = NyamuLog.LogLevel.Info;
 
         public int responseCharacterLimit = 25000;
 
@@ -19,7 +20,7 @@ namespace Nyamu
         [TextArea(2, 3)]
         public string truncationMessage = "\n\n... (response truncated due to length limit)";
 
-        public NyamuLog.MinLogLevel minLogLevel = NyamuLog.MinLogLevel.Warning;
+        public NyamuLog.LogLevel minLogLevel = DefaultMinLogLevel;
 
         public int serverPort = 17932;
 
@@ -144,7 +145,7 @@ namespace Nyamu
             responseCharacterLimit = 25000;
             enableTruncation = true;
             truncationMessage = "\n\n... (response truncated due to length limit)";
-            minLogLevel = NyamuLog.MinLogLevel.Warning;
+            minLogLevel = DefaultMinLogLevel;
             serverPort = 17932;
             Save();
         }

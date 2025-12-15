@@ -938,10 +938,72 @@ namespace Nyamu
             };
         }
 
-        // Synchronous wrapper for backward compatibility
+        // Synchronous version using polling (no deadlock on main thread)
         static ShaderCompileResult CompileShaderAtPath(string shaderPath)
         {
-            return CompileShaderAtPathAsync(shaderPath).GetAwaiter().GetResult();
+            var startTime = DateTime.Now;
+
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
+            if (shader == null)
+            {
+                return new ShaderCompileResult
+                {
+                    shaderName = Path.GetFileNameWithoutExtension(shaderPath),
+                    shaderPath = shaderPath,
+                    hasErrors = true,
+                    errorCount = 1,
+                    errors = new[] { new ShaderCompileError { message = "Failed to load shader asset", file = shaderPath } }
+                };
+            }
+
+            ShaderUtil.ClearShaderMessages(shader);
+            AssetDatabase.ImportAsset(shaderPath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+
+            // Polling approach to avoid deadlock on main thread
+            var timeout = DateTime.Now.AddSeconds(10);
+            while (ShaderUtil.anythingCompiling && DateTime.Now < timeout)
+                Thread.Sleep(50);
+
+            var compilationTime = (DateTime.Now - startTime).TotalSeconds;
+            shader = AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
+
+            var messageCount = ShaderUtil.GetShaderMessageCount(shader);
+            var errors = new List<ShaderCompileError>();
+            var warnings = new List<ShaderCompileError>();
+
+            for (var i = 0; i < messageCount; i++)
+            {
+                var msg = ShaderUtil.GetShaderMessages(shader)[i];
+                var error = new ShaderCompileError
+                {
+                    message = msg.message,
+                    messageDetails = msg.messageDetails,
+                    file = msg.file,
+                    line = msg.line,
+                    platform = msg.platform.ToString()
+                };
+
+                if (msg.severity == UnityEditor.Rendering.ShaderCompilerMessageSeverity.Error)
+                    errors.Add(error);
+                else if (msg.severity == UnityEditor.Rendering.ShaderCompilerMessageSeverity.Warning)
+                    warnings.Add(error);
+            }
+
+            var platformNames = new List<string> { "Unknown" };
+
+            return new ShaderCompileResult
+            {
+                shaderName = shader.name,
+                shaderPath = shaderPath,
+                hasErrors = errors.Count > 0,
+                hasWarnings = warnings.Count > 0,
+                errorCount = errors.Count,
+                warningCount = warnings.Count,
+                errors = errors.ToArray(),
+                warnings = warnings.ToArray(),
+                compilationTime = compilationTime,
+                targetPlatforms = platformNames.ToArray()
+            };
         }
 
         static CompileShaderResponse CompileSingleShader(string queryName)
@@ -1051,10 +1113,53 @@ namespace Nyamu
             }
         }
 
-        // Synchronous wrapper for backward compatibility
+        // Synchronous version using polling (no deadlock on main thread)
         static CompileAllShadersResponse CompileAllShaders()
         {
-            return CompileAllShadersAsync().GetAwaiter().GetResult();
+            var startTime = DateTime.Now;
+            var results = new List<ShaderCompileResult>();
+
+            try
+            {
+                var shaderGuids = AssetDatabase.FindAssets("t:Shader");
+                Debug.Log($"[NyamuServer] Compiling {shaderGuids.Length} shaders...");
+
+                for (var i = 0; i < shaderGuids.Length; i++)
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(shaderGuids[i]);
+                    Debug.Log($"[NyamuServer] Compiling shader {i + 1}/{shaderGuids.Length}: {path}");
+
+                    var result = CompileShaderAtPath(path);
+                    results.Add(result);
+                }
+
+                var totalTime = (DateTime.Now - startTime).TotalSeconds;
+                var successCount = results.Count(r => !r.hasErrors);
+                var failCount = results.Count(r => r.hasErrors);
+
+                return new CompileAllShadersResponse
+                {
+                    status = failCount > 0 ? "warning" : "ok",
+                    totalShaders = results.Count,
+                    successfulCompilations = successCount,
+                    failedCompilations = failCount,
+                    totalCompilationTime = totalTime,
+                    results = results.ToArray()
+                };
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[NyamuServer] Compile all shaders failed: {ex.Message}");
+                return new CompileAllShadersResponse
+                {
+                    status = "error",
+                    totalShaders = 0,
+                    successfulCompilations = 0,
+                    failedCompilations = 0,
+                    totalCompilationTime = 0,
+                    results = new ShaderCompileResult[0]
+                };
+            }
         }
 
         static async Task<CompileShadersRegexResponse> CompileShadersRegexAsync(string pattern)
@@ -1140,10 +1245,86 @@ namespace Nyamu
             }
         }
 
-        // Synchronous wrapper for backward compatibility
+        // Synchronous version using polling (no deadlock on main thread)
         static CompileShadersRegexResponse CompileShadersRegex(string pattern)
         {
-            return CompileShadersRegexAsync(pattern).GetAwaiter().GetResult();
+            try
+            {
+                var regex = new System.Text.RegularExpressions.Regex(pattern);
+                var allShaderGuids = AssetDatabase.FindAssets("t:Shader");
+                var matchingShaders = new List<string>();
+
+                foreach (var guid in allShaderGuids)
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (regex.IsMatch(path))
+                        matchingShaders.Add(path);
+                }
+
+                if (matchingShaders.Count == 0)
+                {
+                    return new CompileShadersRegexResponse
+                    {
+                        status = "ok",
+                        message = "No shaders matched the pattern",
+                        pattern = pattern,
+                        totalShaders = 0,
+                        successfulCompilations = 0,
+                        failedCompilations = 0,
+                        totalCompilationTime = 0,
+                        results = new ShaderCompileResult[0]
+                    };
+                }
+
+                Debug.Log($"[NyamuServer] Compiling {matchingShaders.Count} shaders matching pattern: {pattern}");
+
+                var results = new List<ShaderCompileResult>();
+                var startTime = DateTime.Now;
+                var successCount = 0;
+                var failCount = 0;
+
+                for (var i = 0; i < matchingShaders.Count; i++)
+                {
+                    var shaderPath = matchingShaders[i];
+                    Debug.Log($"[NyamuServer] Compiling shader {i + 1}/{matchingShaders.Count}: {shaderPath}");
+
+                    var result = CompileShaderAtPath(shaderPath);
+                    results.Add(result);
+
+                    if (result.hasErrors)
+                        failCount++;
+                    else
+                        successCount++;
+                }
+
+                var totalTime = (DateTime.Now - startTime).TotalSeconds;
+
+                return new CompileShadersRegexResponse
+                {
+                    status = failCount > 0 ? "warning" : "ok",
+                    message = $"Compiled {results.Count} shaders matching pattern",
+                    pattern = pattern,
+                    totalShaders = results.Count,
+                    successfulCompilations = successCount,
+                    failedCompilations = failCount,
+                    totalCompilationTime = totalTime,
+                    results = results.ToArray()
+                };
+            }
+            catch (Exception ex)
+            {
+                return new CompileShadersRegexResponse
+                {
+                    status = "error",
+                    message = $"Failed to compile shaders: {ex.Message}",
+                    pattern = pattern,
+                    totalShaders = 0,
+                    successfulCompilations = 0,
+                    failedCompilations = 0,
+                    totalCompilationTime = 0,
+                    results = new ShaderCompileResult[0]
+                };
+            }
         }
 
         static string HandleCompileShaderRequest(HttpListenerRequest request)

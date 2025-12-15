@@ -334,7 +334,7 @@
 								"compile-all-shaders"
 							]
 						},
-						"description": "Compiles all shaders in the Unity project. Returns per-shader results with errors/warnings.\n\n**Warning:** Can take a long time for projects with many shaders (10+ seconds per shader).\n\n**Response Fields:**\n- `status`: \"ok\" (all success), \"warning\" (mixed results), or \"error\"\n- `totalShaders`: Total number of shaders compiled\n- `successfulCompilations`: Number of shaders that compiled without errors\n- `failedCompilations`: Number of shaders with compilation errors\n- `totalCompilationTime`: Total time spent compiling all shaders (seconds)\n- `results`: Array of per-shader compilation results"
+						"description": "Compiles all shaders in the Unity project. Returns per-shader results with errors/warnings.\n\n**Warning:** Can take 15+ minutes or much longer, especially for URP projects (10+ seconds per shader). Strongly consider using compile-shaders-regex for targeted compilation instead.\n\n**Response Fields:**\n- `status`: \"ok\" (all success), \"warning\" (mixed results), or \"error\"\n- `totalShaders`: Total number of shaders compiled\n- `successfulCompilations`: Number of shaders that compiled without errors\n- `failedCompilations`: Number of shaders with compilation errors\n- `totalCompilationTime`: Total time spent compiling all shaders (seconds)\n- `results`: Array of per-shader compilation results"
 					},
 					"response": [
 						{
@@ -425,9 +425,290 @@
 							"body": "{\n    \"status\": \"ok\",\n    \"totalShaders\": 0,\n    \"successfulCompilations\": 0,\n    \"failedCompilations\": 0,\n    \"totalCompilationTime\": 0.02,\n    \"results\": []\n}"
 						}
 					]
+				},
+				{
+					"name": "Compile Shaders Regex",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pattern\": \".*Standard.*\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:17932/compile-shaders-regex",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"compile-shaders-regex"
+							]
+						},
+						"description": "Compiles shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings.\n\n**Request Body:**\n- `pattern` (required): Regex pattern to match against shader file paths\n  - Example: `\".*Standard.*\"` matches all Standard shaders\n  - Example: `\"Assets/Shaders/Custom/.*\"` matches shaders in specific folder\n\n**Response Fields:**\n- `status`: \"ok\" (all success), \"warning\" (mixed results), or \"error\"\n- `message`: Human-readable message\n- `pattern`: The regex pattern that was used\n- `totalShaders`: Total number of shaders matched and compiled\n- `successfulCompilations`: Number of shaders that compiled without errors\n- `failedCompilations`: Number of shaders with compilation errors\n- `totalCompilationTime`: Total time spent compiling matched shaders (seconds)\n- `results`: Array of per-shader compilation results"
+					},
+					"response": [
+						{
+							"name": "Success - Pattern Matched",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"pattern\": \".*Test.*\"\n}"
+								},
+								"url": {
+									"raw": "http://localhost:17932/compile-shaders-regex",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-shaders-regex"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"Compiled 1 shaders matching pattern\",\n    \"pattern\": \".*Test.*\",\n    \"totalShaders\": 1,\n    \"successfulCompilations\": 1,\n    \"failedCompilations\": 0,\n    \"totalCompilationTime\": 10.42,\n    \"results\": [\n        {\n            \"shaderName\": \"Custom/TestShader\",\n            \"shaderPath\": \"Assets/TestShader.shader\",\n            \"hasErrors\": false,\n            \"hasWarnings\": false,\n            \"errorCount\": 0,\n            \"warningCount\": 0,\n            \"errors\": [],\n            \"warnings\": [],\n            \"compilationTime\": 10.42,\n            \"targetPlatforms\": [\"Unknown\"]\n        }\n    ]\n}"
+						},
+						{
+							"name": "Success - No Matches",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"pattern\": \".*NonExistent.*\"\n}"
+								},
+								"url": {
+									"raw": "http://localhost:17932/compile-shaders-regex",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-shaders-regex"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"ok\",\n    \"message\": \"No shaders matched the pattern\",\n    \"pattern\": \".*NonExistent.*\",\n    \"totalShaders\": 0,\n    \"successfulCompilations\": 0,\n    \"failedCompilations\": 0,\n    \"totalCompilationTime\": 0,\n    \"results\": []\n}"
+						},
+						{
+							"name": "Error - Invalid Pattern",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"pattern\": \"[invalid(\"\n}"
+								},
+								"url": {
+									"raw": "http://localhost:17932/compile-shaders-regex",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"compile-shaders-regex"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"error\",\n    \"message\": \"Failed to compile shaders: parsing '[invalid(' - Unterminated [] set.\",\n    \"pattern\": \"[invalid(\",\n    \"totalShaders\": 0,\n    \"successfulCompilations\": 0,\n    \"failedCompilations\": 0,\n    \"totalCompilationTime\": 0,\n    \"results\": []\n}"
+						}
+					]
+				},
+				{
+					"name": "Shader Compilation Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:17932/shader-compilation-status",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "17932",
+							"path": [
+								"shader-compilation-status"
+							]
+						},
+						"description": "Gets the current shader compilation status without triggering new compilation. Returns whether shaders are compiling, last compilation type, and complete results from the previous shader compilation command.\n\n**Use Case:** Check this before calling compile-shader/compile-all-shaders/compile-shaders-regex to avoid redundant compilations.\n\n**Response Fields:**\n- `status`: \"compiling\" or \"idle\"\n- `isCompiling`: boolean - whether shader compilation is currently active\n- `lastCompilationType`: \"single\", \"all\", \"regex\", or \"none\" - type of last compilation\n- `lastCompilationTime`: ISO timestamp of last shader compilation finish\n- `lastCompilationResult`: Complete result object from the last shader compilation (CompileShaderResponse, CompileAllShadersResponse, or CompileShadersRegexResponse)"
+					},
+					"response": [
+						{
+							"name": "Idle - After Single Shader",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/shader-compilation-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"shader-compilation-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"idle\",\n    \"isCompiling\": false,\n    \"lastCompilationType\": \"single\",\n    \"lastCompilationTime\": \"2025-12-15 14:30:45\",\n    \"lastCompilationResult\": {\n        \"status\": \"ok\",\n        \"message\": \"Compiled shader: Custom/TestShader\",\n        \"result\": {\n            \"shaderName\": \"Custom/TestShader\",\n            \"hasErrors\": false,\n            \"errorCount\": 0\n        }\n    }\n}"
+						},
+						{
+							"name": "Idle - After Regex Compilation",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/shader-compilation-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"shader-compilation-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"idle\",\n    \"isCompiling\": false,\n    \"lastCompilationType\": \"regex\",\n    \"lastCompilationTime\": \"2025-12-15 14:35:20\",\n    \"lastCompilationResult\": {\n        \"status\": \"ok\",\n        \"message\": \"Compiled 3 shaders matching pattern\",\n        \"pattern\": \".*Standard.*\",\n        \"totalShaders\": 3,\n        \"successfulCompilations\": 3,\n        \"failedCompilations\": 0\n    }\n}"
+						},
+						{
+							"name": "Compiling",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/shader-compilation-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"shader-compilation-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"compiling\",\n    \"isCompiling\": true,\n    \"lastCompilationType\": \"all\",\n    \"lastCompilationTime\": \"2025-12-15 14:20:10\",\n    \"lastCompilationResult\": null\n}"
+						},
+						{
+							"name": "Idle - No Previous Compilation",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:17932/shader-compilation-status",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "17932",
+									"path": [
+										"shader-compilation-status"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"idle\",\n    \"isCompiling\": false,\n    \"lastCompilationType\": \"none\",\n    \"lastCompilationTime\": \"0001-01-01 00:00:00\",\n    \"lastCompilationResult\": null\n}"
+						}
+					]
 				}
 			],
-			"description": "Endpoints for Unity shader compilation with fuzzy search and error reporting"
+			"description": "Endpoints for Unity shader compilation with fuzzy search, regex filtering, and error reporting"
 		},
 		{
 			"name": "Testing",

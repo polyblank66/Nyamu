@@ -332,7 +332,7 @@ class MCPServer {
                     }
                 },
                 compile_all_shaders: {
-                    description: "Compile all shaders in Unity project. Returns per-shader results with errors/warnings. WARNING: Can take long for large projects. LLM HINTS: Use compile_shader for specific shaders instead.",
+                    description: "Compile all shaders in Unity project. Returns per-shader results with errors/warnings. WARNING: Can take 15+ minutes or much longer, especially for URP projects. Strongly consider using compile_shaders_regex instead. LLM HINTS: Avoid this tool unless absolutely necessary. Use compile_shader or compile_shaders_regex for targeted compilation.",
                     inputSchema: {
                         type: "object",
                         properties: {
@@ -342,6 +342,32 @@ class MCPServer {
                                 default: 120
                             }
                         },
+                        required: []
+                    }
+                },
+                compile_shaders_regex: {
+                    description: "Compile shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. LLM HINTS: Use this to compile a subset of shaders based on path patterns.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            pattern: {
+                                type: "string",
+                                description: "Regex pattern to match against shader file paths. Example: '.*Standard.*', 'Assets/Shaders/Custom/.*'"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 120)",
+                                default: 120
+                            }
+                        },
+                        required: ["pattern"]
+                    }
+                },
+                shader_compilation_status: {
+                    description: "Get current shader compilation status without triggering compilation. Returns whether shaders are compiling, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command. LLM HINTS: Always check this before calling compile_shader/compile_all_shaders/compile_shaders_regex to avoid redundant compilations.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
                         required: []
                     }
                 }
@@ -441,6 +467,10 @@ class MCPServer {
                     return await this.callCompileShader(id, args.shader_name, args.timeout || 30);
                 case 'compile_all_shaders':
                     return await this.callCompileAllShaders(id, args.timeout || 120);
+                case 'compile_shaders_regex':
+                    return await this.callCompileShadersRegex(id, args.pattern, args.timeout || 120);
+                case 'shader_compilation_status':
+                    return await this.callShaderCompilationStatus(id);
                 default:
                     return {
                         jsonrpc: '2.0',
@@ -804,6 +834,45 @@ class MCPServer {
         }
     }
 
+    async callCompileShadersRegex(id, pattern, timeoutSeconds) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const response = await this.makeHttpRequest('/compile-shaders-regex', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pattern })
+            });
+
+            const formattedText = this.formatCompileShadersRegexResponse(response);
+            const finalText = this.responseFormatter.formatResponse(formattedText);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: finalText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to compile shaders by regex: ${error.message}`);
+        }
+    }
+
+    async callShaderCompilationStatus(id) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const statusResponse = await this.makeHttpRequest('/shader-compilation-status');
+
+            const formattedText = this.responseFormatter.formatJsonResponse(statusResponse);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: formattedText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to get shader compilation status: ${error.message}`);
+        }
+    }
+
     formatShaderCompileResponse(response) {
         let text = '';
 
@@ -877,6 +946,42 @@ class MCPServer {
                     });
                     if (result.errors.length > 3) {
                         text += `   ... and ${result.errors.length - 3} more errors\n`;
+                    }
+                }
+            });
+        }
+
+        return text;
+    }
+
+    formatCompileShadersRegexResponse(response) {
+        if (response.status === 'error') {
+            return `❌ Shader Regex Compilation Failed\n\n${response.message}`;
+        }
+
+        let text = '=== Shader Regex Compilation Results ===\n\n';
+        text += `Pattern: ${response.pattern}\n`;
+        text += `Total Matched: ${response.totalShaders}\n`;
+        text += `Successful: ${response.successfulCompilations}\n`;
+        text += `Failed: ${response.failedCompilations}\n`;
+        text += `Total Time: ${response.totalCompilationTime.toFixed(2)}s\n\n`;
+
+        if (response.failedCompilations > 0 && response.results) {
+            text += 'Failed Shaders:\n';
+            response.results.filter(r => r.hasErrors).forEach(shader => {
+                text += `\n❌ ${shader.shaderName}\n`;
+                text += `   Path: ${shader.shaderPath}\n`;
+                text += `   Errors: ${shader.errorCount}\n`;
+
+                if (shader.errors && shader.errors.length > 0) {
+                    const errorLimit = 3;
+                    shader.errors.slice(0, errorLimit).forEach(err => {
+                        const fileInfo = err.file ? ` (${err.file}:${err.line})` : '';
+                        text += `   • ${err.message}${fileInfo}\n`;
+                    });
+
+                    if (shader.errors.length > errorLimit) {
+                        text += `   ... and ${shader.errors.length - errorLimit} more errors\n`;
                     }
                 }
             });

@@ -19,7 +19,7 @@ namespace Nyamu
         [TextArea(2, 3)]
         public string truncationMessage = "\n\n... (response truncated due to length limit)";
 
-        public bool enableDebugLogs = false;
+        public NyamuLog.MinLogLevel minLogLevel = NyamuLog.MinLogLevel.Warning;
 
         public int serverPort = 17932;
 
@@ -59,7 +59,7 @@ namespace Nyamu
             {
                 var json = EditorJsonUtility.ToJson(settings, true);
                 File.WriteAllText(SettingsPath, json);
-                Debug.Log($"Created new Nyamu settings with default values at {SettingsPath}");
+                NyamuLog.Info($"[Nyamu][Settings] Created new Nyamu settings with default values at {SettingsPath}");
             }
 
             return settings;
@@ -87,7 +87,7 @@ namespace Nyamu
             EnsureSettingsDirectory();
             var json = EditorJsonUtility.ToJson(this, true);
             File.WriteAllText(SettingsPath, json);
-            Debug.Log("Nyamu settings saved to " + SettingsPath);
+            NyamuLog.Info("[Nyamu][Settings] Nyamu settings saved to " + SettingsPath);
 
 #if UNITY_EDITOR_WIN
             // Regenerate bat file with updated port
@@ -110,7 +110,7 @@ namespace Nyamu
 
                 var json = File.ReadAllText(SettingsPath);
                 EditorJsonUtility.FromJsonOverwrite(json, this);
-                Debug.Log("Nyamu settings reloaded from " + SettingsPath);
+                NyamuLog.Info("[Nyamu][Settings] Nyamu settings reloaded from " + SettingsPath);
 
 #if UNITY_EDITOR_WIN
                 // Regenerate bat file with updated port
@@ -123,7 +123,7 @@ namespace Nyamu
             }
             else
             {
-                Debug.LogWarning("Settings file not found at " + SettingsPath);
+                NyamuLog.Warning("[Nyamu][Settings] Settings file not found at " + SettingsPath);
             }
         }
 
@@ -144,7 +144,7 @@ namespace Nyamu
             responseCharacterLimit = 25000;
             enableTruncation = true;
             truncationMessage = "\n\n... (response truncated due to length limit)";
-            enableDebugLogs = false;
+            minLogLevel = NyamuLog.MinLogLevel.Warning;
             serverPort = 17932;
             Save();
         }

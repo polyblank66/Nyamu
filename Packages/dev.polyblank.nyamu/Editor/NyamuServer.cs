@@ -450,9 +450,9 @@ namespace Nyamu
         // Public method to restart server (e.g., when port changes)
         public static void Restart()
         {
-            Debug.Log("[NyamuServer] Restarting server...");
+            NyamuLog.Info("[Nyamu][Server] Restarting server...");
             Initialize();
-            Debug.Log($"[NyamuServer] Server restarted on port {NyamuSettings.Instance.serverPort}");
+            NyamuLog.Info($"[Nyamu][Server] Server restarted on port {NyamuSettings.Instance.serverPort}");
         }
 
         // ========================================================================
@@ -564,10 +564,7 @@ namespace Nyamu
 
         static string HandleCompileAndWaitRequest()
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-            {
-                Debug.Log($"[NyamuServer][Debug] Entering HandleCompileAndWaitRequest");
-            }
+            NyamuLog.Debug($"[Nyamu][Server] Entering HandleCompileAndWaitRequest");
 
             DateTime compileRequestTimeCopy;
             lock (_timestampLock)
@@ -633,10 +630,7 @@ namespace Nyamu
 
         static string HandleCompileStatusRequest()
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-            {
-                Debug.Log($"[NyamuServer][Debug] Entering HandleCompileStatusRequest");
-            }
+            NyamuLog.Debug($"[Nyamu][Server] Entering HandleCompileStatusRequest");
 
             var status = _isCompiling || EditorApplication.isCompiling ? "compiling" : "idle";
 
@@ -660,10 +654,8 @@ namespace Nyamu
 
         static string HandleRunTestsRequest(HttpListenerRequest request)
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-            {
-                Debug.Log($"[NyamuServer][Debug] Entering HandleRunTestsRequest");
-            }
+            NyamuLog.Debug($"[Nyamu][Server] Entering HandleRunTestsRequest");
+
             var query = request.Url.Query ?? "";
             var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
             var filter = ExtractQueryParameter(query, "filter");
@@ -703,10 +695,7 @@ namespace Nyamu
 
         static string HandleTestStatusRequest()
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-            {
-                Debug.Log($"[NyamuServer][Debug] Entering HandleTestStatusRequest");
-            }
+            NyamuLog.Debug($"[Nyamu][Server] Entering HandleTestStatusRequest");
 
             var status = _isRunningTests ? "running" : "idle";
 
@@ -731,10 +720,7 @@ namespace Nyamu
 
         static string HandleEditorStatusRequest()
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-            {
-                Debug.Log($"[NyamuServer][Debug] Entering HandleEditorStatusRequest");
-            }
+            NyamuLog.Debug($"[Nyamu][Server] Entering HandleEditorStatusRequest");
             var statusResponse = new EditorStatusResponse
             {
                 isCompiling = _isCompiling || EditorApplication.isCompiling,
@@ -746,10 +732,7 @@ namespace Nyamu
 
         static string HandleMcpSettingsRequest()
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-            {
-                Debug.Log($"[NyamuServer][Debug] Entering HandleMcpSettingsRequest");
-            }
+            NyamuLog.Debug($"[Nyamu][Server] Entering HandleMcpSettingsRequest");
             lock (_settingsLock)
             {
                 if (_cachedSettings == null)
@@ -774,7 +757,7 @@ namespace Nyamu
                             }
                             catch (System.Exception ex)
                             {
-                                Debug.LogError($"[NyamuServer] Failed to load Nyamu settings: {ex.Message}");
+                                NyamuLog.Error($"[Nyamu][Server] Failed to load Nyamu settings: {ex.Message}");
                                 // Use default settings as fallback
                                 settingsResult = new McpSettingsResponse
                                 {
@@ -819,10 +802,7 @@ namespace Nyamu
 
         static string HandleCancelTestsRequest(HttpListenerRequest request)
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-            {
-                Debug.Log($"[NyamuServer][Debug] Entering HandleCancelTestsRequest");
-            }
+            NyamuLog.Debug($"[Nyamu][Server] Entering HandleCancelTestsRequest");
             try
             {
                 var query = request.Url.Query ?? "";
@@ -858,7 +838,7 @@ namespace Nyamu
 
                 if (cancelResult)
                 {
-                    Debug.Log($"[NyamuServer] Test run cancellation requested for ID: {guidToCancel}");
+                    NyamuLog.Info($"[Nyamu][Server] Test run cancellation requested for ID: {guidToCancel}");
                     return $"{{\"status\":\"ok\", \"message\":\"Test run cancellation requested for ID: {guidToCancel}\", \"guid\":\"{guidToCancel}\"}}";
                 }
                 else
@@ -868,7 +848,7 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Error cancelling tests: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Error cancelling tests: {ex.Message}");
                 return $"{{\"status\":\"error\", \"message\":\"Failed to cancel tests: {ex.Message}\"}}";
             }
         }
@@ -1074,7 +1054,7 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Shader compilation failed: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Shader compilation failed: {ex.Message}");
                 return new CompileShaderResponse
                 {
                     status = "error",
@@ -1095,12 +1075,12 @@ namespace Nyamu
             try
             {
                 var shaderGuids = AssetDatabase.FindAssets("t:Shader");
-                Debug.Log($"[NyamuServer] Compiling {shaderGuids.Length} shaders...");
+                NyamuLog.Info($"[Nyamu][Server] Compiling {shaderGuids.Length} shaders...");
 
                 for (var i = 0; i < shaderGuids.Length; i++)
                 {
                     var path = AssetDatabase.GUIDToAssetPath(shaderGuids[i]);
-                    Debug.Log($"[NyamuServer] Compiling shader {i + 1}/{shaderGuids.Length}: {path}");
+                    NyamuLog.Info($"[Nyamu][Server] Compiling shader {i + 1}/{shaderGuids.Length}: {path}");
 
                     var result = await CompileShaderAtPathAsync(path);
                     results.Add(result);
@@ -1125,7 +1105,7 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Compile all shaders failed: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Compile all shaders failed: {ex.Message}");
                 return new CompileAllShadersResponse
                 {
                     status = "error",
@@ -1147,12 +1127,12 @@ namespace Nyamu
             try
             {
                 var shaderGuids = AssetDatabase.FindAssets("t:Shader");
-                Debug.Log($"[NyamuServer] Compiling {shaderGuids.Length} shaders...");
+                NyamuLog.Info($"[Nyamu][Server] Compiling {shaderGuids.Length} shaders...");
 
                 for (var i = 0; i < shaderGuids.Length; i++)
                 {
                     var path = AssetDatabase.GUIDToAssetPath(shaderGuids[i]);
-                    Debug.Log($"[NyamuServer] Compiling shader {i + 1}/{shaderGuids.Length}: {path}");
+                    NyamuLog.Info($"[Nyamu][Server] Compiling shader {i + 1}/{shaderGuids.Length}: {path}");
 
                     var result = CompileShaderAtPath(path);
                     results.Add(result);
@@ -1180,7 +1160,7 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Compile all shaders failed: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Compile all shaders failed: {ex.Message}");
                 return new CompileAllShadersResponse
                 {
                     status = "error",
@@ -1227,7 +1207,7 @@ namespace Nyamu
                     };
                 }
 
-                Debug.Log($"[NyamuServer] Compiling {matchingShaders.Count} shaders matching pattern: {pattern}");
+                NyamuLog.Info($"[Nyamu][Server] Compiling {matchingShaders.Count} shaders matching pattern: {pattern}");
 
                 var results = new List<ShaderCompileResult>();
                 var startTime = DateTime.Now;
@@ -1237,7 +1217,7 @@ namespace Nyamu
                 for (var i = 0; i < matchingShaders.Count; i++)
                 {
                     var shaderPath = matchingShaders[i];
-                    Debug.Log($"[NyamuServer] Compiling shader {i + 1}/{matchingShaders.Count}: {shaderPath}");
+                    NyamuLog.Info($"[Nyamu][Server] Compiling shader {i + 1}/{matchingShaders.Count}: {shaderPath}");
 
                     var result = await CompileShaderAtPathAsync(shaderPath);
                     results.Add(result);
@@ -1311,7 +1291,7 @@ namespace Nyamu
                     };
                 }
 
-                Debug.Log($"[NyamuServer] Compiling {matchingShaders.Count} shaders matching pattern: {pattern}");
+                NyamuLog.Info($"[Nyamu][Server] Compiling {matchingShaders.Count} shaders matching pattern: {pattern}");
 
                 var results = new List<ShaderCompileResult>();
                 var startTime = DateTime.Now;
@@ -1321,7 +1301,7 @@ namespace Nyamu
                 for (var i = 0; i < matchingShaders.Count; i++)
                 {
                     var shaderPath = matchingShaders[i];
-                    Debug.Log($"[NyamuServer] Compiling shader {i + 1}/{matchingShaders.Count}: {shaderPath}");
+                    NyamuLog.Info($"[Nyamu][Server] Compiling shader {i + 1}/{matchingShaders.Count}: {shaderPath}");
 
                     var result = CompileShaderAtPath(shaderPath);
                     results.Add(result);
@@ -1374,8 +1354,7 @@ namespace Nyamu
 
         static string HandleCompileShaderRequest(HttpListenerRequest request)
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-                Debug.Log("[NyamuServer][Debug] Entering HandleCompileShaderRequest");
+            NyamuLog.Debug("[Nyamu][Server] Entering HandleCompileShaderRequest");
 
             lock (_shaderCompileLock)
             {
@@ -1443,10 +1422,9 @@ namespace Nyamu
             return "{\"status\":\"error\",\"message\":\"Timeout.\"}";
         }
 
-        static string HandleCompileAllShadersRequest(HttpListenerRequest request)
+        static string HandleCompileAllShadersRequest(HttpListenerRequest _)
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-                Debug.Log("[NyamuServer][Debug] Entering HandleCompileAllShadersRequest");
+            NyamuLog.Debug("[Nyamu][Server] Entering HandleCompileAllShadersRequest");
 
             lock (_shaderCompileLock)
             {
@@ -1670,7 +1648,7 @@ namespace Nyamu
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Failed to refresh cached Nyamu settings: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Failed to refresh cached Nyamu settings: {ex.Message}");
             }
         }
 
@@ -1686,17 +1664,14 @@ namespace Nyamu
                     _lastTestTime = ParseDateTime(cache.lastTestRunTime);
                 }
 
-                if (NyamuSettings.Instance.enableDebugLogs)
-                {
-                    Debug.Log($"[NyamuServer] Restored timestamps from cache - " +
-                             $"LastCompile: {_lastCompileTime:yyyy-MM-dd HH:mm:ss}, " +
-                             $"CompileRequest: {_compileRequestTime:yyyy-MM-dd HH:mm:ss}, " +
-                             $"LastTest: {_lastTestTime:yyyy-MM-dd HH:mm:ss}");
-                }
+                NyamuLog.Debug($"[Nyamu][Server] Restored timestamps from cache - " +
+                         $"LastCompile: {_lastCompileTime:yyyy-MM-dd HH:mm:ss}, " +
+                         $"CompileRequest: {_compileRequestTime:yyyy-MM-dd HH:mm:ss}, " +
+                         $"LastTest: {_lastTestTime:yyyy-MM-dd HH:mm:ss}");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Failed to load timestamp cache: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Failed to load timestamp cache: {ex.Message}");
             }
         }
 
@@ -1717,7 +1692,7 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Failed to save timestamp cache: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Failed to save timestamp cache: {ex.Message}");
             }
         }
 
@@ -1761,10 +1736,7 @@ namespace Nyamu
 
         static string HandleRefreshAssetsRequest(HttpListenerRequest request)
         {
-            if (NyamuSettings.Instance.enableDebugLogs)
-            {
-                Debug.Log($"[NyamuServer][Debug] Entering HandleRefreshAssetsRequest");
-            }
+            NyamuLog.Debug("[Nyamu][Server] Entering HandleRefreshAssetsRequest");
             // Parse force parameter from query string
             bool force = request.Url.Query.Contains("force=true");
 
@@ -1817,7 +1789,7 @@ namespace Nyamu
                             _isMonitoringRefresh = false;
                             _unityIsUpdating = false;
                         }
-                        Debug.LogError($"[NyamuServer] AssetDatabase.Refresh failed: {ex.Message}");
+                        NyamuLog.Error($"[Nyamu][Server] AssetDatabase.Refresh failed: {ex.Message}");
                     }
                 });
             }
@@ -1838,7 +1810,7 @@ namespace Nyamu
                 return;
 
             if (!_shouldStop)
-                Debug.LogError($"[NyamuServer] NyamuServer error: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] NyamuServer error: {ex.Message}");
         }
 
         // ========================================================================
@@ -1859,7 +1831,7 @@ namespace Nyamu
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Failed to start test execution: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Failed to start test execution: {ex.Message}");
             }
             finally
             {
@@ -1900,7 +1872,7 @@ namespace Nyamu
 
             if (waited >= maxWait)
             {
-                Debug.LogWarning("[NyamuServer] Timed out waiting for asset refresh to complete before running tests");
+                NyamuLog.Warning("[Nyamu][Server] Timed out waiting for asset refresh to complete before running tests");
             }
         }
 
@@ -1929,7 +1901,7 @@ namespace Nyamu
                     EditorSettings.enterPlayModeOptionsEnabled = true;
                     EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload | EnterPlayModeOptions.DisableSceneReload;
 
-                    Debug.Log("[NyamuServer] Overriding Enter Play Mode settings to disable domain reload for PlayMode tests");
+                    NyamuLog.Info("[Nyamu][Server] Overriding Enter Play Mode settings to disable domain reload for PlayMode tests");
                 }
 
                 var api = ScriptableObject.CreateInstance<TestRunnerApi>();
@@ -1960,11 +1932,11 @@ namespace Nyamu
                 _currentTestRunId = api.Execute(new ExecutionSettings(filterObj));
                 apiExecuteCalled = true; // If we reach here, api.Execute was called successfully
 
-                Debug.Log($"[NyamuServer] Started test execution with ID: {_currentTestRunId}");
+                NyamuLog.Info($"[Nyamu][Server] Started test execution with ID: {_currentTestRunId}");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[NyamuServer] Failed to start test execution: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][Server] Failed to start test execution: {ex.Message}");
                 _testResults = new TestResults
                 {
                     totalTests = 0,
@@ -2013,7 +1985,7 @@ namespace Nyamu
 
         public void RunFinished(ITestResultAdaptor result)
         {
-            Debug.Log($"[NyamuServer] Test run finished with status: {result.TestStatus}, ID: {Server._currentTestRunId}");
+            NyamuLog.Info($"[Nyamu][Server] Test run finished with status: {result.TestStatus}, ID: {Server._currentTestRunId}");
 
             var results = new List<TestResult>();
             CollectTestResults(result, results);
@@ -2046,7 +2018,7 @@ namespace Nyamu
             {
                 EditorSettings.enterPlayModeOptionsEnabled = _originalEnterPlayModeOptionsEnabled;
                 EditorSettings.enterPlayModeOptions = _originalEnterPlayModeOptions;
-                Debug.Log("[NyamuServer] Restored original Enter Play Mode settings after PlayMode test completion");
+                NyamuLog.Info("[Nyamu][Server] Restored original Enter Play Mode settings after PlayMode test completion");
             }
         }
 
@@ -2066,7 +2038,7 @@ namespace Nyamu
 
         public void OnError(string errorDetails)
         {
-            Debug.LogError($"[NyamuServer] Test execution error occurred: {errorDetails}");
+            NyamuLog.Error($"[Nyamu][Server] Test execution error occurred: {errorDetails}");
 
             // Store error information for status endpoint
             Server._testExecutionError = errorDetails;

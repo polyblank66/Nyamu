@@ -34,7 +34,7 @@ namespace Nyamu
 
                 // Keywords for search functionality in Project Settings
                 provider.keywords = new[] {
-                    "Nyamu", "MCP", "Response", "Limit", "Character", "Truncation", "Message", "Server", "Port", "Debug", "Logs"
+                    "Nyamu", "MCP", "Response", "Limit", "Character", "Truncation", "Message", "Server", "Port", "Log", "Logging", "Level", "Minimum"
                 };
 
                 return provider;
@@ -101,13 +101,31 @@ namespace Nyamu
 
             EditorGUILayout.Space();
 
-            // Debug Configuration section
-            EditorGUILayout.LabelField("Debug Configuration", EditorStyles.boldLabel);
+            // Logging Configuration section
+            EditorGUILayout.LabelField("Logging Configuration", EditorStyles.boldLabel);
 
-            var enableDebugLogsProp = _settings.FindProperty("enableDebugLogs");
-            EditorGUILayout.PropertyField(enableDebugLogsProp, new GUIContent(
-                "Enable Debug Logs",
-                "Enable debug logging for NyamuServer HTTP handlers"));
+            var minLogLevelProp = _settings.FindProperty("minLogLevel");
+            if (minLogLevelProp != null)
+            {
+                EditorGUILayout.PropertyField(minLogLevelProp, new GUIContent(
+                    "Minimum Log Level",
+                    "Only logs at or above this level will be emitted."));
+            }
+            else
+            {
+                // Fallback (prevents NullReferenceException if Unity can't resolve the SerializedProperty)
+                var settings = NyamuSettings.Instance;
+                EditorGUI.BeginChangeCheck();
+                var newValue = (NyamuLog.MinLogLevel)EditorGUILayout.EnumPopup(
+                    new GUIContent("Minimum Log Level", "Only logs at or above this level will be emitted."),
+                    settings.minLogLevel);
+
+                if (EditorGUI.EndChangeCheck())
+                {
+                    settings.minLogLevel = newValue;
+                    EditorUtility.SetDirty(settings);
+                }
+            }
 
             EditorGUILayout.Space();
 

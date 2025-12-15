@@ -24,14 +24,13 @@ namespace Nyamu
                     var json = File.ReadAllText(CachePath);
                     var cache = JsonUtility.FromJson<NyamuServerCache>(json);
 
-                    if (NyamuSettings.Instance.enableDebugLogs)
-                        Debug.Log($"[NyamuServerCache] Loaded cache from {CachePath}");
+                    NyamuLog.Debug($"[Nyamu][ServerCache] Loaded cache from {CachePath}");
 
                     return cache;
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[NyamuServerCache] Failed to load cache: {ex.Message}. Using defaults.");
+                    NyamuLog.Warning($"[Nyamu][ServerCache] Failed to load cache: {ex.Message}. Using defaults.");
 
                     // Delete corrupt file
                     try
@@ -43,8 +42,7 @@ namespace Nyamu
             }
             else
             {
-                if (NyamuSettings.Instance.enableDebugLogs)
-                    Debug.Log("[NyamuServerCache] No cache file found, using defaults");
+                NyamuLog.Debug("[Nyamu][ServerCache] No cache file found, using defaults");
             }
 
             return new NyamuServerCache();
@@ -58,12 +56,11 @@ namespace Nyamu
                 var json = JsonUtility.ToJson(cache, true);
                 File.WriteAllText(CachePath, json);
 
-                if (NyamuSettings.Instance.enableDebugLogs)
-                    Debug.Log($"[NyamuServerCache] Saved cache to {CachePath}");
+                NyamuLog.Debug($"[Nyamu][ServerCache] Saved cache to {CachePath}");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[NyamuServerCache] Failed to save cache: {ex.Message}");
+                NyamuLog.Error($"[Nyamu][ServerCache] Failed to save cache: {ex.Message}");
             }
         }
 
@@ -78,7 +75,7 @@ namespace Nyamu
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[NyamuServerCache] Failed to create cache directory: {ex.Message}");
+                    NyamuLog.Error($"[Nyamu][ServerCache] Failed to create cache directory: {ex.Message}");
                 }
             }
         }

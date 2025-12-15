@@ -41,19 +41,14 @@ namespace Nyamu
             GenerateBatFile();
         }
 
-        // Locates mcp-server.js in either embedded package or PackageCache
+        // Locates mcp-server.js in either PackageCache or embedded package
         static string FindMcpServerPath()
         {
             try
             {
                 var projectRoot = Directory.GetParent(Application.dataPath).FullName;
 
-                // Check embedded package first (dev mode)
-                var embeddedPath = Path.Combine(projectRoot, "Packages", "dev.polyblank.nyamu", "Node", "mcp-server.js");
-                if (File.Exists(embeddedPath))
-                    return embeddedPath;
-
-                // Search PackageCache (production)
+                // Search PackageCache first (production)
                 var packageCacheRoot = Path.Combine(projectRoot, "Library", "PackageCache");
                 if (Directory.Exists(packageCacheRoot))
                 {
@@ -65,6 +60,11 @@ namespace Nyamu
                             return cachedPath;
                     }
                 }
+
+                // Check embedded package last (dev mode)
+                var embeddedPath = Path.Combine(projectRoot, "Packages", "dev.polyblank.nyamu", "Node", "mcp-server.js");
+                if (File.Exists(embeddedPath))
+                    return embeddedPath;
 
                 return null;
             }

@@ -1,8 +1,10 @@
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.PackageManager;
 using System.IO;
 using System.Text;
 using System;
+using System.Linq;
 
 namespace Nyamu
 {
@@ -14,6 +16,29 @@ namespace Nyamu
     {
         // Entry point - runs automatically when Unity Editor loads
         [InitializeOnLoadMethod]
+        static void Initialize()
+        {
+            // Generate bat file on initial load
+            GenerateBatFile();
+
+            // Subscribe to package registration events to detect package updates
+            Events.registeredPackages += OnPackagesRegistered;
+        }
+
+        // Called when packages are registered (installed/updated/removed)
+        static void OnPackagesRegistered(PackageRegistrationEventArgs args)
+        {
+            // Check if our package was updated
+            var nyamuPackage = args.added.Concat(args.changedTo)
+                .FirstOrDefault(p => p.name == "dev.polyblank.nyamu");
+
+            if (nyamuPackage != null)
+            {
+                NyamuLogger.LogInfo($"[Nyamu][BatGenerator] Package update detected: {nyamuPackage.version}");
+                GenerateBatFile();
+            }
+        }
+
         static void GenerateBatFile()
         {
             try

@@ -23,6 +23,8 @@ Prompt: Check scripts compilation with nyamu mcp tool
 ### Shader Compilation
 * `compile_shader` – Compiles a single shader by name with fuzzy matching support. Searches for shaders by partial name, handles case-insensitive matching, and returns detailed compilation results with error reporting.
 * `compile_all_shaders` – Compiles all shaders in the Unity project and returns a comprehensive summary with statistics (total, successful, failed), individual shader results, and detailed error information for failed shaders.
+* `compile_shaders_regex` – Compiles shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. Useful for compiling a subset of shaders based on path patterns.
+* `shader_compilation_status` – Returns the current shader compilation status without triggering compilation. Includes compilation state, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command.
 
 ### Testing
 * `run_tests` – Executes Unity Test Runner tests (EditMode and PlayMode) with real-time status monitoring and detailed result reporting. Supports filtering by test names and regex patterns.

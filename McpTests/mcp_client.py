@@ -266,6 +266,35 @@ class MCPClient:
             }
         })
 
+    async def compile_shaders_regex(self, pattern: str, timeout: int = 120) -> Dict[str, Any]:
+        """Compile shaders matching a regex pattern
+
+        Args:
+            pattern: Regex pattern to match against shader file paths
+            timeout: Timeout in seconds (default: 120)
+
+        Returns:
+            MCP response with regex-matched shaders compilation results
+        """
+        return await self._send_request("tools/call", {
+            "name": "compile_shaders_regex",
+            "arguments": {
+                "pattern": pattern,
+                "timeout": timeout
+            }
+        })
+
+    async def shader_compilation_status(self) -> Dict[str, Any]:
+        """Get current shader compilation status
+
+        Returns:
+            MCP response with shader compilation status and last results
+        """
+        return await self._send_request("tools/call", {
+            "name": "shader_compilation_status",
+            "arguments": {}
+        })
+
     async def __aenter__(self):
         await self.start()
         return self

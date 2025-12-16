@@ -801,8 +801,9 @@ class MCPServer {
         try {
             await this.ensureResponseFormatter();
 
+            const timeoutMs = timeoutSeconds * 1000;
             const requestBody = JSON.stringify({ shaderName: shaderName });
-            const compileResponse = await this.makeHttpPostRequest('/compile-shader', requestBody);
+            const compileResponse = await this.makeHttpPostRequest('/compile-shader', requestBody, timeoutMs);
 
             const formattedText = this.formatShaderCompileResponse(compileResponse);
             const finalText = this.responseFormatter.formatResponse(formattedText);
@@ -820,7 +821,8 @@ class MCPServer {
         try {
             await this.ensureResponseFormatter();
 
-            const compileResponse = await this.makeHttpPostRequest('/compile-all-shaders', '{}');
+            const timeoutMs = timeoutSeconds * 1000;
+            const compileResponse = await this.makeHttpPostRequest('/compile-all-shaders', '{}', timeoutMs);
 
             const formattedText = this.formatCompileAllShadersResponse(compileResponse);
             const finalText = this.responseFormatter.formatResponse(formattedText);
@@ -838,8 +840,9 @@ class MCPServer {
         try {
             await this.ensureResponseFormatter();
 
+            const timeoutMs = timeoutSeconds * 1000;
             const requestBody = JSON.stringify({ pattern });
-            const response = await this.makeHttpPostRequest('/compile-shaders-regex', requestBody);
+            const response = await this.makeHttpPostRequest('/compile-shaders-regex', requestBody, timeoutMs);
 
             const formattedText = this.formatCompileShadersRegexResponse(response);
             const finalText = this.responseFormatter.formatResponse(formattedText);
@@ -1037,7 +1040,7 @@ class MCPServer {
         });
     }
 
-    makeHttpPostRequest(path, body) {
+    makeHttpPostRequest(path, body, timeoutMs = 15000) {
         return new Promise((resolve, reject) => {
             const options = {
                 method: 'POST',
@@ -1064,7 +1067,7 @@ class MCPServer {
                 reject(this.createUnityServerError(error));
             });
 
-            req.setTimeout(15000, () => {
+            req.setTimeout(timeoutMs, () => {
                 req.destroy();
                 reject(this.createUnityTimeoutError());
             });

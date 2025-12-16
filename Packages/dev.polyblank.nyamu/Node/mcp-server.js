@@ -218,7 +218,7 @@ class MCPServer {
         this.capabilities = {
             tools: {
                 compilation_trigger: {
-                    description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with NYAMU project open.",
+                    description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. WHEN EDITING EXISTING FILES: Call compilation_trigger directly without refresh. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with NYAMU project open.",
                     inputSchema: {
                         type: "object",
                         properties: {
@@ -232,7 +232,7 @@ class MCPServer {
                     }
                 },
                 run_tests: {
-                    description: "Execute Unity Test Runner tests and wait for completion. Returns test results including pass/fail counts and detailed failure information. Supports both EditMode (editor tests) and PlayMode (runtime tests) execution. LLM HINTS: EditMode tests run faster but only test editor functionality. PlayMode tests simulate actual game runtime but take longer. If tests fail to start, Unity Test Runner may need initialization - wait and retry.",
+                    description: "Execute Unity Test Runner tests and wait for completion. Returns test results including pass/fail counts and detailed failure information. Supports both EditMode (editor tests) and PlayMode (runtime tests) execution. LLM HINTS: EditMode tests run faster but only test editor functionality. PlayMode tests simulate actual game runtime but take longer. If tests fail to start, Unity Test Runner may need initialization - wait and retry. Prefer test_filter_regex over test_filter for flexible pattern matching.",
                     inputSchema: {
                         type: "object",
                         properties: {
@@ -249,7 +249,7 @@ class MCPServer {
                             },
                             test_filter_regex: {
                                 type: "string",
-                                description: "Test filter regex pattern (optional). Use .NET Regex syntax to match test names by pattern. This is mapped to Unity's Filter.groupNames property for flexible test selection.",
+                                description: "Test filter regex pattern (optional). Use .NET Regex syntax to match test names by pattern. This is mapped to Unity's Filter.groupNames property for flexible test selection. PREFERRED over test_filter for pattern matching.",
                                 default: ""
                             },
                             timeout: {

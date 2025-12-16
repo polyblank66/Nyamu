@@ -6,6 +6,31 @@ Check out Design.md for the project design and goal definitions.
   and retrieving compilation errors from the Unity Editor.
 - Iterate through the edit-compile-debug cycle until all errors are resolved.
 
+## Nyamu MCP Workflow Guidelines
+
+### File Operation Workflows
+**CRITICAL**: Always call `refresh_assets` before `compilation_trigger` for structural changes:
+
+- **Creating files**: Write → `refresh_assets(force=false)` → Wait for MCP → `compilation_trigger`
+- **Deleting files**: Delete → `refresh_assets(force=true)` → Wait for MCP → `compilation_trigger`
+- **Editing existing files**: Edit → `compilation_trigger` (no refresh needed)
+
+### Error Handling
+- **Error -32603 "HTTP request failed"**: Expected during Unity recompilation/refresh
+  - Wait 3-5 seconds and retry
+  - This is normal behavior - Unity HTTP server is restarting
+- Always wait for MCP responsiveness after `refresh_assets` before calling other tools
+
+### Testing
+- Prefer `test_filter_regex` over `test_filter` for pattern matching
+- EditMode: Fast, editor-only verification (use 30s timeout)
+- PlayMode: Full runtime simulation (use 60-120s timeout)
+- Only EditMode tests can be cancelled via `tests_cancel`
+
+### Status Checking
+- Use `compilation_status`, `test_status`, `editor_status` to check state without triggering operations
+- Check status before long operations to avoid redundant work
+
 # Technology Choices
 
 - The project is built with Unity.
@@ -39,8 +64,8 @@ Check out Design.md for the project design and goal definitions.
 # Workflow Instructions
 
 - Focus primarily on writing or modifying source code.
-- C# scripts can be compiled via MCP (`compile_and_wait`).
-- Compilation errors can be retrieved via MCP (`get_errors`).
+- C# scripts can be compiled via MCP (`compilation_trigger`).
+- Compilation status can be retrieved via MCP (`compilation_status`).
 - If an operation requires scene editing or interaction with the Unity Editor,
   provide clear, step-by-step instructions.
 - Write all Git commit messages in English.

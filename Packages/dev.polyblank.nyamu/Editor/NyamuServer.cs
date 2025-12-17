@@ -208,6 +208,16 @@ namespace Nyamu
     public class CompileShadersRegexRequest
     {
         public string pattern;
+        public bool async;  // If true, return immediately after queuing compilation
+    }
+
+    [Serializable]
+    public class ShaderRegexProgressInfo
+    {
+        public string pattern;
+        public int totalShaders;
+        public int completedShaders;
+        public string currentShader;
     }
 
     [Serializable]
@@ -236,6 +246,7 @@ namespace Nyamu
         public string lastCompilationType;
         public string lastCompilationTime;
         public T lastCompilationResult;
+        public ShaderRegexProgressInfo progress;  // Progress info for regex compilation (when isCompiling=true)
     }
 
     // ============================================================================
@@ -385,6 +396,12 @@ namespace Nyamu
         static string _lastShaderCompilationType = "none";
         static DateTime _lastShaderCompilationTime = DateTime.MinValue;
         static readonly object _shaderCompilationResultLock = new object();
+
+        // Regex shader compilation progress tracking
+        static string _regexShadersPattern = "";
+        static int _regexShadersTotal = 0;
+        static int _regexShadersCompleted = 0;
+        static string _regexShadersCurrentShader = "";
 
         static Server()
         {
@@ -1298,10 +1315,26 @@ namespace Nyamu
                 var successCount = 0;
                 var failCount = 0;
 
+                // Initialize progress tracking
+                lock (_shaderCompilationResultLock)
+                {
+                    _regexShadersPattern = pattern;
+                    _regexShadersTotal = matchingShaders.Count;
+                    _regexShadersCompleted = 0;
+                    _regexShadersCurrentShader = "";
+                }
+
                 for (var i = 0; i < matchingShaders.Count; i++)
                 {
                     var shaderPath = matchingShaders[i];
                     NyamuLogger.LogInfo($"[Nyamu][Server] Compiling shader {i + 1}/{matchingShaders.Count}: {shaderPath}");
+
+                    // Update progress tracking
+                    lock (_shaderCompilationResultLock)
+                    {
+                        _regexShadersCompleted = i;
+                        _regexShadersCurrentShader = shaderPath;
+                    }
 
                     var result = CompileShaderAtPath(shaderPath);
                     results.Add(result);
@@ -1319,6 +1352,13 @@ namespace Nyamu
                 }
 
                 var totalTime = (DateTime.Now - startTime).TotalSeconds;
+
+                // Mark progress as complete
+                lock (_shaderCompilationResultLock)
+                {
+                    _regexShadersCompleted = matchingShaders.Count;
+                    _regexShadersCurrentShader = "";
+                }
 
                 return new CompileShadersRegexResponse
                 {
@@ -1507,6 +1547,33 @@ namespace Nyamu
                 return "{\"status\":\"error\",\"message\":\"Missing required parameter: pattern\"}";
             }
 
+            // Check if async mode is requested
+            if (requestData.async)
+            {
+                // Async mode: queue compilation and return immediately
+                lock (_mainThreadActionQueue)
+                {
+                    _mainThreadActionQueue.Enqueue(() =>
+                    {
+                        var result = CompileShadersRegex(requestData.pattern);
+
+                        lock (_shaderCompilationResultLock)
+                        {
+                            _lastSingleShaderResult = null;
+                            _lastAllShadersResult = null;
+                            _lastRegexShadersResult = result;
+                            _lastShaderCompilationType = "regex";
+                            _lastShaderCompilationTime = DateTime.Now;
+                        }
+
+                        lock (_shaderCompileLock) { _isCompilingShaders = false; }
+                    });
+                }
+
+                return "{\"status\":\"ok\",\"message\":\"Shader compilation started.\"}";
+            }
+
+            // Blocking mode: wait for compilation to complete
             CompileShadersRegexResponse response = null;
             lock (_mainThreadActionQueue)
             {
@@ -1599,6 +1666,22 @@ namespace Nyamu
                         lastCompilationTime = timeString,
                         lastCompilationResult = regexResult
                     };
+
+                    // Add progress info if currently compiling regex shaders
+                    if (_isCompilingShaders && typeCopy == "regex")
+                    {
+                        lock (_shaderCompilationResultLock)
+                        {
+                            response.progress = new ShaderRegexProgressInfo
+                            {
+                                pattern = _regexShadersPattern,
+                                totalShaders = _regexShadersTotal,
+                                completedShaders = _regexShadersCompleted,
+                                currentShader = _regexShadersCurrentShader
+                            };
+                        }
+                    }
+
                     return JsonUtility.ToJson(response);
                 }
 

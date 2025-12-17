@@ -346,7 +346,7 @@ class MCPServer {
                     }
                 },
                 compile_shaders_regex: {
-                    description: "Compile shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. LLM HINTS: Use this to compile a subset of shaders based on path patterns.",
+                    description: "Compile shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. Supports MCP progress notifications when progressToken is provided in request _meta. LLM HINTS: Use this to compile a subset of shaders based on path patterns. Progress notifications sent roughly every 500ms during compilation.",
                     inputSchema: {
                         type: "object",
                         properties: {
@@ -396,7 +396,7 @@ class MCPServer {
                     jsonrpc: '2.0',
                     id,
                     result: {
-                        protocolVersion: '2024-11-05',
+                        protocolVersion: '2025-11-25',
                         capabilities: this.capabilities,
                         serverInfo: {
                             name: 'NyamuServer',
@@ -444,8 +444,29 @@ class MCPServer {
         }
     }
 
+    sendProgressNotification(progressToken, progress, total, message) {
+        const notification = {
+            jsonrpc: '2.0',
+            method: 'notifications/progress',
+            params: {
+                progressToken: progressToken,
+                progress: progress,
+                total: total
+            }
+        };
+
+        if (message) {
+            notification.params.message = message;
+        }
+
+        // Send notification using existing sendJsonResponse method
+        // Notifications don't have an 'id' field (only 'method' and 'params')
+        this.sendJsonResponse(notification, this.activeProtocol);
+    }
+
     async handleToolCall(params, id) {
-        const { name, arguments: args } = params;
+        const { name, arguments: args, _meta } = params;
+        const progressToken = _meta?.progressToken || null;
 
         try {
             switch (name) {
@@ -468,7 +489,7 @@ class MCPServer {
                 case 'compile_all_shaders':
                     return await this.callCompileAllShaders(id, args.timeout || 120);
                 case 'compile_shaders_regex':
-                    return await this.callCompileShadersRegex(id, args.pattern, args.timeout || 120);
+                    return await this.callCompileShadersRegex(id, args.pattern, args.timeout || 120, progressToken);
                 case 'shader_compilation_status':
                     return await this.callShaderCompilationStatus(id);
                 default:
@@ -836,7 +857,17 @@ class MCPServer {
         }
     }
 
-    async callCompileShadersRegex(id, pattern, timeoutSeconds) {
+    async callCompileShadersRegex(id, pattern, timeoutSeconds, progressToken) {
+        if (progressToken) {
+            // Asynchronous mode with progress notifications
+            return await this.callCompileShadersRegexWithProgress(id, pattern, timeoutSeconds, progressToken);
+        } else {
+            // Original blocking mode (backward compatibility)
+            return await this.callCompileShadersRegexBlocking(id, pattern, timeoutSeconds);
+        }
+    }
+
+    async callCompileShadersRegexBlocking(id, pattern, timeoutSeconds) {
         try {
             await this.ensureResponseFormatter();
 
@@ -853,6 +884,72 @@ class MCPServer {
             };
         } catch (error) {
             throw new Error(`Failed to compile shaders by regex: ${error.message}`);
+        }
+    }
+
+    async callCompileShadersRegexWithProgress(id, pattern, timeoutSeconds, progressToken) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const timeoutMs = timeoutSeconds * 1000;
+            const startTime = Date.now();
+
+            // 1. Start compilation asynchronously
+            const startBody = JSON.stringify({ pattern, async: true });
+            await this.makeHttpPostRequest('/compile-shaders-regex', startBody);
+
+            // 2. Poll for progress
+            let lastProgress = -1;
+            while (Date.now() - startTime < timeoutMs) {
+                try {
+                    const statusResponse = await this.makeHttpRequest('/shader-compilation-status');
+                    const status = JSON.parse(statusResponse);
+
+                    // Check if compilation complete
+                    if (!status.isCompiling && status.lastCompilationType === 'regex') {
+                        // Return final result
+                        const formatted = this.formatCompileShadersRegexResponse(status.lastCompilationResult);
+                        const finalText = this.responseFormatter.formatResponse(formatted);
+                        return {
+                            jsonrpc: '2.0',
+                            id,
+                            result: { content: [{ type: 'text', text: finalText }] }
+                        };
+                    }
+
+                    // Send progress notification if progress changed
+                    if (status.isCompiling && status.progress) {
+                        const currentProgress = status.progress.completedShaders;
+                        if (currentProgress > lastProgress) {
+                            const currentShaderName = status.progress.currentShader ?
+                                status.progress.currentShader.split('/').pop() : '';
+                            this.sendProgressNotification(
+                                progressToken,
+                                currentProgress,
+                                status.progress.totalShaders,
+                                `Compiling ${currentShaderName} (${currentProgress}/${status.progress.totalShaders})`
+                            );
+                            lastProgress = currentProgress;
+                        }
+                    }
+
+                    // Wait before next poll
+                    await new Promise(resolve => setTimeout(resolve, 500)); // 500ms polling interval
+
+                } catch (pollError) {
+                    // Handle Unity restart errors
+                    if (this.isUnityRestartingError(pollError)) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        continue;
+                    }
+                    throw pollError;
+                }
+            }
+
+            // Timeout
+            throw new Error(`Shader compilation timed out after ${timeoutSeconds} seconds`);
+        } catch (error) {
+            throw new Error(`Failed to compile shaders by regex with progress: ${error.message}`);
         }
     }
 

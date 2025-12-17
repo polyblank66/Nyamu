@@ -270,6 +270,24 @@ compile_shaders_regex(pattern="Assets/Shaders/Custom/.*", timeout=120)
 ```
 - Compile subset of shaders
 - Faster than compile_all_shaders
+- **Supports MCP progress notifications**: When MCP client provides `progressToken` in request `_meta`, receives real-time progress updates during compilation
+- Progress updates sent every ~500ms with current shader being compiled
+
+**Example with progress (MCP protocol):**
+```
+Request with progressToken in _meta:
+{
+  "params": {
+    "arguments": { "pattern": ".*Standard.*" },
+    "_meta": { "progressToken": "shader-compile-123" }
+  }
+}
+
+Progress notifications received:
+- {"progressToken": "shader-compile-123", "progress": 10, "total": 50, "message": "Compiling Standard.shader (10/50)"}
+- {"progressToken": "shader-compile-123", "progress": 25, "total": 50, "message": "Compiling StandardSpecular.shader (25/50)"}
+- ... continues until complete
+```
 
 ### Avoid compile_all_shaders
 - Can take 15+ minutes for URP projects

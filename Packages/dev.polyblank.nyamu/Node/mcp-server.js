@@ -396,7 +396,7 @@ class MCPServer {
                     jsonrpc: '2.0',
                     id,
                     result: {
-                        protocolVersion: '2025-11-25',
+                        protocolVersion: '2024-11-05',
                         capabilities: this.capabilities,
                         serverInfo: {
                             name: 'NyamuServer',

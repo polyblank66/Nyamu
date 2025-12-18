@@ -1,6 +1,101 @@
 #!/usr/bin/env node
 
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+// File-based logger for MCP server
+// CRITICAL: Never log to stdout/stderr - MCP protocol uses stdio
+class FileLogger {
+    constructor(logFilePath) {
+        this.logFilePath = logFilePath;
+        this.enabled = false;
+        this.writeQueue = [];
+        this.writing = false;
+
+        if (logFilePath) {
+            try {
+                // Ensure log directory exists
+                const logDir = path.dirname(logFilePath);
+                if (!fs.existsSync(logDir)) {
+                    fs.mkdirSync(logDir, { recursive: true });
+                }
+
+                // Create or truncate log file
+                fs.writeFileSync(logFilePath, `=== Nyamu MCP Server Log Started: ${new Date().toISOString()} ===\n`, 'utf8');
+                this.enabled = true;
+            } catch (error) {
+                // Silently disable logging on errors - never crash the server
+                this.enabled = false;
+            }
+        }
+    }
+
+    log(level, message, data = null) {
+        if (!this.enabled) return;
+
+        const timestamp = new Date().toISOString();
+        let logLine = `[${timestamp}] [${level}] ${message}`;
+
+        if (data !== null && data !== undefined) {
+            try {
+                // Pretty-print objects for readability
+                const dataStr = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+                logLine += `\n${dataStr}`;
+            } catch (error) {
+                logLine += `\n[Error serializing data: ${error.message}]`;
+            }
+        }
+
+        logLine += '\n';
+        this.writeQueue.push(logLine);
+        this.processQueue();
+    }
+
+    async processQueue() {
+        if (this.writing || this.writeQueue.length === 0) return;
+
+        this.writing = true;
+        try {
+            const batch = this.writeQueue.splice(0, 10);
+            const content = batch.join('');
+            await fs.promises.appendFile(this.logFilePath, content, 'utf8');
+        } catch (error) {
+            // Disable logging on write errors
+            this.enabled = false;
+            this.writeQueue = [];
+        } finally {
+            this.writing = false;
+            if (this.writeQueue.length > 0) {
+                setImmediate(() => this.processQueue());
+            }
+        }
+    }
+
+    logRequest(method, params, id) {
+        if (!this.enabled) return;
+        this.log('REQUEST', `Method: ${method}, ID: ${id}`, { method, params, id, timestamp: Date.now() });
+    }
+
+    logResponse(response) {
+        if (!this.enabled) return;
+        const level = response.error ? 'ERROR' : 'RESPONSE';
+        const message = response.error ? `Error response for ID: ${response.id}` : `Success response for ID: ${response.id}`;
+        this.log(level, message, response);
+    }
+
+    logError(context, error) {
+        if (!this.enabled) return;
+        this.log('ERROR', context, { message: error.message, stack: error.stack, code: error.code, data: error.data });
+    }
+
+    logInfo(message, data = null) {
+        if (!this.enabled) return;
+        this.log('INFO', message, data);
+    }
+}
+
+let logger = null;
 
 // Gracefully handle broken pipe when the host (e.g., Rider) closes the MCP stdio pipe.
 // Without this, Node will emit an unhandled 'error' on process.stdout and crash with EPIPE.
@@ -1385,18 +1480,24 @@ class MCPServer {
         try {
             request = JSON.parse(rawMessage);
         } catch (_) {
+            logger?.logError('Failed to parse incoming message', new Error('Invalid JSON'));
             this.sendParseError(protocol);
             return;
         }
 
+        // Log incoming request (includes _meta if present)
+        logger?.logRequest(request.method, request.params, request.id);
+
         Promise.resolve(this.handleRequest(request))
             .then((response) => {
                 if (response) {
+                    logger?.logResponse(response);
                     this.sendJsonResponse(response, protocol);
                 }
             })
             .catch((error) => {
                 const id = (request && typeof request === 'object') ? (request.id ?? null) : null;
+                logger?.logError(`Request handler failed for method: ${request?.method}`, error);
                 this.sendRpcError(id, error, protocol);
             });
     }
@@ -1471,11 +1572,13 @@ class MCPServer {
     }
 }
 
-// Parse command-line arguments for --port
+// Parse command-line arguments for --port and --log-file
 let port = 17932;
+let logFilePath = null;
+
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === "--port") {
-    i++; // Skip to the next argument
+    i++;
     if (i < process.argv.length) {
       const parsedPort = parseInt(process.argv[i], 10);
       if (!isNaN(parsedPort) && parsedPort >= 1024 && parsedPort <= 65535) {
@@ -1486,8 +1589,19 @@ for (let i = 2; i < process.argv.length; i++) {
     } else {
       console.error("--port requires a value. Using default 17932.");
     }
+  } else if (process.argv[i] === "--log-file") {
+    i++;
+    if (i < process.argv.length) {
+      logFilePath = process.argv[i];
+    } else {
+      console.error("--log-file requires a file path.");
+    }
   }
 }
+
+// Initialize logger (disabled if logFilePath is null)
+logger = new FileLogger(logFilePath);
+logger.logInfo('MCP Server starting', { port, logFilePath });
 
 const server = new MCPServer(port);
 server.start();

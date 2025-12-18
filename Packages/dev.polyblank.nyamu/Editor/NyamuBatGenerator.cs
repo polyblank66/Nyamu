@@ -103,11 +103,19 @@ namespace Nyamu
         // Generates .bat file content with proper MCP protocol compliance
         static string GenerateBatContent(string mcpServerPath, int port)
         {
+            // Determine log file path relative to project root
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var logFilePath = Path.Combine(projectRoot, ".nyamu", "mcp-server.log");
+
+            // Normalize path for Windows (backslashes) and quote for spaces
+            var normalizedLogPath = logFilePath.Replace("/", "\\");
+
             // @echo off prevents stdout pollution
-            // Quoted path handles spaces
+            // Quoted paths handle spaces
             // --port parameter configures the Unity HTTP server port
+            // --log-file parameter enables file-based logging
             // %* forwards all additional command-line arguments
-            return $"@echo off{Environment.NewLine}node \"{mcpServerPath}\" --port {port} %*{Environment.NewLine}";
+            return $"@echo off{Environment.NewLine}node \"{mcpServerPath}\" --port {port} --log-file \"{normalizedLogPath}\" %*{Environment.NewLine}";
         }
 
         // Writes .bat file to .nyamu/nyamu.bat (idempotent)

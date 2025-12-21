@@ -163,10 +163,10 @@ public class CompilationErrorTest
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_test_status_error_fields(mcp_client, unity_state_manager):
-    """Test that test-status endpoint includes error information fields"""
+    """Test that tests-status endpoint includes error information fields"""
 
     # Get current test status
-    response = await mcp_client.test_status()
+    response = await mcp_client.tests_status()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response

@@ -203,8 +203,8 @@ namespace Nyamu
 
             // Replace collection name to include project name
             template = template.Replace(
-                "\"name\": \"Nyamu MCP Server API\"",
-                $"\"name\": \"{projectName} - Nyamu MCP Server API\""
+                "\"name\": \"Nyamu Server API\"",
+                $"\"name\": \"{projectName} - Nyamu Server API\""
             );
 
             // Set actual port value in variables section

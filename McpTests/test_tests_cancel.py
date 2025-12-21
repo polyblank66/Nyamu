@@ -1,11 +1,10 @@
 """
-Test tests_cancel MCP tool functionality
+Test tests_cancel MCP tool functionality - Updated for new test endpoints
 """
 
 import pytest
 import asyncio
 from mcp_client import MCPClient
-
 
 @pytest.mark.mcp
 @pytest.mark.protocol
@@ -15,7 +14,7 @@ async def test_cancel_tests_no_running_test(mcp_client, unity_state_manager):
     # Ensure no tests are running
     await unity_state_manager.ensure_clean_state()
 
-    response = await mcp_client.cancel_tests()
+    response = await mcp_client.tests_cancel()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -27,13 +26,12 @@ async def test_cancel_tests_no_running_test(mcp_client, unity_state_manager):
            "no test" in content_text.lower() or
            "error" in content_text.lower())
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_cancel_tests_invalid_guid(mcp_client, unity_state_manager):
     """Test cancelling tests with invalid GUID"""
-    response = await mcp_client.cancel_tests(test_run_guid="invalid-guid-12345")
+    response = await mcp_client.tests_cancel(test_run_guid="invalid-guid-12345")
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -42,7 +40,6 @@ async def test_cancel_tests_invalid_guid(mcp_client, unity_state_manager):
 
     # Should get an error about invalid GUID
     assert "error" in content_text.lower() or "failed" in content_text.lower()
-
 
 @pytest.mark.mcp
 @pytest.mark.slow
@@ -60,9 +57,9 @@ async def test_cancel_running_editmode_test(unity_state_manager):
         # Start a long-running EditMode test
         # We'll use a test that should take some time to complete
         test_task = asyncio.create_task(
-            client1.run_tests(
+            client1.tests_run_single(
+                test_name="NyamuTests.LargeErrorMessageTest",  # Single test that takes time
                 test_mode="EditMode",
-                test_filter="NyamuTests.LargeErrorMessageTest",  # This test should take some time
                 timeout=60
             )
         )
@@ -71,12 +68,12 @@ async def test_cancel_running_editmode_test(unity_state_manager):
         await asyncio.sleep(2)
 
         # Verify test is running
-        status_response = await client2.test_status()
+        status_response = await client2.tests_status()
         status_text = status_response["result"]["content"][0]["text"]
 
         # If test is running, try to cancel it
         if "running" in status_text.lower():
-            cancel_response = await client2.cancel_tests()
+            cancel_response = await client2.tests_cancel()
 
             assert cancel_response["jsonrpc"] == "2.0"
             assert "result" in cancel_response
@@ -105,14 +102,13 @@ async def test_cancel_running_editmode_test(unity_state_manager):
         await client1.stop()
         await client2.stop()
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_cancel_tests_with_specific_guid(mcp_client, unity_state_manager):
     """Test cancelling tests using a specific GUID"""
     # First get current test status to see if there's a test run ID
-    status_response = await mcp_client.test_status()
+    status_response = await mcp_client.tests_status()
     status_text = status_response["result"]["content"][0]["text"]
 
     # Parse the JSON to get test run ID if available
@@ -123,7 +119,7 @@ async def test_cancel_tests_with_specific_guid(mcp_client, unity_state_manager):
 
         if test_run_id:
             # Try to cancel using this specific GUID
-            cancel_response = await mcp_client.cancel_tests(test_run_guid=test_run_id)
+            cancel_response = await mcp_client.tests_cancel(test_run_guid=test_run_id)
 
             assert cancel_response["jsonrpc"] == "2.0"
             assert "result" in cancel_response
@@ -137,7 +133,6 @@ async def test_cancel_tests_with_specific_guid(mcp_client, unity_state_manager):
     except json.JSONDecodeError:
         print("Could not parse test status JSON, skipping specific GUID test")
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
@@ -146,7 +141,7 @@ async def test_cancel_tests_tool_registration(mcp_client, unity_state_manager):
     tools_response = await mcp_client.list_tools()
 
     assert tools_response["jsonrpc"] == "2.0"
-    assert "result" in tools_response
+    assert "result" in response
 
     tools = tools_response["result"]["tools"]
     tool_names = [tool["name"] for tool in tools]
@@ -166,7 +161,6 @@ async def test_cancel_tests_tool_registration(mcp_client, unity_state_manager):
     assert schema["type"] == "object"
     assert "test_run_guid" in schema["properties"]
 
-
 @pytest.mark.mcp
 @pytest.mark.slow
 @pytest.mark.asyncio
@@ -178,9 +172,9 @@ async def test_cancel_tests_during_long_test_execution():
     try:
         # Start a long-running EditMode test (non-concurrently)
         test_task = asyncio.create_task(
-            client.run_tests(
+            client.tests_run_single(
+                test_name="NyamuTests.LargeErrorMessageTest",  # Single test that takes time
                 test_mode="EditMode",
-                test_filter="NyamuTests.LargeErrorMessageTest",  # Single test that takes time
                 timeout=30
             )
         )
@@ -190,7 +184,7 @@ async def test_cancel_tests_during_long_test_execution():
 
         # Try to cancel (may succeed or report no test running)
         try:
-            cancel_response = await client.cancel_tests()
+            cancel_response = await client.tests_cancel()
 
             assert cancel_response["jsonrpc"] == "2.0"
             cancel_text = cancel_response["result"]["content"][0]["text"]
@@ -217,13 +211,12 @@ async def test_cancel_tests_during_long_test_execution():
     finally:
         await client.stop()
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_cancel_tests_response_format(mcp_client, unity_state_manager):
     """Test that cancel_tests response has correct format"""
-    response = await mcp_client.cancel_tests()
+    response = await mcp_client.tests_cancel()
 
     # Verify MCP response structure
     assert response["jsonrpc"] == "2.0"
@@ -246,7 +239,6 @@ async def test_cancel_tests_response_format(mcp_client, unity_state_manager):
         assert "message" in response_data
     except json.JSONDecodeError:
         pytest.fail("Response text should be valid JSON")
-
 
 @pytest.mark.mcp
 @pytest.mark.asyncio

@@ -1,18 +1,17 @@
 """
-Test run_tests MCP tool
+Test run_tests MCP tool - Updated for new test endpoints
 """
 
 import pytest
 from mcp_client import MCPClient
-
 
 @pytest.mark.mcp
 @pytest.mark.slow
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_run_tests_edit_mode(mcp_client, unity_state_manager):
-    """Test running EditMode tests"""
-    response = await mcp_client.run_tests(test_mode="EditMode", timeout=60)
+    """Test running EditMode tests using tests_run_all"""
+    response = await mcp_client.tests_run_all(test_mode="EditMode", timeout=60)
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -29,14 +28,13 @@ async def test_run_tests_edit_mode(mcp_client, unity_state_manager):
     text = content["text"]
     assert "Test Results:" in text
 
-
 @pytest.mark.mcp
 @pytest.mark.slow
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_run_tests_play_mode(mcp_client, unity_state_manager):
-    """Test running PlayMode tests"""
-    response = await mcp_client.run_tests(test_mode="PlayMode", timeout=60)
+    """Test running PlayMode tests using tests_run_all"""
+    response = await mcp_client.tests_run_all(test_mode="PlayMode", timeout=60)
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -47,29 +45,27 @@ async def test_run_tests_play_mode(mcp_client, unity_state_manager):
     # Should show test results
     assert "Test Results:" in content_text
 
-
 @pytest.mark.mcp
 @pytest.mark.slow
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_run_tests_with_filter(mcp_client, unity_state_manager):
-    """Test running tests with filter"""
-    response = await mcp_client.run_tests(
+    """Test running tests with regex filter using tests_run_regex"""
+    response = await mcp_client.tests_run_regex(
         test_mode="EditMode",
-        test_filter="TestSample",
+        test_filter_regex=".*TestSample.*",
         timeout=60
     )
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
 
-
 @pytest.mark.mcp
 @pytest.mark.essential
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_run_tests_default_parameters(mcp_client, unity_state_manager):
-    """Test run_tests with default parameters"""
+    """Test tests_run_all with default parameters"""
     # Ensure Unity is fully ready for test execution
     print("Ensuring Unity is in clean state before running tests...")
     await unity_state_manager.ensure_clean_state()
@@ -78,38 +74,36 @@ async def test_run_tests_default_parameters(mcp_client, unity_state_manager):
     import asyncio
     await asyncio.sleep(2.0)
 
-    # This will run PlayMode tests by default with longer timeout
-    response = await mcp_client.run_tests(timeout=60)
+    # This will run EditMode tests by default with longer timeout
+    response = await mcp_client.tests_run_all(timeout=60)
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
-
 
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_run_tests_invalid_mode(mcp_client, unity_state_manager):
-    """Test run_tests with invalid test mode"""
-    # Use run_tests method which has retry logic instead of direct _send_request
-    response = await mcp_client.run_tests(test_mode="InvalidMode", timeout=30)
+    """Test tests_run_all with invalid test mode"""
+    # Use tests_run_all method which has retry logic instead of direct _send_request
+    response = await mcp_client.tests_run_all(test_mode="InvalidMode", timeout=30)
 
     # Should handle gracefully - either error or default to valid mode
     assert response["jsonrpc"] == "2.0"
-
 
 @pytest.mark.mcp
 @pytest.mark.slow
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_run_tests_timeout(unity_state_manager):
-    """Test run_tests with very short timeout"""
+    """Test tests_run_all with very short timeout"""
     client = MCPClient()
     await client.start()
 
     try:
         # Test with very short timeout - should timeout and raise exception
         with pytest.raises(RuntimeError) as exc_info:
-            await client.run_tests(timeout=1)
+            await client.tests_run_all(timeout=1)
 
         # Should contain timeout error message
         assert "timeout" in str(exc_info.value).lower()
@@ -118,20 +112,18 @@ async def test_run_tests_timeout(unity_state_manager):
     finally:
         await client.stop()
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_run_tests_direct_tool_call(unity_state_manager):
-    """Test run_tests using direct tool call with retry logic"""
+    """Test tests_run_all using direct tool call with retry logic"""
     client = MCPClient()
     await client.start()
 
     try:
-        # Use run_tests method which has retry logic for -32603 errors
-        response = await client.run_tests(
+        # Use tests_run_all method which has retry logic for -32603 errors
+        response = await client.tests_run_all(
             test_mode="EditMode",
-            test_filter="",
             timeout=30
         )
 
@@ -140,7 +132,6 @@ async def test_run_tests_direct_tool_call(unity_state_manager):
 
     finally:
         await client.stop()
-
 
 @pytest.mark.mcp
 @pytest.mark.slow
@@ -152,7 +143,7 @@ async def test_run_tests_results_format(unity_state_manager):
     await client.start()
 
     try:
-        response = await client.run_tests(test_mode="EditMode", timeout=60)
+        response = await client.tests_run_all(test_mode="EditMode", timeout=60)
 
         assert response["jsonrpc"] == "2.0"
         assert "result" in response

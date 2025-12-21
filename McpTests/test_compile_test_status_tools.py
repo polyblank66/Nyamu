@@ -55,7 +55,7 @@ async def test_test_status_tool_exists(mcp_client, unity_state_manager):
     assert "description" in test_status_tool
     assert "inputSchema" in test_status_tool
 
-    assert test_status_tool["name"] == "test_status"
+    assert test_status_tool["name"] == "tests_status"
     assert isinstance(test_status_tool["description"], str)
     assert len(test_status_tool["description"]) > 0
     assert "without running tests" in test_status_tool["description"]
@@ -189,13 +189,13 @@ async def test_compile_status_consistency_with_http_endpoint(mcp_client, unity_s
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_test_status_consistency_with_http_endpoint(mcp_client, unity_state_manager):
-    """Test that test_status MCP tool matches HTTP endpoint"""
+    """Test that tests_status MCP tool matches HTTP endpoint"""
     # Get status via MCP tool
-    mcp_response = await mcp_client.test_status()
+    mcp_response = await mcp_client.tests_status()
     mcp_data = json.loads(mcp_response["result"]["content"][0]["text"])
 
     # Get status via direct HTTP call
-    http_response = requests.get("http://localhost:17932/test-status")
+    http_response = requests.get("http://localhost:17932/tests-status")
     http_data = http_response.json()
 
     # Should match exactly

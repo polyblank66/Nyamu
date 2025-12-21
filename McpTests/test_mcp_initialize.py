@@ -34,7 +34,7 @@ async def test_mcp_initialize_success(unity_state_manager):
 
         tools = capabilities["tools"]
         assert "compilation_trigger" in tools
-        assert "run_tests" in tools
+        assert "tests_run_single" in tools
 
     finally:
         await client.stop()

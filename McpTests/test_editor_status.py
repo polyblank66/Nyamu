@@ -219,10 +219,10 @@ async def test_editor_status_consistency_with_compile_status(mcp_client, unity_s
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_editor_status_consistency_with_test_status(mcp_client, unity_state_manager):
-    """Test that editor_status isRunningTests matches test_status"""
+    """Test that editor_status isRunningTests matches tests_status"""
     # Get both statuses
     editor_status = await mcp_client.editor_status()
-    test_status_response = requests.get("http://localhost:17932/test-status")
+    test_status_response = requests.get("http://localhost:17932/tests-status")
 
     editor_data = json.loads(editor_status["result"]["content"][0]["text"])
     test_data = test_status_response.json()

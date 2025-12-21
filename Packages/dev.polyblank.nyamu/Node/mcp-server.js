@@ -326,26 +326,41 @@ class MCPServer {
                         required: []
                     }
                 },
-                run_tests: {
-                    description: "Execute Unity Test Runner tests and wait for completion. Returns test results including pass/fail counts and detailed failure information. Supports both EditMode (editor tests) and PlayMode (runtime tests) execution. LLM HINTS: EditMode tests run faster but only test editor functionality. PlayMode tests simulate actual game runtime but take longer. If tests fail to start, Unity Test Runner may need initialization - wait and retry. Prefer test_filter_regex over test_filter for flexible pattern matching.",
+                tests_run_single: {
+                    description: "Execute a single specific Unity test by its full name. Returns test results including pass/fail status and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for running individual tests, ideal for focused testing of specific functionality.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            test_name: {
+                                type: "string",
+                                description: "Full name of the test to run (required). The full name of the test including namespace and fixture. Format: Namespace.FixtureName.TestName. Example: MyProject.Tests.PlayerControllerTests.TestJump",
+                                default: ""
+                            },
+                            test_mode: {
+                                type: "string",
+                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
+                                enum: ["EditMode", "PlayMode"],
+                                default: "EditMode"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 60). LLM HINT: PlayMode tests typically need 60-120s, EditMode tests usually complete within 30s.",
+                                default: 60
+                            }
+                        },
+                        required: ["test_name"]
+                    }
+                },
+                tests_run_all: {
+                    description: "Execute all Unity tests in the specified mode. Returns comprehensive test results including pass/fail counts and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for complete test suite execution, ideal for CI/CD pipelines and comprehensive verification.",
                     inputSchema: {
                         type: "object",
                         properties: {
                             test_mode: {
                                 type: "string",
-                                description: "Test mode: EditMode or PlayMode (default: PlayMode). LLM HINT: Use EditMode for quick verification of basic functionality, PlayMode for comprehensive runtime testing.",
+                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
                                 enum: ["EditMode", "PlayMode"],
-                                default: "PlayMode"
-                            },
-                            test_filter: {
-                                type: "string",
-                                description: "Test filter pattern (optional). The full name of the tests to match the filter, including namespace and fixture. This is usually in the format Namespace.FixtureName.TestName. If the test has test arguments, then include them in parenthesis. E.g. MyProject.Tests.MyTestClass2.MyTestWithMultipleValues(1). Use pipe '|' to separate different test names.",
-                                default: ""
-                            },
-                            test_filter_regex: {
-                                type: "string",
-                                description: "Test filter regex pattern (optional). Use .NET Regex syntax to match test names by pattern. This is mapped to Unity's Filter.groupNames property for flexible test selection. PREFERRED over test_filter for pattern matching.",
-                                default: ""
+                                default: "EditMode"
                             },
                             timeout: {
                                 type: "number",
@@ -354,6 +369,31 @@ class MCPServer {
                             }
                         },
                         required: []
+                    }
+                },
+                tests_run_regex: {
+                    description: "Execute Unity tests matching a regex pattern. Returns test results including pass/fail counts and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for flexible test selection by patterns, ideal for running test suites by namespace, category, or naming conventions.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            test_filter_regex: {
+                                type: "string",
+                                description: "Regex pattern for filtering tests (required). Use .NET Regex syntax to match test names by pattern. Example patterns: '.*PlayerController.*' for all PlayerController tests, 'Tests\\\\.Movement\\\\..*' for all tests in Movement namespace, '.*(Jump|Run).*' for tests containing Jump or Run.",
+                                default: ""
+                            },
+                            test_mode: {
+                                type: "string",
+                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
+                                enum: ["EditMode", "PlayMode"],
+                                default: "EditMode"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 60). LLM HINT: PlayMode tests typically need 60-120s, EditMode tests usually complete within 30s.",
+                                default: 60
+                            }
+                        },
+                        required: ["test_filter_regex"]
                     }
                 },
                 refresh_assets: {
@@ -386,7 +426,7 @@ class MCPServer {
                         required: []
                     }
                 },
-                test_status: {
+                tests_status: {
                     description: "Get current test execution status without running tests. Returns test execution state, last test time, test results, and test run ID.",
                     inputSchema: {
                         type: "object",
@@ -662,15 +702,19 @@ class MCPServer {
             switch (name) {
                 case 'compilation_trigger':
                     return await this.callCompileAndWait(id, args.timeout || 30);
-                case 'run_tests':
-                    return await this.callRunTests(id, args.test_mode || 'PlayMode', args.test_filter || '', args.test_filter_regex || '', args.timeout || 60);
+                case 'tests_run_single':
+                    return await this.callTestsRunSingle(id, args.test_name, args.test_mode || 'EditMode', args.timeout || 60);
+                case 'tests_run_all':
+                    return await this.callTestsRunAll(id, args.test_mode || 'EditMode', args.timeout || 60);
+                case 'tests_run_regex':
+                    return await this.callTestsRunRegex(id, args.test_filter_regex, args.test_mode || 'EditMode', args.timeout || 60);
                 case 'refresh_assets':
                     return await this.callRefreshAssets(id, args.force || false);
                 case 'editor_status':
                     return await this.callEditorStatus(id);
                 case 'compilation_status':
                     return await this.callCompileStatus(id);
-                case 'test_status':
+                case 'tests_status':
                     return await this.callTestStatus(id);
                 case 'tests_cancel':
                     return await this.callTestsCancel(id, args.test_run_guid || '');
@@ -786,17 +830,17 @@ class MCPServer {
         }
     }
 
-    async callRunTests(id, testMode, testFilter, testFilterRegex, timeoutSeconds) {
+    async callTestsRunSingle(id, testName, testMode, timeoutSeconds) {
         try {
             // Ensure response formatter is ready
             await this.ensureResponseFormatter();
 
             // Get initial status to capture current test run ID (if any)
-            const initialStatus = await this.makeHttpRequest('/test-status');
+            const initialStatus = await this.makeHttpRequest('/tests-status');
             const initialTestRunId = initialStatus.testRunId;
 
-            // Start test execution
-            const runResponse = await this.makeHttpRequest(`/run-tests?mode=${testMode}&filter=${encodeURIComponent(testFilter)}&filter_regex=${encodeURIComponent(testFilterRegex)}`);
+            // Start single test execution
+            const runResponse = await this.makeHttpRequest(`/tests-run-single?test_name=${encodeURIComponent(testName)}&mode=${testMode}`);
 
             // Wait for test execution to actually start and get new test run ID
             const startTime = Date.now();
@@ -809,7 +853,7 @@ class MCPServer {
 
             while (Date.now() - startTime < startCheckTimeout) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/test-status');
+                    const statusResponse = await this.makeHttpRequest('/tests-status');
 
                     // Check for early error detection
                     if (statusResponse.hasError && statusResponse.errorMessage) {
@@ -837,7 +881,7 @@ class MCPServer {
             // Now wait for completion with the specific test run ID
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/test-status');
+                    const statusResponse = await this.makeHttpRequest('/tests-status');
 
                     // Check for errors during test execution
                     if (statusResponse.hasError && statusResponse.errorMessage) {
@@ -875,6 +919,190 @@ class MCPServer {
 
             // Timeout reached
             throw new Error(`Test execution timeout after ${timeoutSeconds} seconds`);
+
+        } catch (error) {
+            throw new Error(`Failed to run tests: ${error.message}`);
+        }
+    }
+
+    async callTestsRunAll(id, testMode, timeoutSeconds) {
+        try {
+            // Ensure response formatter is ready
+            await this.ensureResponseFormatter();
+
+            // Get initial status to capture current test run ID (if any)
+            const initialStatus = await this.makeHttpRequest('/tests-status');
+            const initialTestRunId = initialStatus.testRunId;
+
+            // Start all tests execution
+            const runResponse = await this.makeHttpRequest(`/tests-run-all?mode=${testMode}`);
+
+            // Wait for test execution to actually start and get new test run ID
+            const startTime = Date.now();
+            const timeoutMs = timeoutSeconds * 1000;
+            let currentTestRunId = initialTestRunId;
+
+            // First, wait for test execution to start (new test run ID)
+            let testStarted = false;
+            const startCheckTimeout = 10000; // 10 seconds timeout for test start
+
+            while (Date.now() - startTime < startCheckTimeout) {
+                try {
+                    const statusResponse = await this.makeHttpRequest('/tests-status');
+
+                    // Check for early error detection
+                    if (statusResponse.hasError && statusResponse.errorMessage) {
+                        throw new Error(`Test execution failed to start: ${statusResponse.errorMessage}`);
+                    }
+
+                    if (statusResponse.testRunId && statusResponse.testRunId !== initialTestRunId) {
+                        currentTestRunId = statusResponse.testRunId;
+                        testStarted = true;
+                        break;
+                    }
+
+                    // Wait 200ms before next poll for test start
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                } catch (pollError) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                }
+            }
+
+            if (!testStarted) {
+                throw new Error('Test execution failed to start - no new test run ID detected');
+            }
+
+            // Now wait for completion with the specific test run ID
+            while (Date.now() - startTime < timeoutMs) {
+                try {
+                    const statusResponse = await this.makeHttpRequest('/tests-status');
+
+                    // Check for errors during test execution
+                    if (statusResponse.hasError && statusResponse.errorMessage) {
+                        throw new Error(`Test execution error: ${statusResponse.errorMessage}`);
+                    }
+
+                    // Check if this is the same test run and it's completed
+                    if (statusResponse.testRunId === currentTestRunId && statusResponse.status === 'idle') {
+                        // Test execution completed for our specific test run
+                        const resultText = this.formatTestResults(statusResponse);
+                        const formattedText = this.responseFormatter.formatResponse(resultText);
+
+                        return {
+                            jsonrpc: '2.0',
+                            id,
+                            result: {
+                                content: [{
+                                    type: 'text',
+                                    text: formattedText
+                                }]
+                            }
+                        };
+                    }
+
+                    // Wait 1 second before next poll
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (pollError) {
+                    // Continue polling despite individual request failures
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    continue;
+                }
+            }
+
+            throw new Error(`Test execution timed out after ${timeoutSeconds} seconds`);
+
+        } catch (error) {
+            throw new Error(`Failed to run tests: ${error.message}`);
+        }
+    }
+
+    async callTestsRunRegex(id, testFilterRegex, testMode, timeoutSeconds) {
+        try {
+            // Ensure response formatter is ready
+            await this.ensureResponseFormatter();
+
+            // Get initial status to capture current test run ID (if any)
+            const initialStatus = await this.makeHttpRequest('/tests-status');
+            const initialTestRunId = initialStatus.testRunId;
+
+            // Start regex-filtered test execution
+            const runResponse = await this.makeHttpRequest(`/tests-run-regex?filter_regex=${encodeURIComponent(testFilterRegex)}&mode=${testMode}`);
+
+            // Wait for test execution to actually start and get new test run ID
+            const startTime = Date.now();
+            const timeoutMs = timeoutSeconds * 1000;
+            let currentTestRunId = initialTestRunId;
+
+            // First, wait for test execution to start (new test run ID)
+            let testStarted = false;
+            const startCheckTimeout = 10000; // 10 seconds timeout for test start
+
+            while (Date.now() - startTime < startCheckTimeout) {
+                try {
+                    const statusResponse = await this.makeHttpRequest('/tests-status');
+
+                    // Check for early error detection
+                    if (statusResponse.hasError && statusResponse.errorMessage) {
+                        throw new Error(`Test execution failed to start: ${statusResponse.errorMessage}`);
+                    }
+
+                    if (statusResponse.testRunId && statusResponse.testRunId !== initialTestRunId) {
+                        currentTestRunId = statusResponse.testRunId;
+                        testStarted = true;
+                        break;
+                    }
+
+                    // Wait 200ms before next poll for test start
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                } catch (pollError) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                }
+            }
+
+            if (!testStarted) {
+                throw new Error('Test execution failed to start - no new test run ID detected');
+            }
+
+            // Now wait for completion with the specific test run ID
+            while (Date.now() - startTime < timeoutMs) {
+                try {
+                    const statusResponse = await this.makeHttpRequest('/tests-status');
+
+                    // Check for errors during test execution
+                    if (statusResponse.hasError && statusResponse.errorMessage) {
+                        throw new Error(`Test execution error: ${statusResponse.errorMessage}`);
+                    }
+
+                    // Check if this is the same test run and it's completed
+                    if (statusResponse.testRunId === currentTestRunId && statusResponse.status === 'idle') {
+                        // Test execution completed for our specific test run
+                        const resultText = this.formatTestResults(statusResponse);
+                        const formattedText = this.responseFormatter.formatResponse(resultText);
+
+                        return {
+                            jsonrpc: '2.0',
+                            id,
+                            result: {
+                                content: [{
+                                    type: 'text',
+                                    text: formattedText
+                                }]
+                            }
+                        };
+                    }
+
+                    // Wait 1 second before next poll
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (pollError) {
+                    // Continue polling despite individual request failures
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    continue;
+                }
+            }
+
+            throw new Error(`Test execution timed out after ${timeoutSeconds} seconds`);
 
         } catch (error) {
             throw new Error(`Failed to run tests: ${error.message}`);
@@ -965,8 +1193,8 @@ class MCPServer {
             // Ensure response formatter is ready
             await this.ensureResponseFormatter();
 
-            // Call Unity test-status endpoint
-            const statusResponse = await this.makeHttpRequest('/test-status');
+            // Call Unity tests-status endpoint
+            const statusResponse = await this.makeHttpRequest('/tests-status');
 
             const formattedText = this.responseFormatter.formatJsonResponse(statusResponse);
 
@@ -992,12 +1220,12 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Build the URL with optional guid parameter
-            let url = '/cancel-tests';
+            let url = '/tests-cancel';
             if (testRunGuid) {
                 url += `?guid=${encodeURIComponent(testRunGuid)}`;
             }
 
-            // Call Unity cancel-tests endpoint
+            // Call Unity tests-cancel endpoint
             const cancelResponse = await this.makeHttpRequest(url);
 
             const formattedText = this.responseFormatter.formatJsonResponse(cancelResponse);

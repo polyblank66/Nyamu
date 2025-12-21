@@ -1,4 +1,4 @@
-## Nyamu
+# Nyamu
 
 **Nyamu** is a minimal MCP server for Unity, designed to give coding agents a way to check script compilation. It is based on the **Yamu** project by Keijiro Takahashi.
 
@@ -29,8 +29,11 @@ Prompt: Check scripts compilation with nyamu mcp tool
 * `shader_compilation_status` – Returns the current shader compilation status without triggering compilation. Includes compilation state, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command.
 
 ### Testing
-* `run_tests` – Executes Unity Test Runner tests (EditMode and PlayMode) with real-time status monitoring and detailed result reporting. Supports filtering by test names and regex patterns.
-* `test_status` – Returns the current test execution status without running tests. Includes execution state, last test time, test results, and test run ID.
+* `tests_run_regex` – Executes Unity Test Runner tests (EditMode and PlayMode) with regex-based filtering. Supports flexible pattern matching for test selection.
+* `tests_run_all` – Runs all Unity tests in the specified mode (EditMode or PlayMode).
+* `tests_run_single` – Runs a single specific Unity test by its full name.
+* `tests_status` – Returns the current test execution status without running tests. Includes execution state, last test time, test results, and test run ID.
+* `tests_cancel` – Cancels running Unity test execution. Supports cancellation of EditMode tests by GUID or current test run.
 
 ### Asset Management
 * `refresh_assets` – Forces Unity to refresh the asset database. This is critical after file operations to ensure Unity detects file system changes (new, deleted, or moved files).

@@ -12,9 +12,9 @@ from mcp_client import MCPClient
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_error_fields_in_test_status(mcp_client):
-    """Test that test-status endpoint includes error fields"""
+    """Test that tests-status endpoint includes error fields"""
 
-    response = await mcp_client.test_status()
+    response = await mcp_client.tests_status()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -140,9 +140,9 @@ async def test_normal_vs_error_execution_speed():
     try:
         # Test normal execution
         start_time = time.time()
-        normal_response = await client.run_tests(
+        normal_response = await client.tests_run_single(
             test_mode="EditMode",
-            test_filter="NyamuTests.PassingTest1",
+            test_name="NyamuTests.PassingTest1",
             timeout=15
         )
         normal_time = time.time() - start_time
@@ -152,9 +152,9 @@ async def test_normal_vs_error_execution_speed():
 
         # Test with non-existent class (should be fast)
         start_time = time.time()
-        error_response = await client.run_tests(
+        error_response = await client.tests_run_single(
             test_mode="EditMode",
-            test_filter="NonExistentTestClass.NonExistentMethod",
+            test_name="NonExistentTestClass.NonExistentMethod",
             timeout=15
         )
         error_time = time.time() - start_time

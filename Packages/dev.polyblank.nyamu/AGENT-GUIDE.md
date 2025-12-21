@@ -130,7 +130,7 @@ Modifying Assets/Scripts/PlayerController.cs (fixing a bug)
 **When it happens:**
 - During `compilation_trigger` - Unity is compiling
 - During `refresh_assets` - Unity is refreshing asset database
-- During `run_tests` - Unity Test Runner is initializing
+- During `tests_run_*` - Unity Test Runner is initializing
 
 **Example retry pattern:**
 ```
@@ -156,22 +156,23 @@ Attempt 2: compilation_trigger → Success
 
 ## Testing Patterns
 
-### Running Tests with Filters
+### Running Tests with New Tools
 
-**Prefer test_filter_regex for pattern matching:**
+**New test execution tools:**
+
+```
+tests_run_single(test_name="MyNamespace.MyTests.MySpecificTest") - Run single test
+tests_run_all(test_mode="EditMode") - Run all tests in mode
+tests_run_regex(test_filter_regex=".*PlayerController.*") - Run tests matching regex
+```
+
+**Prefer tests_run_regex for pattern matching:**
 
 ```
 Example patterns:
 - ".*PlayerController.*" - All tests with "PlayerController" in name
 - "Tests\\.Movement\\..*" - All tests in Movement namespace
 - ".*(Jump|Run).*" - Tests containing "Jump" or "Run"
-```
-
-**Use test_filter for exact matches:**
-```
-Example:
-- "MyProject.Tests.PlayerControllerTests.TestJump"
-- "MyProject.Tests.PlayerControllerTests.TestRun|MyProject.Tests.EnemyTests.TestAI"
 ```
 
 ### EditMode vs PlayMode Tests
@@ -191,17 +192,23 @@ Example:
 **Example:**
 ```
 Quick verification:
-→ run_tests(test_mode="EditMode", timeout=30)
+→ tests_run_all(test_mode="EditMode", timeout=30)
 
 Full integration testing:
-→ run_tests(test_mode="PlayMode", timeout=120)
+→ tests_run_all(test_mode="PlayMode", timeout=120)
+
+Single test:
+→ tests_run_single(test_name="MyProject.Tests.PlayerControllerTests.TestJump", test_mode="EditMode")
+
+Regex pattern:
+→ tests_run_regex(test_filter_regex=".*PlayerController.*", test_mode="EditMode")
 ```
 
 ### Checking Test Status
 
 ```
 Before running tests:
-→ test_status()
+→ tests_status()
 → Check if tests are already running
 → Avoid starting duplicate test runs
 ```
@@ -229,7 +236,7 @@ Before running tests:
 6. Write test files in Assets/Tests/
 7. refresh_assets(force=false)
 8. compilation_trigger(timeout=30)
-9. run_tests(test_filter_regex=".*NewFeature.*", test_mode="EditMode")
+9. tests_run_regex(test_filter_regex=".*NewFeature.*", test_mode="EditMode")
 10. Fix issues and iterate
 ```
 
@@ -237,10 +244,10 @@ Before running tests:
 
 ```
 1. compilation_status() - Ensure clean state
-2. run_tests() - Run tests before changes
+2. tests_run_all() - Run tests before changes
 3. Edit files (no refresh needed)
 4. compilation_trigger()
-5. run_tests() - Verify nothing broke
+5. tests_run_all() - Verify nothing broke
 6. If tests fail, iterate on fixes
 ```
 

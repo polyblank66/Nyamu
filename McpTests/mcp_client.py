@@ -9,7 +9,6 @@ import os
 import sys
 from typing import Dict, Any, Optional
 
-
 class MCPClient:
     def __init__(self, mcp_server_path: str = None):
         """
@@ -168,17 +167,60 @@ class MCPClient:
             "arguments": {"timeout": timeout}
         })
 
-    async def run_tests(self, test_mode: str = "PlayMode", test_filter: str = "", test_filter_regex: str = "", timeout: int = 60) -> Dict[str, Any]:
-        """Run tests
+    async def tests_run_single(self, test_name: str, test_mode: str = "EditMode", timeout: int = 60) -> Dict[str, Any]:
+        """Run a single specific test by its full name
 
-        Automatically retries on Unity HTTP server restart (-32603 errors).
+        Args:
+            test_name: Full name of the test to run (e.g., "MyNamespace.MyTests.MySpecificTest")
+            test_mode: Test mode: "EditMode" or "PlayMode" (default: "EditMode")
+            timeout: Timeout in seconds (default: 60)
+
+        Returns:
+            MCP response with test execution results
         """
         return await self._send_unity_request_with_retry("tools/call", {
-            "name": "run_tests",
+            "name": "tests_run_single",
+            "arguments": {
+                "test_name": test_name,
+                "test_mode": test_mode,
+                "timeout": timeout
+            }
+        })
+
+    async def tests_run_all(self, test_mode: str = "EditMode", timeout: int = 60) -> Dict[str, Any]:
+        """Run all tests in the specified mode
+
+        Args:
+            test_mode: Test mode: "EditMode" or "PlayMode" (default: "EditMode")
+            timeout: Timeout in seconds (default: 60)
+
+        Returns:
+            MCP response with test execution results
+        """
+        return await self._send_unity_request_with_retry("tools/call", {
+            "name": "tests_run_all",
             "arguments": {
                 "test_mode": test_mode,
-                "test_filter": test_filter,
+                "timeout": timeout
+            }
+        })
+
+    async def tests_run_regex(self, test_filter_regex: str = "", test_mode: str = "EditMode", timeout: int = 60) -> Dict[str, Any]:
+        """Run tests matching a regex pattern
+
+        Args:
+            test_filter_regex: .NET Regex pattern for filtering tests (e.g., ".*PlayerController.*")
+            test_mode: Test mode: "EditMode" or "PlayMode" (default: "EditMode")
+            timeout: Timeout in seconds (default: 60)
+
+        Returns:
+            MCP response with test execution results
+        """
+        return await self._send_unity_request_with_retry("tools/call", {
+            "name": "tests_run_regex",
+            "arguments": {
                 "test_filter_regex": test_filter_regex,
+                "test_mode": test_mode,
                 "timeout": timeout
             }
         })
@@ -208,14 +250,14 @@ class MCPClient:
             "arguments": {}
         })
 
-    async def test_status(self) -> Dict[str, Any]:
+    async def tests_status(self) -> Dict[str, Any]:
         """Get test execution status without running tests"""
         return await self._send_request("tools/call", {
-            "name": "test_status",
+            "name": "tests_status",
             "arguments": {}
         })
 
-    async def cancel_tests(self, test_run_guid: str = "") -> Dict[str, Any]:
+    async def tests_cancel(self, test_run_guid: str = "") -> Dict[str, Any]:
         """Cancel running Unity test execution
 
         Args:
@@ -302,7 +344,6 @@ class MCPClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.stop()
 
-
 def run_sync_mcp_command(method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
     """Synchronous MCP command call"""
     async def _run():
@@ -314,11 +355,15 @@ def run_sync_mcp_command(method: str, params: Dict[str, Any] = None) -> Dict[str
             elif method == "compilation_trigger":
                 timeout = (params or {}).get("timeout", 30)
                 return await client.compilation_trigger(timeout=timeout)
-            elif method == "run_tests":
-                return await client.run_tests(**(params or {}))
-            elif method == "cancel_tests":
+            elif method == "tests_run_single":
+                return await client.tests_run_single(**params)
+            elif method == "tests_run_all":
+                return await client.tests_run_all(**params)
+            elif method == "tests_run_regex":
+                return await client.tests_run_regex(**params)
+            elif method == "tests_cancel":
                 test_run_guid = (params or {}).get("test_run_guid", "")
-                return await client.cancel_tests(test_run_guid=test_run_guid)
+                return await client.tests_cancel(test_run_guid=test_run_guid)
             else:
                 return await client._send_request(method, params)
 

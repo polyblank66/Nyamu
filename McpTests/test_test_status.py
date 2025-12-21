@@ -6,12 +6,11 @@ import pytest
 import requests
 import json
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 def test_test_status_endpoint():
-    """Test test-status HTTP endpoint directly"""
-    response = requests.get("http://localhost:17932/test-status")
+    """Test tests-status HTTP endpoint directly"""
+    response = requests.get("http://localhost:17932/tests-status")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -26,12 +25,11 @@ def test_test_status_endpoint():
     assert data["status"] in ["idle", "running"]
     assert isinstance(data["isRunning"], bool)
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 def test_test_status_response_structure():
-    """Test that test status response has correct structure"""
-    response = requests.get("http://localhost:17932/test-status")
+    """Test that tests status response has correct structure"""
+    response = requests.get("http://localhost:17932/tests-status")
     data = response.json()
 
     # Check required fields
@@ -48,13 +46,12 @@ def test_test_status_response_structure():
     if data["testRunId"] is not None:
         assert isinstance(data["testRunId"], str)
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 def test_test_status_with_results():
-    """Test test status when test results are available"""
+    """Test tests status when test results are available"""
     # First run some tests to get results
-    requests.get("http://localhost:17932/run-tests?mode=EditMode")
+    requests.get("http://localhost:17932/tests-run-all?mode=EditMode")
 
     # Wait for tests to complete
     import time
@@ -62,7 +59,7 @@ def test_test_status_with_results():
     waited = 0
 
     while waited < max_wait:
-        response = requests.get("http://localhost:17932/test-status")
+        response = requests.get("http://localhost:17932/tests-status")
         data = response.json()
 
         if data["status"] == "idle" and data["testResults"] is not None:
@@ -86,39 +83,36 @@ def test_test_status_with_results():
         if "results" in results:
             assert isinstance(results["results"], list)
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 def test_test_status_idle_state():
-    """Test test status when no tests are running"""
+    """Test tests status when no tests are running"""
     # Make sure no tests are running by checking status multiple times
-    response = requests.get("http://localhost:17932/test-status")
+    response = requests.get("http://localhost:17932/tests-status")
     data = response.json()
 
     if data["status"] == "idle":
         assert data["isRunning"] is False
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 def test_test_status_headers():
-    """Test that test status endpoint returns proper headers"""
-    response = requests.get("http://localhost:17932/test-status")
+    """Test that tests status endpoint returns proper headers"""
+    response = requests.get("http://localhost:17932/tests-status")
 
     # Check CORS headers
     assert response.headers.get("access-control-allow-origin") == "*"
     assert response.headers.get("access-control-allow-methods") is not None
     assert response.headers.get("access-control-allow-headers") is not None
 
-
 @pytest.mark.mcp
 @pytest.mark.protocol
 def test_test_status_multiple_requests():
-    """Test multiple consecutive requests to test status"""
+    """Test multiple consecutive requests to tests status"""
     responses = []
 
     for i in range(3):
-        response = requests.get("http://localhost:17932/test-status")
+        response = requests.get("http://localhost:17932/tests-status")
         assert response.status_code == 200
         responses.append(response.json())
 

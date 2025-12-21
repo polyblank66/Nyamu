@@ -28,7 +28,7 @@ Check out Design.md for the project design and goal definitions.
 - Only EditMode tests can be cancelled via `tests_cancel`
 
 ### Status Checking
-- Use `compilation_status`, `test_status`, `editor_status` to check state without triggering operations
+- Use `compilation_status`, `tests_status`, `editor_status` to check state without triggering operations
 - Check status before long operations to avoid redundant work
 
 # Technology Choices

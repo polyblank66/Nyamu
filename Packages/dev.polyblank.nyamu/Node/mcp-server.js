@@ -547,6 +547,19 @@ class MCPServer {
                         },
                         required: ["pattern"]
                     }
+                },
+                execute_menu_item: {
+                    description: "Execute Unity Editor menu item by path. Triggers any Unity menu command programmatically. LLM HINTS: Use full menu path like 'Assets/Create/C# Script' or 'GameObject/Create Empty'. Returns success/failure status. Useful for automating Unity Editor operations.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            menu_item_path: {
+                                type: "string",
+                                description: "Full path to menu item (e.g., 'Assets/Create/C# Script', 'GameObject/Create Empty', 'Edit/Project Settings...'). LLM HINT: Use exact path as shown in Unity Editor menus."
+                            }
+                        },
+                        required: ["menu_item_path"]
+                    }
                 }
             }
         };
@@ -677,6 +690,8 @@ class MCPServer {
                     return await this.callEditorLogTail(id, args.line_count || 100, args.log_type || 'all');
                 case 'editor_log_grep':
                     return await this.callEditorLogGrep(id, args.pattern, args.case_sensitive || false, args.context_lines || 0, args.line_limit || 1000, args.log_type || 'all');
+                case 'execute_menu_item':
+                    return await this.callExecuteMenuItem(id, args.menu_item_path);
                 default:
                     return {
                         jsonrpc: '2.0',
@@ -1252,6 +1267,22 @@ class MCPServer {
             };
         } catch (error) {
             throw new Error(`Failed to grep log: ${error.message}`);
+        }
+    }
+
+    async callExecuteMenuItem(id, menuItemPath) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const response = await this.makeHttpRequest(`/execute-menu-item?menuItemPath=${encodeURIComponent(menuItemPath)}`);
+            const formattedText = this.responseFormatter.formatJsonResponse(response);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: formattedText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to execute menu item: ${error.message}`);
         }
     }
 

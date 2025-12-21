@@ -1196,6 +1196,39 @@
 				}
 			],
 			"description": "Endpoints for querying Unity Editor and MCP server status"
+		},
+		{
+			"name": "Menu Item Execution",
+			"item": [
+				{
+					"name": "Execute Menu Item",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:{{nyamu-port}}/execute-menu-item?menuItemPath=Assets/Create/Folder",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "{{nyamu-port}}",
+							"path": [
+								"execute-menu-item"
+							],
+							"query": [
+								{
+									"key": "menuItemPath",
+									"value": "Assets/Create/Folder",
+									"description": "Full path to Unity menu item (e.g., 'Assets/Create/C# Script', 'GameObject/Create Empty')"
+								}
+							]
+						},
+						"description": "Executes a Unity Editor menu item by its full path. Useful for automating Unity Editor operations.\n\n**Query Parameters:**\n- `menuItemPath` (required): Full menu path as shown in Unity Editor\n\n**Examples:**\n- `Assets/Create/C# Script`\n- `GameObject/Create Empty`\n- `Edit/Project Settings...`\n\n**Response:**\n- Success: `{\"status\":\"ok\", \"message\":\"Menu item executed successfully\", \"menuItemPath\":\"...\"}`\n- Error: `{\"status\":\"error\", \"message\":\"...\", \"menuItemPath\":\"...\"}`"
+					},
+					"response": []
+				}
+			],
+			"description": "Execute Unity Editor menu items programmatically"
 		}
 	],
 	"variable": [

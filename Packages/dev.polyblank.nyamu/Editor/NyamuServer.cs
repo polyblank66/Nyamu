@@ -63,6 +63,7 @@ namespace Nyamu
             public const string CompileAllShaders = "/compile-all-shaders";
             public const string CompileShadersRegex = "/compile-shaders-regex";
             public const string ShaderCompilationStatus = "/shader-compilation-status";
+            public const string ExecuteMenuItem = "/execute-menu-item";
         }
 
         public static class JsonResponses
@@ -622,6 +623,7 @@ namespace Nyamu
                 Constants.Endpoints.CompileAllShaders => HandleCompileAllShadersRequest(request),
                 Constants.Endpoints.CompileShadersRegex => HandleCompileShadersRegexRequest(request),
                 Constants.Endpoints.ShaderCompilationStatus => HandleShaderCompilationStatusRequest(request),
+                Constants.Endpoints.ExecuteMenuItem => HandleExecuteMenuItemRequest(request),
                 _ => HandleNotFoundRequest(response)
             };
         }
@@ -1745,6 +1747,46 @@ namespace Nyamu
                 };
                 return JsonUtility.ToJson(noneResponse);
             }
+        }
+
+        static string HandleExecuteMenuItemRequest(HttpListenerRequest request)
+        {
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleExecuteMenuItemRequest");
+
+            if (request.HttpMethod != "GET")
+                return "{\"status\":\"error\",\"message\":\"Method not allowed. Use GET.\"}";
+
+            var menuItemPath = request.QueryString["menuItemPath"];
+            if (string.IsNullOrEmpty(menuItemPath))
+                return "{\"status\":\"error\",\"message\":\"Missing required parameter: menuItemPath\"}";
+
+            bool success = false;
+            string errorMessage = null;
+
+            lock (_mainThreadActionQueue)
+            {
+                _mainThreadActionQueue.Enqueue(() =>
+                {
+                    try
+                    {
+                        success = EditorApplication.ExecuteMenuItem(menuItemPath);
+                        if (!success)
+                            errorMessage = "MenuItem not found or execution failed";
+                    }
+                    catch (System.Exception ex)
+                    {
+                        errorMessage = ex.Message;
+                    }
+                });
+            }
+
+            // Wait for main thread to execute
+            Thread.Sleep(100);
+
+            if (success)
+                return $"{{\"status\":\"ok\",\"message\":\"Menu item executed successfully\",\"menuItemPath\":\"{menuItemPath}\"}}";
+            else
+                return $"{{\"status\":\"error\",\"message\":\"{errorMessage ?? "MenuItem execution failed"}\",\"menuItemPath\":\"{menuItemPath}\"}}";
         }
 
         static string HandleNotFoundRequest(HttpListenerResponse response)

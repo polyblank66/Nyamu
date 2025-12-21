@@ -38,6 +38,9 @@ Prompt: Check scripts compilation with nyamu mcp tool
 ### Editor Status
 * `editor_status` – Returns the current Unity Editor status, including compilation state, test execution state, and play mode state, for real-time monitoring.
 
+### Menu Item Execution
+* `execute_menu_item` – Executes any Unity Editor menu item by its path. Useful for automating Unity Editor operations programmatically.
+
 ### Unity Editor Logs
 * `editor_log_path` – Returns the platform-specific path to the Unity Editor log file along with existence status. Useful for verifying log file location before reading.
 * `editor_log_head` – Reads the first N lines from the Unity Editor log file. Supports filtering by log type (error, warning, info) to quickly find specific issues during startup.

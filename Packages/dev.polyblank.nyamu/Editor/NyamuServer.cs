@@ -339,6 +339,7 @@ namespace Nyamu
         // HTTP server components
         static HttpListener _listener;
         static Thread _thread;
+        static ManualResetEvent _listenerReady;
 
         // Compilation tracking
         static List<CompileError> _compilationErrors = new();
@@ -416,6 +417,7 @@ namespace Nyamu
             Cleanup();
 
             _shouldStop = false;
+            _listenerReady = new ManualResetEvent(false);
             _listener = new HttpListener();
             int port = NyamuSettings.Instance.serverPort;
             _listener.Prefixes.Add($"http://localhost:{port}/");
@@ -450,6 +452,14 @@ namespace Nyamu
                 }
                 catch { }
             }
+
+            // Dispose ManualResetEvent
+            try
+            {
+                _listenerReady?.Set(); // Unblock any waiting threads
+                _listenerReady?.Dispose();
+            }
+            catch { }
 
             if (_thread?.IsAlive == true)
             {
@@ -523,14 +533,51 @@ namespace Nyamu
         // HTTP SERVER INFRASTRUCTURE
         // ========================================================================
 
+        static void ProcessRequestCallback(IAsyncResult result)
+        {
+            try
+            {
+                var listener = (HttpListener)result.AsyncState;
+                if (!listener.IsListening)
+                {
+                    _listenerReady.Set();
+                    return;
+                }
+
+                var context = listener.EndGetContext(result);
+
+                // Signal that we're ready for the next request
+                _listenerReady.Set();
+
+                // Process this request in ThreadPool (multi-threaded)
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try
+                    {
+                        ProcessHttpRequest(context);
+                    }
+                    catch (Exception ex)
+                    {
+                        HandleHttpException(ex);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                HandleHttpException(ex);
+                _listenerReady.Set(); // Unblock even on error
+            }
+        }
+
         static void HttpRequestProcessor()
         {
-            while (!_shouldStop && _listener?.IsListening == true)
+            while (!_shouldStop && _listener?.IsListening == true && _listenerReady != null)
             {
                 try
                 {
-                    var context = _listener.GetContext();
-                    ProcessHttpRequest(context);
+                    _listenerReady.Reset();
+                    _listener.BeginGetContext(ProcessRequestCallback, _listener);
+                    _listenerReady.WaitOne(); // Wait for callback to be ready for next request
                 }
                 catch (Exception ex)
                 {

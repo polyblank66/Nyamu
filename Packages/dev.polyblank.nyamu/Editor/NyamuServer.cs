@@ -1760,8 +1760,7 @@ namespace Nyamu
             if (string.IsNullOrEmpty(menuItemPath))
                 return "{\"status\":\"error\",\"message\":\"Missing required parameter: menuItemPath\"}";
 
-            bool success = false;
-            string errorMessage = null;
+            var result = new MenuItemExecutionResult();
 
             lock (_mainThreadActionQueue)
             {
@@ -1769,24 +1768,34 @@ namespace Nyamu
                 {
                     try
                     {
-                        success = EditorApplication.ExecuteMenuItem(menuItemPath);
-                        if (!success)
-                            errorMessage = "MenuItem not found or execution failed";
+                        result.success = EditorApplication.ExecuteMenuItem(menuItemPath);
+                        if (!result.success)
+                            result.errorMessage = "MenuItem not found or execution failed";
                     }
                     catch (System.Exception ex)
                     {
-                        errorMessage = ex.Message;
+                        result.errorMessage = ex.Message;
                     }
+                    result.completed = true;
                 });
             }
 
-            // Wait for main thread to execute
-            Thread.Sleep(100);
+            // Wait for main thread to execute (max 1 second)
+            var startTime = DateTime.Now;
+            while (!result.completed && (DateTime.Now - startTime).TotalMilliseconds < 1000)
+                Thread.Sleep(10);
 
-            if (success)
+            if (result.success)
                 return $"{{\"status\":\"ok\",\"message\":\"Menu item executed successfully\",\"menuItemPath\":\"{menuItemPath}\"}}";
             else
-                return $"{{\"status\":\"error\",\"message\":\"{errorMessage ?? "MenuItem execution failed"}\",\"menuItemPath\":\"{menuItemPath}\"}}";
+                return $"{{\"status\":\"error\",\"message\":\"{result.errorMessage ?? "MenuItem execution failed"}\",\"menuItemPath\":\"{menuItemPath}\"}}";
+        }
+
+        class MenuItemExecutionResult
+        {
+            public bool success = false;
+            public string errorMessage = null;
+            public bool completed = false;
         }
 
         static string HandleNotFoundRequest(HttpListenerResponse response)

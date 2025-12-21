@@ -1512,6 +1512,7 @@ namespace Nyamu
 
         static string HandleCompileShadersRegexRequest(HttpListenerRequest request)
         {
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileShadersRegexRequest");
             if (request.HttpMethod != "POST")
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use POST.\"}";
 
@@ -1606,6 +1607,7 @@ namespace Nyamu
 
         static string HandleShaderCompilationStatusRequest(HttpListenerRequest request)
         {
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleShaderCompilationStatusRequest");
             if (request.HttpMethod != "GET")
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use GET.\"}";
 

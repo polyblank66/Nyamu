@@ -465,6 +465,88 @@ class MCPServer {
                         properties: {},
                         required: []
                     }
+                },
+                editor_log_path: {
+                    description: "Get Unity Editor log file path. Returns the platform-specific path to the Unity Editor log file along with existence status. LLM HINTS: Use this to verify log file location before reading. Log path is platform-dependent (Windows: %LOCALAPPDATA%/Unity/Editor/Editor.log, Mac: ~/Library/Logs/Unity/Editor.log, Linux: ~/.config/unity3d/Editor.log). The log file contains all Unity Editor output including compilation errors, warnings, and debug messages.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
+                        required: []
+                    }
+                },
+                editor_log_head: {
+                    description: "Read first N lines from Unity Editor log file. Returns the beginning of the log file, useful for session startup information and initialization logs. LLM HINTS: Use this to see Unity startup sequence, package loading, and early initialization messages. Default line count is 100. Supports filtering by log type (error, warning, info) to quickly find specific issues during startup.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            line_count: {
+                                type: "number",
+                                description: "Number of lines to read from the beginning (default: 100, max: 10000). LLM HINT: Use 100-500 for quick checks, 1000+ for detailed startup analysis.",
+                                default: 100
+                            },
+                            log_type: {
+                                type: "string",
+                                description: "Filter by log type: 'all', 'error', 'warning', 'info' (default: 'all'). LLM HINT: Use 'error' to quickly identify startup errors, 'warning' for potential issues.",
+                                enum: ["all", "error", "warning", "info"],
+                                default: "all"
+                            }
+                        },
+                        required: []
+                    }
+                },
+                editor_log_tail: {
+                    description: "Read last N lines from Unity Editor log file. Returns the most recent log entries, useful for debugging current Unity Editor state and recent operations. LLM HINTS: Use this to see latest compilation errors, recent warnings, or current Unity state. Default line count is 100. Supports filtering by log type to quickly isolate errors or warnings from recent activity.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            line_count: {
+                                type: "number",
+                                description: "Number of lines to read from the end (default: 100, max: 10000). LLM HINT: Use 100-200 for recent activity, 500+ for broader context.",
+                                default: 100
+                            },
+                            log_type: {
+                                type: "string",
+                                description: "Filter by log type: 'all', 'error', 'warning', 'info' (default: 'all'). LLM HINT: Use 'error' for recent errors, 'warning' for recent issues.",
+                                enum: ["all", "error", "warning", "info"],
+                                default: "all"
+                            }
+                        },
+                        required: []
+                    }
+                },
+                editor_log_grep: {
+                    description: "Search Unity Editor log for lines matching a pattern. Returns matching log lines with optional context. Supports case-sensitive/insensitive search. LLM HINTS: Use this to find specific errors, warnings, or debug messages. Supports JavaScript regex patterns. Can return large results - consider using line_limit. Combine pattern matching with log_type filter for precise results.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            pattern: {
+                                type: "string",
+                                description: "Search pattern (JavaScript regex). Example: 'error', 'NyamuServer.*error', 'Shader.*failed'. LLM HINT: Use specific patterns to narrow results, case-insensitive by default."
+                            },
+                            case_sensitive: {
+                                type: "boolean",
+                                description: "Enable case-sensitive search (default: false). LLM HINT: Keep false for most searches.",
+                                default: false
+                            },
+                            context_lines: {
+                                type: "number",
+                                description: "Number of context lines to show before and after each match (default: 0, max: 10). LLM HINT: Use 2-5 for stack traces and error context.",
+                                default: 0
+                            },
+                            line_limit: {
+                                type: "number",
+                                description: "Maximum number of matching lines to return (default: 1000, max: 10000). LLM HINT: Use lower values (100-500) to avoid overwhelming responses.",
+                                default: 1000
+                            },
+                            log_type: {
+                                type: "string",
+                                description: "Filter by log type: 'all', 'error', 'warning', 'info' (default: 'all'). LLM HINT: Combine with pattern for precise filtering.",
+                                enum: ["all", "error", "warning", "info"],
+                                default: "all"
+                            }
+                        },
+                        required: ["pattern"]
+                    }
                 }
             }
         };
@@ -587,6 +669,14 @@ class MCPServer {
                     return await this.callCompileShadersRegex(id, args.pattern, args.timeout || 120, progressToken);
                 case 'shader_compilation_status':
                     return await this.callShaderCompilationStatus(id);
+                case 'editor_log_path':
+                    return await this.callEditorLogPath(id);
+                case 'editor_log_head':
+                    return await this.callEditorLogHead(id, args.line_count || 100, args.log_type || 'all');
+                case 'editor_log_tail':
+                    return await this.callEditorLogTail(id, args.line_count || 100, args.log_type || 'all');
+                case 'editor_log_grep':
+                    return await this.callEditorLogGrep(id, args.pattern, args.case_sensitive || false, args.context_lines || 0, args.line_limit || 1000, args.log_type || 'all');
                 default:
                     return {
                         jsonrpc: '2.0',
@@ -1065,6 +1155,106 @@ class MCPServer {
         }
     }
 
+    async callEditorLogPath(id) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const logPath = this.getUnityEditorLogPath();
+            const exists = await this.fileExists(logPath);
+
+            const response = {
+                path: logPath,
+                exists: exists,
+                platform: process.platform
+            };
+
+            const formattedText = this.responseFormatter.formatJsonResponse(response);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: formattedText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to get editor log path: ${error.message}`);
+        }
+    }
+
+    async callEditorLogHead(id, lineCount, logType) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const logPath = this.getUnityEditorLogPath();
+
+            if (!await this.fileExists(logPath)) {
+                throw new Error(`Unity Editor log file not found at: ${logPath}. Ensure Unity Editor is running.`);
+            }
+
+            const lines = await this.readLogHead(logPath, lineCount);
+            const filtered = this.filterLogLines(lines, logType);
+            const formattedText = this.formatLogOutput(filtered, 'head', lineCount, logType, logPath);
+            const finalText = this.responseFormatter.formatResponse(formattedText);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: finalText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to read log head: ${error.message}`);
+        }
+    }
+
+    async callEditorLogTail(id, lineCount, logType) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const logPath = this.getUnityEditorLogPath();
+
+            if (!await this.fileExists(logPath)) {
+                throw new Error(`Unity Editor log file not found at: ${logPath}. Ensure Unity Editor is running.`);
+            }
+
+            const lines = await this.readLogTail(logPath, lineCount);
+            const filtered = this.filterLogLines(lines, logType);
+            const formattedText = this.formatLogOutput(filtered, 'tail', lineCount, logType, logPath);
+            const finalText = this.responseFormatter.formatResponse(formattedText);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: finalText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to read log tail: ${error.message}`);
+        }
+    }
+
+    async callEditorLogGrep(id, pattern, caseSensitive, contextLines, lineLimit, logType) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const logPath = this.getUnityEditorLogPath();
+
+            if (!await this.fileExists(logPath)) {
+                throw new Error(`Unity Editor log file not found at: ${logPath}. Ensure Unity Editor is running.`);
+            }
+
+            const matches = await this.grepLog(logPath, pattern, caseSensitive, contextLines, lineLimit);
+            const filtered = this.filterLogLines(matches.map(m => m.line), logType);
+
+            // Reconstruct matches array with only filtered lines
+            const filteredMatches = matches.filter(m => filtered.includes(m.line));
+
+            const formattedText = this.formatGrepOutput(filteredMatches, pattern, caseSensitive, contextLines, logType, logPath);
+            const finalText = this.responseFormatter.formatResponse(formattedText);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: finalText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to grep log: ${error.message}`);
+        }
+    }
+
     formatShaderCompileResponse(response) {
         let text = '';
 
@@ -1201,6 +1391,178 @@ class MCPServer {
         }
 
         return resultText;
+    }
+
+    getUnityEditorLogPath() {
+        const platform = process.platform;
+        const home = require('os').homedir();
+
+        switch (platform) {
+            case 'win32':
+                return path.join(process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'),
+                               'Unity', 'Editor', 'Editor.log');
+            case 'darwin':
+                return path.join(home, 'Library', 'Logs', 'Unity', 'Editor.log');
+            case 'linux':
+                return path.join(home, '.config', 'unity3d', 'Editor.log');
+            default:
+                throw new Error(`Unsupported platform: ${platform}`);
+        }
+    }
+
+    async fileExists(filePath) {
+        try {
+            await fs.promises.access(filePath);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    async readLogHead(logPath, lineCount) {
+        const stream = require('fs').createReadStream(logPath, { encoding: 'utf8' });
+        const readline = require('readline');
+        const rl = readline.createInterface({ input: stream });
+
+        const lines = [];
+        for await (const line of rl) {
+            lines.push(line);
+            if (lines.length >= lineCount) {
+                rl.close();
+                stream.destroy();
+                break;
+            }
+        }
+        return lines;
+    }
+
+    async readLogTail(logPath, lineCount) {
+        const content = await fs.promises.readFile(logPath, 'utf8');
+        const allLines = content.split('\n');
+        return allLines.slice(-lineCount);
+    }
+
+    async grepLog(logPath, pattern, caseSensitive, contextLines, lineLimit) {
+        try {
+            const flags = caseSensitive ? 'g' : 'gi';
+            const regex = new RegExp(pattern, flags);
+
+            const content = await fs.promises.readFile(logPath, 'utf8');
+            const allLines = content.split('\n');
+            const matches = [];
+            const addedLines = new Set();
+
+            for (let i = 0; i < allLines.length && matches.length < lineLimit; i++) {
+                if (regex.test(allLines[i])) {
+                    const start = Math.max(0, i - contextLines);
+                    const end = Math.min(allLines.length, i + contextLines + 1);
+
+                    for (let j = start; j < end; j++) {
+                        const lineKey = `${j}:${allLines[j]}`;
+                        if (!addedLines.has(lineKey)) {
+                            matches.push({
+                                line: allLines[j],
+                                lineNumber: j + 1,
+                                isMatch: j === i,
+                                context: j !== i
+                            });
+                            addedLines.add(lineKey);
+                        }
+                    }
+                }
+            }
+
+            return matches;
+        } catch (error) {
+            if (error.message.includes('Invalid regular expression')) {
+                throw new Error(`Invalid regex pattern: ${pattern}. ${error.message}`);
+            }
+            throw error;
+        }
+    }
+
+    detectLogType(line) {
+        const lowerLine = line.toLowerCase();
+
+        // Stack trace lines inherit type from parent
+        if (/^\s+at\s+/.test(line) || /^\s+\w+\.\w+:/.test(line)) {
+            return 'stack_trace';
+        }
+
+        // Error: contains "error", "exception:", "assertion", "failed", or "shader error"
+        if (lowerLine.includes('error') || lowerLine.includes('exception:') ||
+            lowerLine.includes('assertion') || lowerLine.includes('failed') ||
+            /shader error/i.test(line)) {
+            return 'error';
+        }
+
+        // Warning: contains "warning:" or "shader warning"
+        if (lowerLine.includes('warning:') || /^\[.*\]\s+.*warning/i.test(line) ||
+            /shader warning/i.test(line)) {
+            return 'warning';
+        }
+
+        // Everything else is info
+        return 'info';
+    }
+
+    filterLogLines(lines, logType) {
+        if (logType === 'all') {
+            return lines;
+        }
+
+        const filtered = [];
+        let currentType = 'info';
+
+        for (const line of lines) {
+            const lineType = this.detectLogType(line);
+
+            if (lineType === 'stack_trace') {
+                // Inherit type from previous line
+                if (currentType === logType) {
+                    filtered.push(line);
+                }
+            } else {
+                currentType = lineType;
+                if (lineType === logType) {
+                    filtered.push(line);
+                }
+            }
+        }
+
+        return filtered;
+    }
+
+    formatLogOutput(lines, operation, lineCount, logType, logPath) {
+        let output = `=== Unity Editor Log (${operation}) ===\n`;
+        output += `Path: ${logPath}\n`;
+        output += `Lines: ${lines.length}`;
+        if (logType !== 'all') {
+            output += ` (filtered: ${logType})`;
+        }
+        output += '\n\n';
+
+        output += lines.join('\n');
+        return output;
+    }
+
+    formatGrepOutput(matches, pattern, caseSensitive, contextLines, logType, logPath) {
+        let output = `=== Unity Editor Log Grep Results ===\n`;
+        output += `Path: ${logPath}\n`;
+        output += `Pattern: ${pattern} (case ${caseSensitive ? 'sensitive' : 'insensitive'})\n`;
+        output += `Matches: ${matches.filter(m => m.isMatch).length}`;
+        if (logType !== 'all') {
+            output += ` (filtered: ${logType})`;
+        }
+        output += '\n\n';
+
+        for (const match of matches) {
+            const prefix = match.isMatch ? '> ' : '  ';
+            const lineNum = String(match.lineNumber).padStart(6, ' ');
+            output += `${prefix}${lineNum}: ${match.line}\n`;
+        }
+
+        return output;
     }
 
     async makeHttpRequest(path) {

@@ -38,6 +38,12 @@ Prompt: Check scripts compilation with nyamu mcp tool
 ### Editor Status
 * `editor_status` – Returns the current Unity Editor status, including compilation state, test execution state, and play mode state, for real-time monitoring.
 
+### Unity Editor Logs
+* `editor_log_path` – Returns the platform-specific path to the Unity Editor log file along with existence status. Useful for verifying log file location before reading.
+* `editor_log_head` – Reads the first N lines from the Unity Editor log file. Supports filtering by log type (error, warning, info) to quickly find specific issues during startup.
+* `editor_log_tail` – Reads the last N lines from the Unity Editor log file. Supports filtering by log type to quickly isolate recent errors or warnings.
+* `editor_log_grep` – Searches Unity Editor log for lines matching a regex pattern. Returns matching lines with optional context lines. Supports case-sensitive/insensitive search and filtering by log type.
+
 ## Installation
 
 ### 0. Prerequisites

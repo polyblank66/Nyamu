@@ -53,6 +53,7 @@ namespace Nyamu
                 var port = NyamuSettings.Instance.serverPort;
                 var batContent = GenerateBatContent(mcpServerPath, port);
                 WriteBatFile(batContent);
+                GeneratePostmanCollection();
             }
             catch (Exception ex)
             {
@@ -143,6 +144,106 @@ namespace Nyamu
             catch (Exception ex)
             {
                 NyamuLogger.LogWarning($"[Nyamu][BatGenerator] Failed to write bat file: {ex.Message}");
+            }
+        }
+
+        // Generates Postman collection file in .nyamu directory
+        static void GeneratePostmanCollection()
+        {
+            try
+            {
+                var templatePath = FindPostmanTemplatePath();
+                if (templatePath == null)
+                {
+                    NyamuLogger.LogWarning("[Nyamu][BatGenerator] Postman collection template not found");
+                    return;
+                }
+
+                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var projectName = Path.GetFileName(projectRoot);
+                var port = NyamuSettings.Instance.serverPort;
+
+                var collectionContent = GeneratePostmanCollectionContent(templatePath, projectName, port);
+                WritePostmanCollectionFile(collectionContent, projectName);
+            }
+            catch (Exception ex)
+            {
+                NyamuLogger.LogWarning($"[Nyamu][BatGenerator] Failed to generate Postman collection: {ex.Message}");
+            }
+        }
+
+        // Finds the Postman collection template path
+        static string FindPostmanTemplatePath()
+        {
+            // Search in Packages folder (dev mode)
+            var packagesPath = Path.Combine(Application.dataPath, "..", "Packages", "dev.polyblank.nyamu", "NyamuServer-API.postman_collection.json");
+            if (File.Exists(packagesPath))
+                return Path.GetFullPath(packagesPath);
+
+            // Search in Library/PackageCache (production mode)
+            var packageCachePath = Path.Combine(Application.dataPath, "..", "Library", "PackageCache");
+            if (Directory.Exists(packageCachePath))
+            {
+                var nyamuPackages = Directory.GetDirectories(packageCachePath, "dev.polyblank.nyamu@*");
+                foreach (var packageDir in nyamuPackages)
+                {
+                    var templatePath = Path.Combine(packageDir, "NyamuServer-API.postman_collection.json");
+                    if (File.Exists(templatePath))
+                        return templatePath;
+                }
+            }
+
+            return null;
+        }
+
+        // Generates Postman collection content from template
+        static string GeneratePostmanCollectionContent(string templatePath, string projectName, int port)
+        {
+            var template = File.ReadAllText(templatePath);
+
+            // Replace collection name to include project name
+            template = template.Replace(
+                "\"name\": \"Nyamu MCP Server API\"",
+                $"\"name\": \"{projectName} - Nyamu MCP Server API\""
+            );
+
+            // Set actual port value in variables section
+            template = System.Text.RegularExpressions.Regex.Replace(
+                template,
+                "\"key\": \"nyamu-port\",\\s*\"value\": \"[^\"]*\"",
+                $"\"key\": \"nyamu-port\",\n\t\t\t\"value\": \"{port}\""
+            );
+
+            return template;
+        }
+
+        // Writes Postman collection file
+        static void WritePostmanCollectionFile(string content, string projectName)
+        {
+            try
+            {
+                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var outputDir = Path.Combine(projectRoot, ".nyamu");
+
+                if (!Directory.Exists(outputDir))
+                    Directory.CreateDirectory(outputDir);
+
+                var collectionFilePath = Path.Combine(outputDir, $"{projectName}.postman_collection.json");
+
+                if (!ShouldWriteFile(collectionFilePath, content))
+                {
+                    NyamuLogger.LogDebug($"[Nyamu][BatGenerator] Postman collection already up to date: {collectionFilePath}");
+                    return;
+                }
+
+                var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+                File.WriteAllText(collectionFilePath, content, encoding);
+
+                NyamuLogger.LogInfo($"[Nyamu][BatGenerator] Generated Postman collection: {collectionFilePath}");
+            }
+            catch (Exception ex)
+            {
+                NyamuLogger.LogWarning($"[Nyamu][BatGenerator] Failed to write Postman collection file: {ex.Message}");
             }
         }
 

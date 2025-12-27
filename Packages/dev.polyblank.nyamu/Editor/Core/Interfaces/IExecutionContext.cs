@@ -1,4 +1,6 @@
+using Nyamu.Core.Monitors;
 using Nyamu.Core.StateManagers;
+using Nyamu.TestExecution;
 
 namespace Nyamu.Core.Interfaces
 {
@@ -12,5 +14,10 @@ namespace Nyamu.Core.Interfaces
         AssetStateManager AssetState { get; }
         EditorStateManager EditorState { get; }
         SettingsStateManager SettingsState { get; }
+
+        CompilationMonitor CompilationMonitor { get; }
+        EditorMonitor EditorMonitor { get; }
+        SettingsMonitor SettingsMonitor { get; }
+        TestExecutionService TestExecutionService { get; }
     }
 }

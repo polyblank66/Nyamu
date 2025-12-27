@@ -42,10 +42,10 @@ namespace Nyamu.Core.StateManagers
             set { lock (_lock) _currentTestRunId = value; }
         }
 
-        internal TestCallbacks TestCallbacks
+        public TestCallbacks TestCallbacks
         {
-            get => _testCallbacks;
-            set => _testCallbacks = value;
+            get { lock (_lock) return _testCallbacks; }
+            set { lock (_lock) _testCallbacks = value; }
         }
 
         public string TestExecutionError

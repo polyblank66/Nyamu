@@ -44,7 +44,7 @@ namespace Nyamu.Tools.Testing
 
             // Enqueue test execution on main thread
             context.UnityExecutor.Enqueue(() =>
-                TestExecutionService.StartTestExecutionWithRefreshWait(mode, request.testName, null)
+                context.TestExecutionService.StartTestExecutionWithRefreshWait(mode, request.testName, null)
             );
 
             return Task.FromResult(new TestsRunSingleResponse

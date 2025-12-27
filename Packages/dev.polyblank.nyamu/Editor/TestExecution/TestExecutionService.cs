@@ -3,14 +3,29 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.TestTools.TestRunner.Api;
 using UnityEngine;
+using Nyamu.Core.StateManagers;
 using Nyamu.Tools.Testing;
 
 namespace Nyamu.TestExecution
 {
     // Coordinates test execution with asset refresh
-    public static class TestExecutionService
+    public class TestExecutionService
     {
-        public static void StartTestExecutionWithRefreshWait(string mode, string filter, string filterRegex)
+        readonly TestStateManager _testState;
+        readonly AssetStateManager _assetState;
+        readonly TestCallbacks _callbacks;
+
+        public TestExecutionService(
+            TestStateManager testState,
+            AssetStateManager assetState,
+            TestCallbacks callbacks)
+        {
+            _testState = testState;
+            _assetState = assetState;
+            _callbacks = callbacks;
+        }
+
+        public void StartTestExecutionWithRefreshWait(string mode, string filter, string filterRegex)
         {
             bool executionStarted = false;
             try
@@ -31,15 +46,15 @@ namespace Nyamu.TestExecution
                 // Only clear the flag if execution failed to start
                 if (!executionStarted)
                 {
-                    lock (Server._testLock)
+                    lock (_testState.Lock)
                     {
-                        Server._isRunningTests = false;
+                        _testState.IsRunningTests = false;
                     }
                 }
             }
         }
 
-        static void WaitForAssetRefreshCompletion()
+        void WaitForAssetRefreshCompletion()
         {
             // Wait for asset refresh to complete (similar to WaitForCompilationToStart but simpler)
             int maxWait = 30000; // 30 seconds max wait
@@ -50,10 +65,10 @@ namespace Nyamu.TestExecution
             {
                 // Check both our flag and Unity's cached refresh state (thread-safe)
                 bool refreshInProgress, unityIsUpdating;
-                lock (Server._refreshLock)
+                lock (_assetState.Lock)
                 {
-                    refreshInProgress = Server._isRefreshing;
-                    unityIsUpdating = Server._unityIsUpdating;
+                    refreshInProgress = _assetState.IsRefreshing;
+                    unityIsUpdating = _assetState.UnityIsUpdating;
                 }
 
                 if (!refreshInProgress && !unityIsUpdating)
@@ -69,13 +84,13 @@ namespace Nyamu.TestExecution
             }
         }
 
-        static void StartTestExecution(string mode, string filter, string filterRegex)
+        void StartTestExecution(string mode, string filter, string filterRegex)
         {
-            Server._testResults = null;
+            _testState.TestResults = null;
 
             // Reset error state for new test execution
-            Server._testExecutionError = null;
-            Server._hasTestExecutionError = false;
+            _testState.TestExecutionError = null;
+            _testState.HasTestExecutionError = false;
 
             bool apiExecuteCalled = false;
             try
@@ -119,18 +134,18 @@ namespace Nyamu.TestExecution
                 }
 
                 // Store original settings in test callbacks for restoration
-                Server._testCallbacks.SetOriginalPlayModeSettings(testMode == TestMode.PlayMode, originalEnterPlayModeOptionsEnabled, originalEnterPlayModeOptions);
+                _callbacks.SetOriginalPlayModeSettings(testMode == TestMode.PlayMode, originalEnterPlayModeOptionsEnabled, originalEnterPlayModeOptions);
 
-                api.RegisterCallbacks(Server._testCallbacks);
-                Server._currentTestRunId = api.Execute(new ExecutionSettings(filterObj));
+                api.RegisterCallbacks(_callbacks);
+                _testState.CurrentTestRunId = api.Execute(new ExecutionSettings(filterObj));
                 apiExecuteCalled = true; // If we reach here, api.Execute was called successfully
 
-                NyamuLogger.LogInfo($"[Nyamu][Server] Started test execution with ID: {Server._currentTestRunId}");
+                NyamuLogger.LogInfo($"[Nyamu][Server] Started test execution with ID: {_testState.CurrentTestRunId}");
             }
             catch (Exception ex)
             {
                 NyamuLogger.LogError($"[Nyamu][Server] Failed to start test execution: {ex.Message}");
-                Server._testResults = new TestResults
+                _testState.TestResults = new TestResults
                 {
                     totalTests = 0,
                     passedTests = 0,
@@ -145,7 +160,7 @@ namespace Nyamu.TestExecution
                 // Only clear the flag if api.Execute failed to be called
                 if (!apiExecuteCalled)
                 {
-                    Server._isRunningTests = false;
+                    _testState.IsRunningTests = false;
                 }
             }
         }

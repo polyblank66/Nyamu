@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.TestTools.TestRunner.Api;
+using Nyamu.Core.StateManagers;
 using Nyamu.Tools.Testing;
 
 namespace Nyamu.TestExecution
@@ -10,9 +11,18 @@ namespace Nyamu.TestExecution
     // Handles Unity Test Runner callbacks and result collection
     public class TestCallbacks : ICallbacks, IErrorCallbacks
     {
+        readonly TestStateManager _state;
+        readonly object _timestampLock;
+
         bool _shouldRestorePlayModeSettings;
         bool _originalEnterPlayModeOptionsEnabled;
         EnterPlayModeOptions _originalEnterPlayModeOptions;
+
+        public TestCallbacks(TestStateManager state, object timestampLock)
+        {
+            _state = state;
+            _timestampLock = timestampLock;
+        }
 
         public void SetOriginalPlayModeSettings(bool shouldRestore, bool originalEnabled, EnterPlayModeOptions originalOptions)
         {
@@ -24,20 +34,20 @@ namespace Nyamu.TestExecution
         public void RunStarted(ITestAdaptor testsToRun)
         {
             // Reset error state when new test run starts
-            Server._testExecutionError = null;
-            Server._hasTestExecutionError = false;
+            _state.TestExecutionError = null;
+            _state.HasTestExecutionError = false;
         }
 
         public void RunFinished(ITestResultAdaptor result)
         {
-            NyamuLogger.LogInfo($"[Nyamu][Server] Test run finished with status: {result.TestStatus}, ID: {Server._currentTestRunId}");
+            NyamuLogger.LogInfo($"[Nyamu][Server] Test run finished with status: {result.TestStatus}, ID: {_state.CurrentTestRunId}");
 
             var results = new List<TestResult>();
             CollectTestResults(result, results);
 
 
             // Update results first, then mark as complete
-            Server._testResults = new TestResults
+            _state.TestResults = new TestResults
             {
                 totalTests = results.Count,
                 passedTests = results.Count(r => r.outcome == "Passed"),
@@ -47,16 +57,16 @@ namespace Nyamu.TestExecution
                 results = results.ToArray()
             };
 
-            lock (Server._timestampLock)
+            lock (_timestampLock)
             {
-                Server._lastTestTime = DateTime.Now;
+                _state.LastTestTime = DateTime.Now;
             }
 
             // Save cache after test run completes
             Server.SaveTimestampsCache();
 
             // Mark as complete LAST to ensure results are available
-            Server._isRunningTests = false;
+            _state.IsRunningTests = false;
 
             // Restore original Enter Play Mode settings if they were overridden
             if (_shouldRestorePlayModeSettings)
@@ -86,11 +96,11 @@ namespace Nyamu.TestExecution
             NyamuLogger.LogError($"[Nyamu][Server] Test execution error occurred: {errorDetails}");
 
             // Store error information for status endpoint
-            Server._testExecutionError = errorDetails;
-            Server._hasTestExecutionError = true;
+            _state.TestExecutionError = errorDetails;
+            _state.HasTestExecutionError = true;
 
             // Mark test execution as no longer running since it failed to start
-            Server._isRunningTests = false;
+            _state.IsRunningTests = false;
         }
 
         void CollectTestResults(ITestResultAdaptor result, List<TestResult> results)

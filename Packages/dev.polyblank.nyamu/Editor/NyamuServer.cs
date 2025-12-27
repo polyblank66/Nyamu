@@ -91,22 +91,11 @@ namespace Nyamu
         static Thread _thread;
         static ManualResetEvent _listenerReady;
 
-        // Compilation tracking
-        static List<CompileError> _compilationErrors = new();
-        static bool _isCompiling;
-        static DateTime _lastCompileTime = DateTime.MinValue;  // When last compilation finished
-        static DateTime _compileRequestTime = DateTime.MinValue;  // When compilation was requested
-
         // Unity main thread action queue (required for Unity API calls)
         static Queue<Action> _mainThreadActionQueue = new();
 
-        // Asset refresh state tracking (prevent concurrent refresh operations)
-        internal static bool _isRefreshing = false;
-        static bool _isMonitoringRefresh = false;
-        internal static bool _unityIsUpdating = false;  // Cache Unity's isUpdating state for thread-safe access
+        // Locks kept for backward compatibility with existing code
         internal static readonly object _refreshLock = new object();
-
-        // Test execution state tracking (prevent concurrent test runs)
         internal static readonly object _testLock = new object();
 
         // Settings cache for thread-safe access from HTTP requests
@@ -114,45 +103,12 @@ namespace Nyamu
         static McpSettingsResponse _cachedSettings;
         static DateTime _lastSettingsRefresh = DateTime.MinValue;
 
-        // Timestamp cache for thread-safe access
-        internal static readonly object _timestampLock = new object();
-
         // Shutdown coordination
         static volatile bool _shouldStop;
 
-        // Test execution state
-        internal static bool _isRunningTests;
-        internal static DateTime _lastTestTime = DateTime.MinValue;
-        internal static TestResults _testResults;
-        internal static string _currentTestRunId = null;  // Unique ID to track test runs across domain reloads
-        internal static TestCallbacks _testCallbacks;
-        // Test execution error state
-        // NOTE: Currently not populated due to Unity TestRunner API limitations
-        // IErrorCallbacks.OnError is not triggered for compilation errors as expected
-        // Infrastructure is ready for future Unity fixes or other error scenarios
-        internal static string _testExecutionError = null;
-        internal static bool _hasTestExecutionError = false;
-
-        // Play mode state tracking (cached for thread-safe access)
-        static bool _isPlaying = false;
-
-        // Shader compilation state tracking
-        static bool _isCompilingShaders = false;
+        // Shader compilation locks
         static readonly object _shaderCompileLock = new object();
-
-        // Shader compilation result tracking
-        static CompileShaderResponse _lastSingleShaderResult = null;
-        static CompileAllShadersResponse _lastAllShadersResult = null;
-        static CompileShadersRegexResponse _lastRegexShadersResult = null;
-        static string _lastShaderCompilationType = "none";
-        static DateTime _lastShaderCompilationTime = DateTime.MinValue;
         static readonly object _shaderCompilationResultLock = new object();
-
-        // Regex shader compilation progress tracking
-        static string _regexShadersPattern = "";
-        static int _regexShadersTotal = 0;
-        static int _regexShadersCompleted = 0;
-        static string _regexShadersCurrentShader = "";
 
         // Infrastructure components for refactored architecture
         static CompilationStateManager _compilationStateManager;
@@ -163,6 +119,13 @@ namespace Nyamu
         static SettingsStateManager _settingsStateManager;
         static UnityThreadExecutor _unityThreadExecutor;
         static Core.ExecutionContext _executionContext;
+
+        // Monitors and services
+        static Core.Monitors.CompilationMonitor _compilationMonitor;
+        static Core.Monitors.EditorMonitor _editorMonitor;
+        static Core.Monitors.SettingsMonitor _settingsMonitor;
+        static TestExecution.TestExecutionService _testExecutionService;
+        static TestExecution.TestCallbacks _testCallbacks;
 
         // Tools (Step 2-3: read-only tools)
         static CompilationStatusTool _compilationStatusTool;
@@ -210,13 +173,7 @@ namespace Nyamu
             _thread.IsBackground = true;
             _thread.Start();
 
-            CompilationPipeline.assemblyCompilationFinished += OnCompilationFinished;
-            CompilationPipeline.compilationStarted += OnCompilationStarted;
-            EditorApplication.update += OnEditorUpdate;
-
-            _testCallbacks = new TestCallbacks();
-
-            // Initialize infrastructure components
+            // Initialize infrastructure components (monitors will subscribe to Unity events)
             InitializeInfrastructure();
 
             EditorApplication.quitting += Cleanup;
@@ -233,10 +190,24 @@ namespace Nyamu
             _editorStateManager = new EditorStateManager();
             _settingsStateManager = new SettingsStateManager();
 
+            // Create monitors
+            _compilationMonitor = new Core.Monitors.CompilationMonitor(_compilationStateManager);
+            _settingsMonitor = new Core.Monitors.SettingsMonitor(_settingsStateManager);
+            _editorMonitor = new Core.Monitors.EditorMonitor(_editorStateManager, _mainThreadActionQueue, _settingsMonitor);
+
+            // Create test infrastructure
+            _testCallbacks = new TestExecution.TestCallbacks(_testStateManager, _compilationMonitor.TimestampLock);
+            _testExecutionService = new TestExecution.TestExecutionService(_testStateManager, _assetStateManager, _testCallbacks);
+            _testStateManager.TestCallbacks = _testCallbacks;
+
+            // Initialize monitors (subscribe to Unity events)
+            _compilationMonitor.Initialize();
+            _editorMonitor.Initialize();
+
             // Create Unity thread executor wrapping existing queue
             _unityThreadExecutor = new UnityThreadExecutor(_mainThreadActionQueue);
 
-            // Create execution context
+            // Create execution context with monitors and services
             _executionContext = new Core.ExecutionContext(
                 _unityThreadExecutor,
                 _compilationStateManager,
@@ -244,7 +215,11 @@ namespace Nyamu
                 _shaderStateManager,
                 _assetStateManager,
                 _editorStateManager,
-                _settingsStateManager
+                _settingsStateManager,
+                _compilationMonitor,
+                _editorMonitor,
+                _settingsMonitor,
+                _testExecutionService
             );
 
             // Create tools (Step 2-3: read-only tools)
@@ -274,6 +249,10 @@ namespace Nyamu
         static void Cleanup()
         {
             _shouldStop = true;
+
+            // Cleanup monitors (unsubscribe from Unity events)
+            _compilationMonitor?.Cleanup();
+            _editorMonitor?.Cleanup();
 
             // Save timestamps before shutdown/domain reload
             SaveTimestampsCache();
@@ -314,53 +293,6 @@ namespace Nyamu
             NyamuLogger.LogInfo("[Nyamu][Server] Restarting server...");
             Initialize();
             NyamuLogger.LogInfo($"[Nyamu][Server] Server restarted on port {NyamuSettings.Instance.serverPort}");
-        }
-
-        // ========================================================================
-        // UNITY EVENT HANDLERS
-        // ========================================================================
-
-        static void OnEditorUpdate()
-        {
-            while (_mainThreadActionQueue.Count > 0)
-                _mainThreadActionQueue.Dequeue().Invoke();
-
-            // Update cached play mode state (thread-safe)
-            _isPlaying = EditorApplication.isPlaying;
-
-            // Refresh cached settings periodically (every 2 seconds)
-            if ((DateTime.Now - _lastSettingsRefresh).TotalSeconds >= 2.0)
-            {
-                RefreshCachedSettings();
-                _lastSettingsRefresh = DateTime.Now;
-            }
-        }
-
-        static void OnCompilationStarted(object obj) => _isCompiling = true;
-
-        static void OnCompilationFinished(string assemblyPath, CompilerMessage[] messages)
-        {
-            _isCompiling = false;
-
-            lock (_timestampLock)
-            {
-                _lastCompileTime = DateTime.Now;
-            }
-
-            _compilationErrors.Clear();
-            foreach (var msg in messages)
-            {
-                if (msg.type == CompilerMessageType.Error)
-                    _compilationErrors.Add(new CompileError
-                    {
-                        file = msg.file,
-                        line = msg.line,
-                        message = msg.message
-                    });
-            }
-
-            // Save cache after compilation completes
-            SaveTimestampsCache();
         }
 
         // ========================================================================
@@ -467,18 +399,9 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleCompileAndWaitRequest");
 
-            // Sync old state (during transition - Step 4)
-            SyncCompilationStateToManager();
-
             // Use new tool architecture
             var request = new CompilationTriggerRequest();
             var response = _compilationTriggerTool.ExecuteAsync(request, _executionContext).Result;
-
-            // Sync state back to old variables
-            lock (_timestampLock)
-            {
-                _compileRequestTime = _compilationStateManager.CompileRequestTime;
-            }
 
             return JsonUtility.ToJson(response);
         }
@@ -493,10 +416,10 @@ namespace Nyamu
             {
                 // Check both our flag and Unity's cached refresh state (thread-safe)
                 bool refreshInProgress, unityIsUpdating;
-                lock (_refreshLock)
+                lock (_assetStateManager.Lock)
                 {
-                    refreshInProgress = _isRefreshing;
-                    unityIsUpdating = _unityIsUpdating;
+                    refreshInProgress = _assetStateManager.IsRefreshing;
+                    unityIsUpdating = _assetStateManager.UnityIsUpdating;
                 }
 
                 if (!refreshInProgress && !unityIsUpdating)
@@ -512,13 +435,19 @@ namespace Nyamu
             // Now wait for compilation to start
             while ((DateTime.Now - waitStart) < timeout)
             {
-                if (_isCompiling || EditorApplication.isCompiling)
+                bool isCompiling;
+                lock (_compilationStateManager.Lock)
+                {
+                    isCompiling = _compilationStateManager.IsCompiling;
+                }
+
+                if (isCompiling || EditorApplication.isCompiling)
                     return (true, "Compilation started.");
 
                 DateTime lastCompileTimeCopy;
-                lock (_timestampLock)
+                lock (_compilationMonitor.TimestampLock)
                 {
-                    lastCompileTimeCopy = _lastCompileTime;
+                    lastCompileTimeCopy = _compilationStateManager.LastCompileTime;
                 }
 
                 if (lastCompileTimeCopy > requestTime)
@@ -534,27 +463,10 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleCompileStatusRequest");
 
-            // Sync old state into state manager (during transition - Step 2)
-            SyncCompilationStateToManager();
-
             // Use new tool architecture
             var request = new CompilationStatusRequest();
             var response = _compilationStatusTool.ExecuteAsync(request, _executionContext).Result;
             return JsonUtility.ToJson(response);
-        }
-
-        static void SyncCompilationStateToManager()
-        {
-            lock (_compilationStateManager.Lock)
-            {
-                _compilationStateManager.IsCompiling = _isCompiling || EditorApplication.isCompiling;
-                _compilationStateManager.Errors = _compilationErrors;
-                lock (_timestampLock)
-                {
-                    _compilationStateManager.LastCompileTime = _lastCompileTime;
-                    _compilationStateManager.CompileRequestTime = _compileRequestTime;
-                }
-            }
         }
 
         static string ExtractQueryParameter(string query, string paramName)
@@ -568,43 +480,14 @@ namespace Nyamu
             return Uri.UnescapeDataString(value);
         }
 
-        static void SyncTestStateToManager()
-        {
-            lock (_testStateManager.Lock)
-            {
-                _testStateManager.IsRunningTests = _isRunningTests;
-                _testStateManager.TestResults = _testResults;
-                _testStateManager.CurrentTestRunId = _currentTestRunId;
-                _testStateManager.HasTestExecutionError = _hasTestExecutionError;
-                _testStateManager.TestExecutionError = _testExecutionError;
-                lock (_timestampLock)
-                {
-                    _testStateManager.LastTestTime = _lastTestTime;
-                }
-            }
-        }
-
         static string HandleEditorStatusRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleEditorStatusRequest");
-
-            // Sync old state into state managers (during transition - Step 3)
-            SyncCompilationStateToManager();
-            SyncTestStateToManager();
-            SyncEditorStateToManager();
 
             // Use new tool architecture
             var request = new EditorStatusRequest();
             var response = _editorStatusTool.ExecuteAsync(request, _executionContext).Result;
             return JsonUtility.ToJson(response);
-        }
-
-        static void SyncEditorStateToManager()
-        {
-            lock (_editorStateManager.Lock)
-            {
-                _editorStateManager.IsPlaying = _isPlaying;
-            }
         }
 
         static string HandleMcpSettingsRequest()
@@ -620,8 +503,6 @@ namespace Nyamu
         static string HandleTestsRunSingleRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunSingleRequest");
-
-            SyncTestStateToManager();
 
             var query = request.Url.Query ?? "";
             var testName = ExtractQueryParameter(query, "test_name");
@@ -641,8 +522,6 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunAllRequest");
 
-            SyncTestStateToManager();
-
             var query = request.Url.Query ?? "";
             var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
 
@@ -658,8 +537,6 @@ namespace Nyamu
         static string HandleTestsRunRegexRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunRegexRequest");
-
-            SyncTestStateToManager();
 
             var query = request.Url.Query ?? "";
             var filterRegex = ExtractQueryParameter(query, "filter_regex");
@@ -679,33 +556,15 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsStatusRequest");
 
-            var status = _isRunningTests ? "running" : "idle";
-
-            DateTime lastTestTimeCopy;
-            lock (_timestampLock)
-            {
-                lastTestTimeCopy = _lastTestTime;
-            }
-
-            var statusResponse = new TestStatusResponse
-            {
-                status = status,
-                isRunning = _isRunningTests,
-                lastTestTime = lastTestTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
-                testResults = _testResults,
-                testRunId = _currentTestRunId,
-                hasError = _hasTestExecutionError,
-                errorMessage = _testExecutionError
-            };
-
-            return JsonUtility.ToJson(statusResponse);
+            // Use new tool architecture (no sync needed - read-only operation)
+            var toolRequest = new TestsStatusRequest();
+            var response = _testsStatusTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static string HandleTestsCancelRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsCancelRequest");
-
-            SyncTestStateToManager();
 
             var query = request.Url.Query ?? "";
             var testRunGuid = ExtractQueryParameter(query, "guid");
@@ -722,12 +581,12 @@ namespace Nyamu
         // Helper method for ShaderCompilationService to update progress tracking
         public static void UpdateRegexShadersProgress(string pattern, int total, int completed, string currentShader)
         {
-            lock (_shaderCompilationResultLock)
+            lock (_shaderStateManager.Lock)
             {
-                _regexShadersPattern = pattern;
-                _regexShadersTotal = total;
-                _regexShadersCompleted = completed;
-                _regexShadersCurrentShader = currentShader;
+                _shaderStateManager.RegexShadersPattern = pattern;
+                _shaderStateManager.RegexShadersTotal = total;
+                _shaderStateManager.RegexShadersCompleted = completed;
+                _shaderStateManager.RegexShadersCurrentShader = currentShader;
             }
         }
 
@@ -735,8 +594,6 @@ namespace Nyamu
         static string HandleCompileShaderRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileShaderRequest");
-
-            SyncShaderStateToManager();
 
             CompileShaderRequest toolRequest = null;
             try
@@ -772,8 +629,6 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileAllShadersRequest");
 
-            SyncShaderStateToManager();
-
             var toolRequest = new CompileAllShadersRequest { timeout = 120 };
             var response = _compileAllShadersTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
@@ -784,8 +639,6 @@ namespace Nyamu
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileShadersRegexRequest");
             if (request.HttpMethod != "POST")
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use POST.\"}";
-
-            SyncShaderStateToManager();
 
             CompileShadersRegexToolRequest toolRequest = null;
             try
@@ -815,27 +668,6 @@ namespace Nyamu
             var toolRequest = new ShaderCompilationStatusRequest();
             var response = _shaderCompilationStatusTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
-        }
-
-        static void SyncShaderStateToManager()
-        {
-            lock (_shaderStateManager.Lock)
-            {
-                _shaderStateManager.IsCompiling = _isCompilingShaders;
-                _shaderStateManager.RegexShadersPattern = _regexShadersPattern;
-                _shaderStateManager.RegexShadersTotal = _regexShadersTotal;
-                _shaderStateManager.RegexShadersCompleted = _regexShadersCompleted;
-                _shaderStateManager.RegexShadersCurrentShader = _regexShadersCurrentShader;
-            }
-
-            lock (_shaderStateManager.ResultLock)
-            {
-                _shaderStateManager.LastSingleShaderResult = _lastSingleShaderResult;
-                _shaderStateManager.LastAllShadersResult = _lastAllShadersResult;
-                _shaderStateManager.LastRegexShadersResult = _lastRegexShadersResult;
-                _shaderStateManager.LastCompilationType = _lastShaderCompilationType;
-                _shaderStateManager.LastCompilationTime = _lastShaderCompilationTime;
-            }
         }
 
         static string HandleExecuteMenuItemRequest(HttpListenerRequest request)
@@ -895,17 +727,17 @@ namespace Nyamu
             try
             {
                 var cache = NyamuServerCache.Load();
-                lock (_timestampLock)
+                lock (_compilationMonitor.TimestampLock)
                 {
-                    _lastCompileTime = ParseDateTime(cache.lastCompilationTime);
-                    _compileRequestTime = ParseDateTime(cache.lastCompilationRequestTime);
-                    _lastTestTime = ParseDateTime(cache.lastTestRunTime);
+                    _compilationStateManager.LastCompileTime = ParseDateTime(cache.lastCompilationTime);
+                    _compilationStateManager.CompileRequestTime = ParseDateTime(cache.lastCompilationRequestTime);
+                    _testStateManager.LastTestTime = ParseDateTime(cache.lastTestRunTime);
                 }
 
                 NyamuLogger.LogDebug($"[Nyamu][Server] Restored timestamps from cache - " +
-                         $"LastCompile: {_lastCompileTime:yyyy-MM-dd HH:mm:ss}, " +
-                         $"CompileRequest: {_compileRequestTime:yyyy-MM-dd HH:mm:ss}, " +
-                         $"LastTest: {_lastTestTime:yyyy-MM-dd HH:mm:ss}");
+                         $"LastCompile: {_compilationStateManager.LastCompileTime:yyyy-MM-dd HH:mm:ss}, " +
+                         $"CompileRequest: {_compilationStateManager.CompileRequestTime:yyyy-MM-dd HH:mm:ss}, " +
+                         $"LastTest: {_testStateManager.LastTestTime:yyyy-MM-dd HH:mm:ss}");
             }
             catch (Exception ex)
             {
@@ -917,13 +749,13 @@ namespace Nyamu
         {
             try
             {
-                lock (_timestampLock)
+                lock (_compilationMonitor.TimestampLock)
                 {
                     var cache = new NyamuServerCache
                     {
-                        lastCompilationTime = _lastCompileTime.ToString("o"),
-                        lastCompilationRequestTime = _compileRequestTime.ToString("o"),
-                        lastTestRunTime = _lastTestTime.ToString("o")
+                        lastCompilationTime = _compilationStateManager.LastCompileTime.ToString("o"),
+                        lastCompilationRequestTime = _compilationStateManager.CompileRequestTime.ToString("o"),
+                        lastTestRunTime = _testStateManager.LastTestTime.ToString("o")
                     };
                     NyamuServerCache.Save(cache);
                 }
@@ -967,12 +799,8 @@ namespace Nyamu
         {
             // Update cached state (this runs on main thread)
             bool unityIsUpdating = EditorApplication.isUpdating;
-            lock (_refreshLock)
-            {
-                _unityIsUpdating = unityIsUpdating;
-            }
 
-            // Also update state manager
+            // Update state manager
             lock (_assetStateManager.Lock)
             {
                 _assetStateManager.UnityIsUpdating = unityIsUpdating;
@@ -982,12 +810,6 @@ namespace Nyamu
             if (!unityIsUpdating)
             {
                 // Refresh is complete, reset the flags and unsubscribe
-                lock (_refreshLock)
-                {
-                    _isRefreshing = false;
-                    _isMonitoringRefresh = false;
-                    _unityIsUpdating = false;
-                }
                 lock (_assetStateManager.Lock)
                 {
                     _assetStateManager.IsRefreshing = false;
@@ -1005,35 +827,11 @@ namespace Nyamu
             // Parse force parameter from query string
             bool force = request.Url.Query.Contains("force=true");
 
-            // Sync old state (during transition - Step 4)
-            SyncAssetStateToManager();
-
             // Use new tool architecture
             var toolRequest = new RefreshAssetsRequest { force = force };
             var response = _refreshAssetsTool.ExecuteAsync(toolRequest, _executionContext).Result;
 
-            // Sync state back to old variables
-            lock (_refreshLock)
-            {
-                _isRefreshing = _assetStateManager.IsRefreshing;
-                _isMonitoringRefresh = _assetStateManager.IsMonitoringRefresh;
-                _unityIsUpdating = _assetStateManager.UnityIsUpdating;
-            }
-
             return JsonUtility.ToJson(response);
-        }
-
-        static void SyncAssetStateToManager()
-        {
-            lock (_assetStateManager.Lock)
-            {
-                lock (_refreshLock)
-                {
-                    _assetStateManager.IsRefreshing = _isRefreshing;
-                    _assetStateManager.IsMonitoringRefresh = _isMonitoringRefresh;
-                    _assetStateManager.UnityIsUpdating = _unityIsUpdating;
-                }
-            }
         }
 
         static void HandleHttpException(Exception ex)

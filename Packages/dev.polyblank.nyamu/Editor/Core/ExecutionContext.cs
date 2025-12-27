@@ -1,5 +1,7 @@
 using Nyamu.Core.Interfaces;
+using Nyamu.Core.Monitors;
 using Nyamu.Core.StateManagers;
+using Nyamu.TestExecution;
 
 namespace Nyamu.Core
 {
@@ -14,6 +16,11 @@ namespace Nyamu.Core
         public EditorStateManager EditorState { get; }
         public SettingsStateManager SettingsState { get; }
 
+        public CompilationMonitor CompilationMonitor { get; }
+        public EditorMonitor EditorMonitor { get; }
+        public SettingsMonitor SettingsMonitor { get; }
+        public TestExecutionService TestExecutionService { get; }
+
         public ExecutionContext(
             IUnityThreadExecutor unityExecutor,
             CompilationStateManager compilationState,
@@ -21,7 +28,11 @@ namespace Nyamu.Core
             ShaderStateManager shaderState,
             AssetStateManager assetState,
             EditorStateManager editorState,
-            SettingsStateManager settingsState)
+            SettingsStateManager settingsState,
+            CompilationMonitor compilationMonitor,
+            EditorMonitor editorMonitor,
+            SettingsMonitor settingsMonitor,
+            TestExecutionService testExecutionService)
         {
             UnityExecutor = unityExecutor;
             CompilationState = compilationState;
@@ -30,6 +41,10 @@ namespace Nyamu.Core
             AssetState = assetState;
             EditorState = editorState;
             SettingsState = settingsState;
+            CompilationMonitor = compilationMonitor;
+            EditorMonitor = editorMonitor;
+            SettingsMonitor = settingsMonitor;
+            TestExecutionService = testExecutionService;
         }
     }
 }

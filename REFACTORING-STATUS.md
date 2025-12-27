@@ -142,7 +142,9 @@ public class CompileShaderTool : INyamuTool<CompileShaderRequest, CompileShaderR
 ### Testing Checklist
 - ✅ Compilation: No errors
 - ✅ Core HTTP endpoints: Tested (edit mode, play mode, with filter)
-- ⏳ Full MCP test suite: `cd McpTests && python -m pytest`
+- ✅ Essential MCP tests: 15/16 passed (`cd McpTests && python -m pytest -m essential`)
+  - Note: 1 test failure is a test bug (searches for "test_status" instead of "tests_status")
+- ⏳ Full MCP test suite: `cd McpTests && python -m pytest` (recommended before merge)
 - ⏳ Postman collection: Manual verification recommended
 
 ### Merge Strategy

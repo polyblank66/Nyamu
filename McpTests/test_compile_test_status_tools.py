@@ -47,7 +47,7 @@ async def test_test_status_tool_exists(mcp_client, unity_state_manager):
     response = await mcp_client.list_tools()
     tools = response["result"]["tools"]
 
-    test_status_tool = next((tool for tool in tools if tool["name"] == "test_status"), None)
+    test_status_tool = next((tool for tool in tools if tool["name"] == "tests_status"), None)
     assert test_status_tool is not None
 
     # Check tool structure

@@ -444,6 +444,11 @@ namespace Nyamu
         static TestsRunRegexTool _testsRunRegexTool;
         static TestsCancelTool _testsCancelTool;
 
+        // Step 4 Group C: shader tools
+        static CompileShaderTool _compileShaderTool;
+        static CompileAllShadersTool _compileAllShadersTool;
+        static CompileShadersRegexTool _compileShadersRegexTool;
+
         static Server()
         {
             Initialize();
@@ -521,6 +526,11 @@ namespace Nyamu
             _testsRunAllTool = new TestsRunAllTool();
             _testsRunRegexTool = new TestsRunRegexTool();
             _testsCancelTool = new TestsCancelTool();
+
+            // Create tools (Step 4 Group C: shader tools)
+            _compileShaderTool = new CompileShaderTool();
+            _compileAllShadersTool = new CompileAllShadersTool();
+            _compileShadersRegexTool = new CompileShadersRegexTool();
         }
 
         static void Cleanup()
@@ -1184,7 +1194,7 @@ namespace Nyamu
             };
         }
 
-        static CompileShaderResponse CompileSingleShader(string queryName)
+        public static CompileShaderResponse CompileSingleShader(string queryName)
         {
             try
             {
@@ -1303,7 +1313,7 @@ namespace Nyamu
         }
 
         // Synchronous version using polling (no deadlock on main thread)
-        static CompileAllShadersResponse CompileAllShaders()
+        public static CompileAllShadersResponse CompileAllShaders()
         {
             var startTime = DateTime.Now;
             var results = new List<ShaderCompileResult>();
@@ -1445,7 +1455,7 @@ namespace Nyamu
         }
 
         // Synchronous version using polling (no deadlock on main thread)
-        static CompileShadersRegexResponse CompileShadersRegex(string pattern)
+        public static CompileShadersRegexResponse CompileShadersRegex(string pattern)
         {
             try
             {
@@ -1563,118 +1573,38 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileShaderRequest");
 
-            lock (_shaderCompileLock)
-            {
-                if (_isCompilingShaders)
-                    return "{\"status\":\"warning\",\"message\":\"Shader compilation already in progress.\"}";
-                _isCompilingShaders = true;
-            }
+            SyncShaderStateToManager();
 
-            lock (_shaderCompilationResultLock)
-            {
-                _lastSingleShaderResult = null;
-                _lastAllShadersResult = null;
-                _lastRegexShadersResult = null;
-            }
-
-            string shaderName = null;
+            CompileShaderRequest toolRequest = null;
             try
             {
                 using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
                 {
                     var body = reader.ReadToEnd();
-                    var requestData = JsonUtility.FromJson<CompileShaderRequest>(body);
-                    shaderName = requestData?.shaderName;
+                    toolRequest = JsonUtility.FromJson<CompileShaderRequest>(body);
                 }
             }
             catch
             {
-                lock (_shaderCompileLock) { _isCompilingShaders = false; }
                 return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
             }
 
-            if (string.IsNullOrEmpty(shaderName))
-            {
-                lock (_shaderCompileLock) { _isCompilingShaders = false; }
-                return "{\"status\":\"error\",\"message\":\"Shader name is required.\"}";
-            }
+            if (toolRequest == null)
+                toolRequest = new CompileShaderRequest();
 
-            CompileShaderResponse response = null;
-            lock (_mainThreadActionQueue)
-            {
-                _mainThreadActionQueue.Enqueue(() =>
-                {
-                    response = CompileSingleShader(shaderName);
-
-                    lock (_shaderCompilationResultLock)
-                    {
-                        _lastSingleShaderResult = response;
-                        _lastAllShadersResult = null;
-                        _lastRegexShadersResult = null;
-                        _lastShaderCompilationType = "single";
-                        _lastShaderCompilationTime = DateTime.Now;
-                    }
-
-                    lock (_shaderCompileLock) { _isCompilingShaders = false; }
-                });
-            }
-
-            var timeout = DateTime.Now.AddSeconds(30);
-            while (response == null && DateTime.Now < timeout)
-                Thread.Sleep(100);
-
-            if (response != null)
-                return JsonUtility.ToJson(response);
-
-            return "{\"status\":\"error\",\"message\":\"Timeout.\"}";
+            var response = _compileShaderTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static string HandleCompileAllShadersRequest(HttpListenerRequest _)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileAllShadersRequest");
 
-            lock (_shaderCompileLock)
-            {
-                if (_isCompilingShaders)
-                    return "{\"status\":\"warning\",\"message\":\"Shader compilation already in progress.\"}";
-                _isCompilingShaders = true;
-            }
+            SyncShaderStateToManager();
 
-            lock (_shaderCompilationResultLock)
-            {
-                _lastSingleShaderResult = null;
-                _lastAllShadersResult = null;
-                _lastRegexShadersResult = null;
-            }
-
-            CompileAllShadersResponse response = null;
-            lock (_mainThreadActionQueue)
-            {
-                _mainThreadActionQueue.Enqueue(() =>
-                {
-                    response = CompileAllShaders();
-
-                    lock (_shaderCompilationResultLock)
-                    {
-                        _lastSingleShaderResult = null;
-                        _lastAllShadersResult = response;
-                        _lastRegexShadersResult = null;
-                        _lastShaderCompilationType = "all";
-                        _lastShaderCompilationTime = DateTime.Now;
-                    }
-
-                    lock (_shaderCompileLock) { _isCompilingShaders = false; }
-                });
-            }
-
-            var timeout = DateTime.Now.AddSeconds(120);
-            while (response == null && DateTime.Now < timeout)
-                Thread.Sleep(100);
-
-            if (response != null)
-                return JsonUtility.ToJson(response);
-
-            return "{\"status\":\"error\",\"message\":\"Timeout.\"}";
+            var toolRequest = new CompileAllShadersRequest { timeout = 120 };
+            var response = _compileAllShadersTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static string HandleCompileShadersRegexRequest(HttpListenerRequest request)
@@ -1683,93 +1613,24 @@ namespace Nyamu
             if (request.HttpMethod != "POST")
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use POST.\"}";
 
-            lock (_shaderCompileLock)
-            {
-                if (_isCompilingShaders)
-                    return "{\"status\":\"warning\",\"message\":\"Shader compilation already in progress.\"}";
-                _isCompilingShaders = true;
-            }
+            SyncShaderStateToManager();
 
-            lock (_shaderCompilationResultLock)
-            {
-                _lastSingleShaderResult = null;
-                _lastAllShadersResult = null;
-                _lastRegexShadersResult = null;
-            }
-
-            CompileShadersRegexRequest requestData = null;
+            CompileShadersRegexToolRequest toolRequest = null;
             try
             {
                 var bodyText = new StreamReader(request.InputStream).ReadToEnd();
-                requestData = JsonUtility.FromJson<CompileShadersRegexRequest>(bodyText);
+                toolRequest = JsonUtility.FromJson<CompileShadersRegexToolRequest>(bodyText);
             }
             catch
             {
-                lock (_shaderCompileLock) { _isCompilingShaders = false; }
                 return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
             }
 
-            if (string.IsNullOrEmpty(requestData?.pattern))
-            {
-                lock (_shaderCompileLock) { _isCompilingShaders = false; }
-                return "{\"status\":\"error\",\"message\":\"Missing required parameter: pattern\"}";
-            }
+            if (toolRequest == null)
+                toolRequest = new CompileShadersRegexToolRequest { timeout = 120 };
 
-            // Check if async mode is requested
-            if (requestData.async)
-            {
-                // Async mode: queue compilation and return immediately
-                lock (_mainThreadActionQueue)
-                {
-                    _mainThreadActionQueue.Enqueue(() =>
-                    {
-                        var result = CompileShadersRegex(requestData.pattern);
-
-                        lock (_shaderCompilationResultLock)
-                        {
-                            _lastSingleShaderResult = null;
-                            _lastAllShadersResult = null;
-                            _lastRegexShadersResult = result;
-                            _lastShaderCompilationType = "regex";
-                            _lastShaderCompilationTime = DateTime.Now;
-                        }
-
-                        lock (_shaderCompileLock) { _isCompilingShaders = false; }
-                    });
-                }
-
-                return "{\"status\":\"ok\",\"message\":\"Shader compilation started.\"}";
-            }
-
-            // Blocking mode: wait for compilation to complete
-            CompileShadersRegexResponse response = null;
-            lock (_mainThreadActionQueue)
-            {
-                _mainThreadActionQueue.Enqueue(() =>
-                {
-                    response = CompileShadersRegex(requestData.pattern);
-
-                    lock (_shaderCompilationResultLock)
-                    {
-                        _lastSingleShaderResult = null;
-                        _lastAllShadersResult = null;
-                        _lastRegexShadersResult = response;
-                        _lastShaderCompilationType = "regex";
-                        _lastShaderCompilationTime = DateTime.Now;
-                    }
-
-                    lock (_shaderCompileLock) { _isCompilingShaders = false; }
-                });
-            }
-
-            var timeout = DateTime.Now.AddSeconds(120);
-            while (response == null && DateTime.Now < timeout)
-                Thread.Sleep(100);
-
-            if (response != null)
-                return JsonUtility.ToJson(response);
-
-            return "{\"status\":\"error\",\"message\":\"Timeout.\"}";
+            var response = _compileShadersRegexTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static string HandleShaderCompilationStatusRequest(HttpListenerRequest request)

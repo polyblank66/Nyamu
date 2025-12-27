@@ -21,10 +21,10 @@ namespace Nyamu.Core.StateManagers
         int _regexShadersCompleted = 0;
         string _regexShadersCurrentShader = "";
 
-        public object CompileLock => _compileLock;
+        public object Lock => _compileLock;
         public object ResultLock => _resultLock;
 
-        public bool IsCompilingShaders
+        public bool IsCompiling
         {
             get { lock (_compileLock) return _isCompilingShaders; }
             set { lock (_compileLock) _isCompilingShaders = value; }
@@ -48,13 +48,13 @@ namespace Nyamu.Core.StateManagers
             set { lock (_resultLock) _lastRegexShadersResult = value; }
         }
 
-        public string LastShaderCompilationType
+        public string LastCompilationType
         {
             get { lock (_resultLock) return _lastShaderCompilationType; }
             set { lock (_resultLock) _lastShaderCompilationType = value; }
         }
 
-        public DateTime LastShaderCompilationTime
+        public DateTime LastCompilationTime
         {
             get { lock (_resultLock) return _lastShaderCompilationTime; }
             set { lock (_resultLock) _lastShaderCompilationTime = value; }

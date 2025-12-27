@@ -142,8 +142,7 @@ public class CompileShaderTool : INyamuTool<CompileShaderRequest, CompileShaderR
 ### Testing Checklist
 - ✅ Compilation: No errors
 - ✅ Core HTTP endpoints: Tested (edit mode, play mode, with filter)
-- ✅ Essential MCP tests: 15/16 passed (`cd McpTests && python -m pytest -m essential`)
-  - Note: 1 test failure is a test bug (searches for "test_status" instead of "tests_status")
+- ✅ Essential MCP tests: **16/16 passed** (`cd McpTests && python -m pytest -m essential`)
 - ⏳ Full MCP test suite: `cd McpTests && python -m pytest` (recommended before merge)
 - ⏳ Postman collection: Manual verification recommended
 
@@ -186,5 +185,5 @@ git push origin main --tags
 ## Branch Information
 
 **Branch**: `tools-refactoring`
-**Commits**: 10 commits (Steps 1-5 complete)
-**Status**: ✅ COMPLETE - Ready for merge to main
+**Commits**: 12 commits (Steps 1-5 complete + shader status fixes + test fix)
+**Status**: ✅ COMPLETE - All essential tests passing, ready for merge to main

@@ -150,7 +150,6 @@ async def test_shader_compilation_status_after_single(mcp_client, unity_state_ma
 
 
 @pytest.mark.compilation
-@pytest.mark.essential
 @pytest.mark.asyncio
 async def test_shader_compilation_status_after_all(mcp_client, unity_state_manager):
     """Test status after compile all shaders"""
@@ -167,7 +166,6 @@ async def test_shader_compilation_status_after_all(mcp_client, unity_state_manag
 
 
 @pytest.mark.compilation
-@pytest.mark.essential
 @pytest.mark.asyncio
 async def test_shader_compilation_status_after_regex(mcp_client, unity_state_manager):
     """Test status after regex shader compilation"""

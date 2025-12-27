@@ -46,7 +46,6 @@ async def test_compile_shader_exact_match(mcp_client, unity_state_manager):
 
 
 @pytest.mark.compilation
-@pytest.mark.essential
 @pytest.mark.asyncio
 async def test_compile_shader_with_errors(mcp_client, unity_state_manager):
     """Test error reporting for shader with compilation errors"""
@@ -185,7 +184,6 @@ async def test_compile_all_shaders_basic(mcp_client, unity_state_manager):
 
 
 @pytest.mark.compilation
-@pytest.mark.essential
 @pytest.mark.asyncio
 async def test_compile_all_shaders_includes_errors(mcp_client, unity_state_manager):
     """Verify failed shaders with error details are reported"""

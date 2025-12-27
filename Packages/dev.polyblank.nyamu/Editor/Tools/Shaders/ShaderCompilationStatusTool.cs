@@ -19,15 +19,15 @@ namespace Nyamu.Tools.Shaders
             System.DateTime lastCompilationTime;
             object lastResult;
 
-            lock (state.CompileLock)
+            lock (state.Lock)
             {
-                isCompiling = state.IsCompilingShaders;
+                isCompiling = state.IsCompiling;
             }
 
             lock (state.ResultLock)
             {
-                lastCompilationType = state.LastShaderCompilationType;
-                lastCompilationTime = state.LastShaderCompilationTime;
+                lastCompilationType = state.LastCompilationType;
+                lastCompilationTime = state.LastCompilationTime;
 
                 // Return the appropriate result based on compilation type
                 lastResult = lastCompilationType switch

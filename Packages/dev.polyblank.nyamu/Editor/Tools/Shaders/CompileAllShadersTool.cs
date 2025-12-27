@@ -24,7 +24,6 @@ namespace Nyamu.Tools.Shaders
                     return Task.FromResult(new CompileAllShadersResponse
                     {
                         status = "warning",
-                        message = "Shader compilation already in progress.",
                         totalShaders = 0,
                         successfulCompilations = 0,
                         failedCompilations = 0,
@@ -78,7 +77,6 @@ namespace Nyamu.Tools.Shaders
             return Task.FromResult(new CompileAllShadersResponse
             {
                 status = "error",
-                message = "Timeout.",
                 totalShaders = 0,
                 successfulCompilations = 0,
                 failedCompilations = 0,

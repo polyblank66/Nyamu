@@ -1575,13 +1575,22 @@ namespace Nyamu
 
             SyncShaderStateToManager();
 
-            CompileShaderRequest toolRequest = null;
+            Tools.Shaders.CompileShaderRequest toolRequest = null;
             try
             {
                 using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
                 {
                     var body = reader.ReadToEnd();
-                    toolRequest = JsonUtility.FromJson<CompileShaderRequest>(body);
+                    // Parse as old format first, then convert to new
+                    var oldRequest = JsonUtility.FromJson<CompileShaderRequest>(body);
+                    if (oldRequest != null)
+                    {
+                        toolRequest = new Tools.Shaders.CompileShaderRequest
+                        {
+                            shaderName = oldRequest.shaderName,
+                            timeout = 30
+                        };
+                    }
                 }
             }
             catch
@@ -1590,7 +1599,7 @@ namespace Nyamu
             }
 
             if (toolRequest == null)
-                toolRequest = new CompileShaderRequest();
+                toolRequest = new Tools.Shaders.CompileShaderRequest { timeout = 30 };
 
             var response = _compileShaderTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
@@ -1650,9 +1659,9 @@ namespace Nyamu
 
         static void SyncShaderStateToManager()
         {
-            lock (_shaderStateManager.CompileLock)
+            lock (_shaderStateManager.Lock)
             {
-                _shaderStateManager.IsCompilingShaders = _isCompilingShaders;
+                _shaderStateManager.IsCompiling = _isCompilingShaders;
                 _shaderStateManager.RegexShadersPattern = _regexShadersPattern;
                 _shaderStateManager.RegexShadersTotal = _regexShadersTotal;
                 _shaderStateManager.RegexShadersCompleted = _regexShadersCompleted;
@@ -1664,8 +1673,8 @@ namespace Nyamu
                 _shaderStateManager.LastSingleShaderResult = _lastSingleShaderResult;
                 _shaderStateManager.LastAllShadersResult = _lastAllShadersResult;
                 _shaderStateManager.LastRegexShadersResult = _lastRegexShadersResult;
-                _shaderStateManager.LastShaderCompilationType = _lastShaderCompilationType;
-                _shaderStateManager.LastShaderCompilationTime = _lastShaderCompilationTime;
+                _shaderStateManager.LastCompilationType = _lastShaderCompilationType;
+                _shaderStateManager.LastCompilationTime = _lastShaderCompilationTime;
             }
         }
 

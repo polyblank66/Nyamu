@@ -144,10 +144,13 @@ namespace Nyamu
 
         static void Initialize()
         {
-            // Load cached timestamps BEFORE cleanup (so they're not lost)
-            LoadTimestampsCache();
-
             Cleanup();
+
+            // Initialize infrastructure components first (creates state managers and monitors)
+            InitializeInfrastructure();
+
+            // Load cached timestamps after infrastructure is ready
+            LoadTimestampsCache();
 
             _shouldStop = false;
             _listenerReady = new ManualResetEvent(false);
@@ -159,9 +162,6 @@ namespace Nyamu
             _thread = new(HttpRequestProcessor);
             _thread.IsBackground = true;
             _thread.Start();
-
-            // Initialize infrastructure components (monitors will subscribe to Unity events)
-            InitializeInfrastructure();
 
             EditorApplication.quitting += Cleanup;
             AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
@@ -693,6 +693,10 @@ namespace Nyamu
         {
             try
             {
+                // Skip if infrastructure not yet initialized
+                if (_compilationMonitor == null || _compilationStateManager == null || _testStateManager == null)
+                    return;
+
                 var cache = NyamuServerCache.Load();
                 lock (_compilationMonitor.TimestampLock)
                 {
@@ -716,6 +720,10 @@ namespace Nyamu
         {
             try
             {
+                // Skip if infrastructure not yet initialized
+                if (_compilationMonitor == null || _compilationStateManager == null || _testStateManager == null)
+                    return;
+
                 lock (_compilationMonitor.TimestampLock)
                 {
                     var cache = new NyamuServerCache

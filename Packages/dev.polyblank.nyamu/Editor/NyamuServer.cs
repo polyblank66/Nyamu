@@ -28,10 +28,10 @@ using System.Net;
 using System.Threading;
 using System.IO;
 using System.Text;
-using UnityEditor.Compilation;
 using System.Collections.Generic;
 using System;
 using Nyamu.Core;
+using Nyamu.Core.Monitors;
 using Nyamu.Core.StateManagers;
 using Nyamu.Tools.Compilation;
 using Nyamu.Tools.Testing;
@@ -94,21 +94,8 @@ namespace Nyamu
         // Unity main thread action queue (required for Unity API calls)
         static Queue<Action> _mainThreadActionQueue = new();
 
-        // Locks kept for backward compatibility with existing code
-        internal static readonly object _refreshLock = new object();
-        internal static readonly object _testLock = new object();
-
-        // Settings cache for thread-safe access from HTTP requests
-        static readonly object _settingsLock = new object();
-        static McpSettingsResponse _cachedSettings;
-        static DateTime _lastSettingsRefresh = DateTime.MinValue;
-
         // Shutdown coordination
         static volatile bool _shouldStop;
-
-        // Shader compilation locks
-        static readonly object _shaderCompileLock = new object();
-        static readonly object _shaderCompilationResultLock = new object();
 
         // Infrastructure components for refactored architecture
         static CompilationStateManager _compilationStateManager;
@@ -121,11 +108,11 @@ namespace Nyamu
         static Core.ExecutionContext _executionContext;
 
         // Monitors and services
-        static Core.Monitors.CompilationMonitor _compilationMonitor;
-        static Core.Monitors.EditorMonitor _editorMonitor;
-        static Core.Monitors.SettingsMonitor _settingsMonitor;
-        static TestExecution.TestExecutionService _testExecutionService;
-        static TestExecution.TestCallbacks _testCallbacks;
+        static CompilationMonitor _compilationMonitor;
+        static EditorMonitor _editorMonitor;
+        static SettingsMonitor _settingsMonitor;
+        static TestExecutionService _testExecutionService;
+        static TestCallbacks _testCallbacks;
 
         // Tools (Step 2-3: read-only tools)
         static CompilationStatusTool _compilationStatusTool;
@@ -191,13 +178,13 @@ namespace Nyamu
             _settingsStateManager = new SettingsStateManager();
 
             // Create monitors
-            _compilationMonitor = new Core.Monitors.CompilationMonitor(_compilationStateManager);
-            _settingsMonitor = new Core.Monitors.SettingsMonitor(_settingsStateManager);
-            _editorMonitor = new Core.Monitors.EditorMonitor(_editorStateManager, _mainThreadActionQueue, _settingsMonitor);
+            _compilationMonitor = new CompilationMonitor(_compilationStateManager);
+            _settingsMonitor = new SettingsMonitor(_settingsStateManager);
+            _editorMonitor = new EditorMonitor(_editorStateManager, _mainThreadActionQueue, _settingsMonitor);
 
             // Create test infrastructure
-            _testCallbacks = new TestExecution.TestCallbacks(_testStateManager, _compilationMonitor.TimestampLock);
-            _testExecutionService = new TestExecution.TestExecutionService(_testStateManager, _assetStateManager, _testCallbacks);
+            _testCallbacks = new TestCallbacks(_testStateManager, _compilationMonitor.TimestampLock);
+            _testExecutionService = new TestExecutionService(_testStateManager, _assetStateManager, _testCallbacks);
             _testStateManager.TestCallbacks = _testCallbacks;
 
             // Initialize monitors (subscribe to Unity events)
@@ -697,29 +684,6 @@ namespace Nyamu
             response.ContentLength64 = buffer.Length;
             response.OutputStream.Write(buffer, 0, buffer.Length);
             response.OutputStream.Close();
-        }
-
-        static void RefreshCachedSettings()
-        {
-            try
-            {
-                var settings = NyamuSettings.Instance;
-                var newSettings = new McpSettingsResponse
-                {
-                    responseCharacterLimit = settings.responseCharacterLimit,
-                    enableTruncation = settings.enableTruncation,
-                    truncationMessage = settings.truncationMessage
-                };
-
-                lock (_settingsLock)
-                {
-                    _cachedSettings = newSettings;
-                }
-            }
-            catch (Exception ex)
-            {
-                NyamuLogger.LogError($"[Nyamu][Server] Failed to refresh cached Nyamu settings: {ex.Message}");
-            }
         }
 
         static void LoadTimestampsCache()

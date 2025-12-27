@@ -8,12 +8,9 @@ namespace Nyamu.Core
     // Unity APIs must be called from the main thread
     public class UnityThreadExecutor : IUnityThreadExecutor
     {
-        readonly Queue<Action> _actionQueue;
+        readonly Queue<Action> _actionQueue = new();
 
-        public UnityThreadExecutor(Queue<Action> actionQueue)
-        {
-            _actionQueue = actionQueue;
-        }
+        public Queue<Action> ActionQueue => _actionQueue;
 
         public void Enqueue(Action action)
         {

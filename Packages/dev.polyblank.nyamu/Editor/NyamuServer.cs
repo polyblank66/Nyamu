@@ -91,9 +91,6 @@ namespace Nyamu
         static Thread _thread;
         static ManualResetEvent _listenerReady;
 
-        // Unity main thread action queue (required for Unity API calls)
-        static Queue<Action> _mainThreadActionQueue = new();
-
         // Shutdown coordination
         static volatile bool _shouldStop;
 
@@ -177,10 +174,13 @@ namespace Nyamu
             _editorStateManager = new EditorStateManager();
             _settingsStateManager = new SettingsStateManager();
 
+            // Create Unity thread executor (owns the main thread action queue)
+            _unityThreadExecutor = new UnityThreadExecutor();
+
             // Create monitors
             _compilationMonitor = new CompilationMonitor(_compilationStateManager);
             _settingsMonitor = new SettingsMonitor(_settingsStateManager);
-            _editorMonitor = new EditorMonitor(_editorStateManager, _mainThreadActionQueue, _settingsMonitor);
+            _editorMonitor = new EditorMonitor(_editorStateManager, _unityThreadExecutor, _settingsMonitor);
 
             // Create test infrastructure
             _testCallbacks = new TestCallbacks(_testStateManager, _compilationMonitor.TimestampLock);
@@ -193,9 +193,6 @@ namespace Nyamu
 
             // Initialize logger's cached min log level to avoid thread-safety issues
             NyamuLogger.RefreshMinLogLevel();
-
-            // Create Unity thread executor wrapping existing queue
-            _unityThreadExecutor = new UnityThreadExecutor(_mainThreadActionQueue);
 
             // Create execution context with monitors and services
             _executionContext = new Core.ExecutionContext(

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using Nyamu.Core.StateManagers;
+using Nyamu.Core.Interfaces;
 
 namespace Nyamu.Core.Monitors
 {
@@ -9,13 +10,13 @@ namespace Nyamu.Core.Monitors
     public class EditorMonitor
     {
         readonly EditorStateManager _state;
-        readonly Queue<Action> _mainThreadActionQueue;
+        readonly IUnityThreadExecutor _unityThreadExecutor;
         readonly SettingsMonitor _settingsMonitor;
 
-        public EditorMonitor(EditorStateManager state, Queue<Action> mainThreadActionQueue, SettingsMonitor settingsMonitor)
+        public EditorMonitor(EditorStateManager state, IUnityThreadExecutor unityThreadExecutor, SettingsMonitor settingsMonitor)
         {
             _state = state;
-            _mainThreadActionQueue = mainThreadActionQueue;
+            _unityThreadExecutor = unityThreadExecutor;
             _settingsMonitor = settingsMonitor;
         }
 
@@ -32,8 +33,9 @@ namespace Nyamu.Core.Monitors
         void OnEditorUpdate()
         {
             // Execute main thread actions
-            while (_mainThreadActionQueue.Count > 0)
-                _mainThreadActionQueue.Dequeue().Invoke();
+            var actionQueue = ((UnityThreadExecutor)_unityThreadExecutor).ActionQueue;
+            while (actionQueue.Count > 0)
+                actionQueue.Dequeue().Invoke();
 
             // Update play mode state (thread-safe)
             _state.IsPlaying = EditorApplication.isPlaying;

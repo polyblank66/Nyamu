@@ -24,6 +24,24 @@ namespace Nyamu
 			None
 		}
 
+		// Cached min log level to avoid accessing NyamuSettings from non-main threads
+		private static LogLevel _cachedMinLogLevel = LogLevel.Info;
+
+		/// <summary>
+		/// Update cached min log level from settings. Should be called from main thread.
+		/// </summary>
+		public static void RefreshMinLogLevel()
+		{
+			try
+			{
+				_cachedMinLogLevel = NyamuSettings.Instance.minLogLevel;
+			}
+			catch
+			{
+				// If settings access fails, keep current cached value
+			}
+		}
+
 		[HideInCallstack]
 		public static void LogDebug(string message)
 		{
@@ -51,16 +69,9 @@ namespace Nyamu
 		[HideInCallstack]
 		private static void LogInternal(string message, LogLevel logLevel)
 		{
-			try
-			{
-				if (logLevel >= NyamuSettings.Instance.minLogLevel)
-					Debug.unityLogger.Log(Map(logLevel), message);
-			}
-			catch (Exception e)
-			{
+			// Use cached min log level to avoid accessing NyamuSettings from non-main threads
+			if (logLevel >= _cachedMinLogLevel)
 				Debug.unityLogger.Log(Map(logLevel), message);
-				Debug.LogException(e);
-			}
 		}
 
 		private static LogType Map(LogLevel minLogLevel)

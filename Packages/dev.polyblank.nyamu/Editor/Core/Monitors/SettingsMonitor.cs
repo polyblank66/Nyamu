@@ -35,6 +35,9 @@ namespace Nyamu.Core.Monitors
                     enableTruncation = settings.enableTruncation,
                     truncationMessage = settings.truncationMessage
                 };
+
+                // Refresh logger's cached min log level to avoid thread-safety issues
+                NyamuLogger.RefreshMinLogLevel();
             }
             catch (Exception ex)
             {

@@ -191,6 +191,9 @@ namespace Nyamu
             _compilationMonitor.Initialize();
             _editorMonitor.Initialize();
 
+            // Initialize logger's cached min log level to avoid thread-safety issues
+            NyamuLogger.RefreshMinLogLevel();
+
             // Create Unity thread executor wrapping existing queue
             _unityThreadExecutor = new UnityThreadExecutor(_mainThreadActionQueue);
 

@@ -438,6 +438,12 @@ namespace Nyamu
         static RefreshAssetsTool _refreshAssetsTool;
         static ExecuteMenuItemTool _executeMenuItemTool;
 
+        // Step 4 Group B: test tools
+        static TestsRunSingleTool _testsRunSingleTool;
+        static TestsRunAllTool _testsRunAllTool;
+        static TestsRunRegexTool _testsRunRegexTool;
+        static TestsCancelTool _testsCancelTool;
+
         static Server()
         {
             Initialize();
@@ -509,6 +515,12 @@ namespace Nyamu
             _compilationTriggerTool = new CompilationTriggerTool();
             _refreshAssetsTool = new RefreshAssetsTool();
             _executeMenuItemTool = new ExecuteMenuItemTool();
+
+            // Create tools (Step 4 Group B: test tools)
+            _testsRunSingleTool = new TestsRunSingleTool();
+            _testsRunAllTool = new TestsRunAllTool();
+            _testsRunRegexTool = new TestsRunRegexTool();
+            _testsCancelTool = new TestsCancelTool();
         }
 
         static void Cleanup()
@@ -874,96 +886,58 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunSingleRequest");
 
+            SyncTestStateToManager();
+
             var query = request.Url.Query ?? "";
             var testName = ExtractQueryParameter(query, "test_name");
             var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
 
-            if (string.IsNullOrEmpty(testName))
+            var toolRequest = new TestsRunSingleRequest
             {
-                return "{\"status\":\"error\",\"message\":\"test_name parameter is required for tests-run-single endpoint.\"}";
-            }
+                testName = testName,
+                testMode = mode
+            };
 
-            // Check if tests are already running (non-blocking check)
-            lock (_testLock)
-            {
-                if (_isRunningTests)
-                {
-                    // Return immediately with warning - don't queue another test run
-                    return "{\"status\":\"warning\",\"message\":\"Tests are already running. Please wait for current test run to complete.\"}";
-                }
-
-                // Mark test run as starting
-                _isRunningTests = true;
-            }
-
-            lock (_mainThreadActionQueue)
-            {
-                _mainThreadActionQueue.Enqueue(() => StartTestExecutionWithRefreshWait(mode, testName, null));
-            }
-
-            return Constants.JsonResponses.TestStarted;
+            var response = _testsRunSingleTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static string HandleTestsRunAllRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunAllRequest");
 
+            SyncTestStateToManager();
+
             var query = request.Url.Query ?? "";
             var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
 
-            // Check if tests are already running (non-blocking check)
-            lock (_testLock)
+            var toolRequest = new TestsRunAllRequest
             {
-                if (_isRunningTests)
-                {
-                    // Return immediately with warning - don't queue another test run
-                    return "{\"status\":\"warning\",\"message\":\"Tests are already running. Please wait for current test run to complete.\"}";
-                }
+                testMode = mode
+            };
 
-                // Mark test run as starting
-                _isRunningTests = true;
-            }
-
-            lock (_mainThreadActionQueue)
-            {
-                _mainThreadActionQueue.Enqueue(() => StartTestExecutionWithRefreshWait(mode, null, null));
-            }
-
-            return Constants.JsonResponses.TestStarted;
+            var response = _testsRunAllTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static string HandleTestsRunRegexRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunRegexRequest");
 
+            SyncTestStateToManager();
+
             var query = request.Url.Query ?? "";
             var filterRegex = ExtractQueryParameter(query, "filter_regex");
             var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
 
-            if (string.IsNullOrEmpty(filterRegex))
+            var toolRequest = new TestsRunRegexRequest
             {
-                return "{\"status\":\"error\",\"message\":\"filter_regex parameter is required for tests-run-regex endpoint.\"}";
-            }
+                testFilterRegex = filterRegex,
+                testMode = mode
+            };
 
-            // Check if tests are already running (non-blocking check)
-            lock (_testLock)
-            {
-                if (_isRunningTests)
-                {
-                    // Return immediately with warning - don't queue another test run
-                    return "{\"status\":\"warning\",\"message\":\"Tests are already running. Please wait for current test run to complete.\"}";
-                }
-
-                // Mark test run as starting
-                _isRunningTests = true;
-            }
-
-            lock (_mainThreadActionQueue)
-            {
-                _mainThreadActionQueue.Enqueue(() => StartTestExecutionWithRefreshWait(mode, null, filterRegex));
-            }
-
-            return Constants.JsonResponses.TestStarted;
+            var response = _testsRunRegexTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static string HandleCancelTestsRequest(HttpListenerRequest request)
@@ -1048,54 +1022,19 @@ namespace Nyamu
         static string HandleTestsCancelRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsCancelRequest");
-            try
+
+            SyncTestStateToManager();
+
+            var query = request.Url.Query ?? "";
+            var testRunGuid = ExtractQueryParameter(query, "guid");
+
+            var toolRequest = new TestsCancelRequest
             {
-                var query = request.Url.Query ?? "";
-                var testRunGuid = ExtractQueryParameter(query, "guid");
+                testRunGuid = testRunGuid
+            };
 
-                // Use provided guid or current test run ID
-                var guidToCancel = !string.IsNullOrEmpty(testRunGuid) ? testRunGuid : _currentTestRunId;
-
-                if (string.IsNullOrEmpty(guidToCancel))
-                {
-                    // Check if tests are running without a stored GUID (edge case)
-                    lock (_testLock)
-                    {
-                        if (_isRunningTests)
-                        {
-                            return "{\"status\":\"warning\", \"message\":\"Test run is active but no GUID available for cancellation. Provide explicit guid parameter.\"}";
-                        }
-                    }
-                    return "{\"status\":\"error\", \"message\":\"No test run to cancel. Either provide a guid parameter or start a test run first.\"}";
-                }
-
-                // Check if we have a test running first
-                lock (_testLock)
-                {
-                    if (!_isRunningTests && guidToCancel == _currentTestRunId)
-                    {
-                        return "{\"status\":\"warning\", \"message\":\"No test run currently active.\"}";
-                    }
-                }
-
-                // Try to cancel the test run using Unity's TestRunnerApi
-                bool cancelResult = TestRunnerApi.CancelTestRun(guidToCancel);
-
-                if (cancelResult)
-                {
-                    NyamuLogger.LogInfo($"[Nyamu][Server] Test run cancellation requested for ID: {guidToCancel}");
-                    return $"{{\"status\":\"ok\", \"message\":\"Test run cancellation requested for ID: {guidToCancel}\", \"guid\":\"{guidToCancel}\"}}";
-                }
-                else
-                {
-                    return $"{{\"status\":\"error\", \"message\":\"Failed to cancel test run with ID: {guidToCancel}. Test run may not exist or may not be cancellable.\", \"guid\":\"{guidToCancel}\"}}";
-                }
-            }
-            catch (Exception ex)
-            {
-                NyamuLogger.LogError($"[Nyamu][Server] Error cancelling tests: {ex.Message}");
-                return $"{{\"status\":\"error\", \"message\":\"Failed to cancel tests: {ex.Message}\"}}";
-            }
+            var response = _testsCancelTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static async Task<ShaderCompileResult> CompileShaderAtPathAsync(string shaderPath)
@@ -2093,7 +2032,7 @@ namespace Nyamu
         // TEST EXECUTION COORDINATION
         // ========================================================================
 
-        static void StartTestExecutionWithRefreshWait(string mode, string filter, string filterRegex)
+        public static void StartTestExecutionWithRefreshWait(string mode, string filter, string filterRegex)
         {
             bool executionStarted = false;
             try

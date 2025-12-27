@@ -38,6 +38,10 @@ using Nyamu.Core;
 using Nyamu.Core.Interfaces;
 using Nyamu.Core.StateManagers;
 using Nyamu.Tools.Compilation;
+using Nyamu.Tools.Testing;
+using Nyamu.Tools.Shaders;
+using Nyamu.Tools.Editor;
+using Nyamu.Tools.Settings;
 
 namespace Nyamu
 {
@@ -421,8 +425,12 @@ namespace Nyamu
         static UnityThreadExecutor _unityThreadExecutor;
         static Core.ExecutionContext _executionContext;
 
-        // Tools (proof of concept - Step 2)
+        // Tools (Step 2-3: read-only tools)
         static CompilationStatusTool _compilationStatusTool;
+        static TestsStatusTool _testsStatusTool;
+        static ShaderCompilationStatusTool _shaderCompilationStatusTool;
+        static EditorStatusTool _editorStatusTool;
+        static McpSettingsTool _mcpSettingsTool;
 
         static Server()
         {
@@ -484,8 +492,12 @@ namespace Nyamu
                 _settingsStateManager
             );
 
-            // Create tools (proof of concept - Step 2)
+            // Create tools (Step 2-3: read-only tools)
             _compilationStatusTool = new CompilationStatusTool();
+            _testsStatusTool = new TestsStatusTool();
+            _shaderCompilationStatusTool = new ShaderCompilationStatusTool();
+            _editorStatusTool = new EditorStatusTool();
+            _mcpSettingsTool = new McpSettingsTool();
         }
 
         static void Cleanup()
@@ -788,107 +800,62 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestStatusRequest");
 
-            var status = _isRunningTests ? "running" : "idle";
+            // Sync old state into state manager (during transition - Step 3)
+            SyncTestStateToManager();
 
-            DateTime lastTestTimeCopy;
-            lock (_timestampLock)
+            // Use new tool architecture
+            var request = new TestsStatusRequest();
+            var response = _testsStatusTool.ExecuteAsync(request, _executionContext).Result;
+            return JsonUtility.ToJson(response);
+        }
+
+        static void SyncTestStateToManager()
+        {
+            lock (_testStateManager.Lock)
             {
-                lastTestTimeCopy = _lastTestTime;
+                _testStateManager.IsRunningTests = _isRunningTests;
+                _testStateManager.TestResults = _testResults;
+                _testStateManager.CurrentTestRunId = _currentTestRunId;
+                _testStateManager.HasTestExecutionError = _hasTestExecutionError;
+                _testStateManager.TestExecutionError = _testExecutionError;
+                lock (_timestampLock)
+                {
+                    _testStateManager.LastTestTime = _lastTestTime;
+                }
             }
-
-            var statusResponse = new TestStatusResponse
-            {
-                status = status,
-                isRunning = _isRunningTests,
-                lastTestTime = lastTestTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
-                testResults = _testResults,
-                testRunId = _currentTestRunId,
-                hasError = _hasTestExecutionError,
-                errorMessage = _testExecutionError
-            };
-            return JsonUtility.ToJson(statusResponse);
         }
 
         static string HandleEditorStatusRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleEditorStatusRequest");
-            var statusResponse = new EditorStatusResponse
+
+            // Sync old state into state managers (during transition - Step 3)
+            SyncCompilationStateToManager();
+            SyncTestStateToManager();
+            SyncEditorStateToManager();
+
+            // Use new tool architecture
+            var request = new EditorStatusRequest();
+            var response = _editorStatusTool.ExecuteAsync(request, _executionContext).Result;
+            return JsonUtility.ToJson(response);
+        }
+
+        static void SyncEditorStateToManager()
+        {
+            lock (_editorStateManager.Lock)
             {
-                isCompiling = _isCompiling || EditorApplication.isCompiling,
-                isRunningTests = _isRunningTests,
-                isPlaying = _isPlaying
-            };
-            return JsonUtility.ToJson(statusResponse);
+                _editorStateManager.IsPlaying = _isPlaying;
+            }
         }
 
         static string HandleMcpSettingsRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleMcpSettingsRequest");
-            lock (_settingsLock)
-            {
-                if (_cachedSettings == null)
-                {
-                    // First time access, queue main thread action to load settings
-                    McpSettingsResponse settingsResult = null;
-                    bool settingsLoaded = false;
 
-                    lock (_mainThreadActionQueue)
-                    {
-                        _mainThreadActionQueue.Enqueue(() =>
-                        {
-                            try
-                            {
-                                var settings = NyamuSettings.Instance;
-                                settingsResult = new McpSettingsResponse
-                                {
-                                    responseCharacterLimit = settings.responseCharacterLimit,
-                                    enableTruncation = settings.enableTruncation,
-                                    truncationMessage = settings.truncationMessage
-                                };
-                            }
-                            catch (System.Exception ex)
-                            {
-                                NyamuLogger.LogError($"[Nyamu][Server] Failed to load Nyamu settings: {ex.Message}");
-                                // Use default settings as fallback
-                                settingsResult = new McpSettingsResponse
-                                {
-                                    responseCharacterLimit = 25000,
-                                    enableTruncation = true,
-                                    truncationMessage = "\n\n... (response truncated due to length limit)"
-                                };
-                            }
-                            finally
-                            {
-                                settingsLoaded = true;
-                            }
-                        });
-                    }
-
-                    // Wait for settings to be loaded (with timeout)
-                    var timeout = DateTime.Now.AddSeconds(5);
-                    while (!settingsLoaded && DateTime.Now < timeout)
-                    {
-                        Thread.Sleep(50);
-                    }
-
-                    if (settingsLoaded && settingsResult != null)
-                    {
-                        _cachedSettings = settingsResult;
-                    }
-                    else
-                    {
-                        // Fallback to default settings if loading failed
-                        _cachedSettings = new McpSettingsResponse
-                        {
-                            responseCharacterLimit = 25000,
-                            enableTruncation = true,
-                            truncationMessage = "\n\n... (response truncated due to length limit)"
-                        };
-                    }
-                }
-
-                return JsonUtility.ToJson(_cachedSettings);
-            }
+            // Use new tool architecture (tool handles caching internally)
+            var request = new McpSettingsRequest();
+            var response = _mcpSettingsTool.ExecuteAsync(request, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         static string HandleTestsRunSingleRequest(HttpListenerRequest request)
@@ -1860,92 +1827,33 @@ namespace Nyamu
             if (request.HttpMethod != "GET")
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use GET.\"}";
 
-            lock (_shaderCompileLock)
+            // Sync old state into state manager (during transition - Step 3)
+            SyncShaderStateToManager();
+
+            // Use new tool architecture
+            var toolRequest = new ShaderCompilationStatusRequest();
+            var response = _shaderCompilationStatusTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
+        }
+
+        static void SyncShaderStateToManager()
+        {
+            lock (_shaderStateManager.CompileLock)
             {
-                var status = _isCompilingShaders ? "compiling" : "idle";
+                _shaderStateManager.IsCompilingShaders = _isCompilingShaders;
+                _shaderStateManager.RegexShadersPattern = _regexShadersPattern;
+                _shaderStateManager.RegexShadersTotal = _regexShadersTotal;
+                _shaderStateManager.RegexShadersCompleted = _regexShadersCompleted;
+                _shaderStateManager.RegexShadersCurrentShader = _regexShadersCurrentShader;
+            }
 
-                CompileShaderResponse singleResult;
-                CompileAllShadersResponse allResult;
-                CompileShadersRegexResponse regexResult;
-                string typeCopy;
-                DateTime timeCopy;
-
-                lock (_shaderCompilationResultLock)
-                {
-                    singleResult = _lastSingleShaderResult;
-                    allResult = _lastAllShadersResult;
-                    regexResult = _lastRegexShadersResult;
-                    typeCopy = _lastShaderCompilationType;
-                    timeCopy = _lastShaderCompilationTime;
-                }
-
-                var timeString = timeCopy.ToString("yyyy-MM-dd HH:mm:ss");
-
-                if (singleResult != null)
-                {
-                    var response = new ShaderCompilationStatusResponse<CompileShaderResponse>
-                    {
-                        status = status,
-                        isCompiling = _isCompilingShaders,
-                        lastCompilationType = typeCopy,
-                        lastCompilationTime = timeString,
-                        lastCompilationResult = singleResult
-                    };
-                    return JsonUtility.ToJson(response);
-                }
-
-                if (allResult != null)
-                {
-                    var response = new ShaderCompilationStatusResponse<CompileAllShadersResponse>
-                    {
-                        status = status,
-                        isCompiling = _isCompilingShaders,
-                        lastCompilationType = typeCopy,
-                        lastCompilationTime = timeString,
-                        lastCompilationResult = allResult
-                    };
-                    return JsonUtility.ToJson(response);
-                }
-
-                if (regexResult != null)
-                {
-                    var response = new ShaderCompilationStatusResponse<CompileShadersRegexResponse>
-                    {
-                        status = status,
-                        isCompiling = _isCompilingShaders,
-                        lastCompilationType = typeCopy,
-                        lastCompilationTime = timeString,
-                        lastCompilationResult = regexResult
-                    };
-
-                    // Add progress info if currently compiling regex shaders
-                    if (_isCompilingShaders && typeCopy == "regex")
-                    {
-                        lock (_shaderCompilationResultLock)
-                        {
-                            response.progress = new ShaderRegexProgressInfo
-                            {
-                                pattern = _regexShadersPattern,
-                                totalShaders = _regexShadersTotal,
-                                completedShaders = _regexShadersCompleted,
-                                currentShader = _regexShadersCurrentShader
-                            };
-                        }
-                    }
-
-                    return JsonUtility.ToJson(response);
-                }
-
-                // No results available
-                var noneResponse = new ShaderCompilationStatusResponse<NoneResult>
-                {
-                    status = status,
-                    isCompiling = _isCompilingShaders,
-                    lastCompilationType = typeCopy,
-                    lastCompilationTime = timeString,
-                    lastCompilationResult = new NoneResult()
-                };
-                return JsonUtility.ToJson(noneResponse);
+            lock (_shaderStateManager.ResultLock)
+            {
+                _shaderStateManager.LastSingleShaderResult = _lastSingleShaderResult;
+                _shaderStateManager.LastAllShadersResult = _lastAllShadersResult;
+                _shaderStateManager.LastRegexShadersResult = _lastRegexShadersResult;
+                _shaderStateManager.LastShaderCompilationType = _lastShaderCompilationType;
+                _shaderStateManager.LastShaderCompilationTime = _lastShaderCompilationTime;
             }
         }
 

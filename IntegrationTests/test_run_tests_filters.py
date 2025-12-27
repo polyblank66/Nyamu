@@ -99,7 +99,7 @@ async def test_run_tests_filter_playmode_with_namespace(mcp_client, unity_state_
     """Test running PlayMode test with namespace using filter"""
     # Test specific PlayMode test with namespace
     response = await mcp_client.tests_run_single(
-        test_name="NNyamu.Tests.NyamuPlayModeTests.SimplePlayModeTest",
+        test_name="Nyamu.Tests.NyamuPlayModeTests.SimplePlayModeTest",
         test_mode="PlayMode",
         timeout=60
     )

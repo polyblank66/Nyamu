@@ -6,5 +6,6 @@ namespace Nyamu.Core.Interfaces
     public interface IUnityThreadExecutor
     {
         void Enqueue(Action action);
+        void Process();
     }
 }

@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using UnityEditor;
 using Nyamu.Core.StateManagers;
 using Nyamu.Core.Interfaces;
@@ -33,9 +31,7 @@ namespace Nyamu.Core.Monitors
         void OnEditorUpdate()
         {
             // Execute main thread actions
-            var actionQueue = ((UnityThreadExecutor)_unityThreadExecutor).ActionQueue;
-            while (actionQueue.Count > 0)
-                actionQueue.Dequeue().Invoke();
+            _unityThreadExecutor.Process();
 
             // Update play mode state (thread-safe)
             _state.IsPlaying = EditorApplication.isPlaying;

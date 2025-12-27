@@ -10,13 +10,20 @@ namespace Nyamu.Core
     {
         readonly Queue<Action> _actionQueue = new();
 
-        public Queue<Action> ActionQueue => _actionQueue;
-
         public void Enqueue(Action action)
         {
             lock (_actionQueue)
             {
                 _actionQueue.Enqueue(action);
+            }
+        }
+
+        public void Process()
+        {
+            lock (_actionQueue)
+            {
+                while (_actionQueue.Count > 0)
+                    _actionQueue.Dequeue().Invoke();
             }
         }
     }

@@ -14,9 +14,9 @@ from mcp_client import MCPClient
 async def test_run_tests_filter_single_test(mcp_client, unity_state_manager):
     """Test running a single test using exact filter"""
     # Test specific EditMode test
-    response = await mcp_client.run_tests(
+    response = await mcp_client.tests_run_single(
+        test_name="NyamuTests.PassingTest1",
         test_mode="EditMode",
-        test_filter="NyamuTests.PassingTest1",
         timeout=60
     )
 
@@ -40,10 +40,10 @@ async def test_run_tests_filter_single_test(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_run_tests_filter_multiple_tests_pipe_separator(mcp_client, unity_state_manager):
     """Test running multiple tests using pipe separator"""
-    # Test multiple EditMode tests using pipe separator
-    response = await mcp_client.run_tests(
+    # Test multiple EditMode tests using pipe separator (pipe works as regex OR)
+    response = await mcp_client.tests_run_regex(
+        test_filter_regex="NyamuTests.PassingTest1|NyamuTests.PassingTest2",
         test_mode="EditMode",
-        test_filter="NyamuTests.PassingTest1|NyamuTests.PassingTest2",
         timeout=60
     )
 
@@ -68,9 +68,9 @@ async def test_run_tests_filter_multiple_tests_pipe_separator(mcp_client, unity_
 async def test_run_tests_filter_failing_test(mcp_client, unity_state_manager):
     """Test running a test that fails using filter"""
     # Test specific failing EditMode test
-    response = await mcp_client.run_tests(
+    response = await mcp_client.tests_run_single(
+        test_name="NyamuTests.FailingTest1",
         test_mode="EditMode",
-        test_filter="NyamuTests.FailingTest1",
         timeout=60
     )
 
@@ -98,9 +98,9 @@ async def test_run_tests_filter_failing_test(mcp_client, unity_state_manager):
 async def test_run_tests_filter_playmode_with_namespace(mcp_client, unity_state_manager):
     """Test running PlayMode test with namespace using filter"""
     # Test specific PlayMode test with namespace
-    response = await mcp_client.run_tests(
+    response = await mcp_client.tests_run_single(
+        test_name="NNyamu.Tests.NyamuPlayModeTests.SimplePlayModeTest",
         test_mode="PlayMode",
-        test_filter="NNyamu.Tests.NyamuPlayModeTests.SimplePlayModeTest",
         timeout=60
     )
 
@@ -124,9 +124,9 @@ async def test_run_tests_filter_playmode_with_namespace(mcp_client, unity_state_
 async def test_run_tests_filter_nonexistent_test(mcp_client, unity_state_manager):
     """Test filtering for a test that doesn't exist"""
     # Test filtering for non-existent test
-    response = await mcp_client.run_tests(
+    response = await mcp_client.tests_run_single(
+        test_name="NonExistentTest.DoesNotExist",
         test_mode="EditMode",
-        test_filter="NonExistentTest.DoesNotExist",
         timeout=60
     )
 
@@ -148,10 +148,9 @@ async def test_run_tests_filter_nonexistent_test(mcp_client, unity_state_manager
 async def test_run_tests_regex_filter_pattern_matching(mcp_client, unity_state_manager):
     """Test using regex filter to match test patterns"""
     # Test regex filter that matches all passing tests
-    response = await mcp_client.run_tests(
-        test_mode="EditMode",
-        test_filter="",
+    response = await mcp_client.tests_run_regex(
         test_filter_regex=".*PassingTest.*",
+        test_mode="EditMode",
         timeout=60
     )
 
@@ -176,10 +175,9 @@ async def test_run_tests_regex_filter_pattern_matching(mcp_client, unity_state_m
 async def test_run_tests_regex_filter_failing_tests(mcp_client, unity_state_manager):
     """Test using regex filter to match failing tests"""
     # Test regex filter that matches failing tests
-    response = await mcp_client.run_tests(
-        test_mode="EditMode",
-        test_filter="",
+    response = await mcp_client.tests_run_regex(
         test_filter_regex=".*FailingTest.*",
+        test_mode="EditMode",
         timeout=60
     )
 
@@ -204,10 +202,9 @@ async def test_run_tests_regex_filter_failing_tests(mcp_client, unity_state_mana
 async def test_run_tests_regex_filter_namespace_pattern(mcp_client, unity_state_manager):
     """Test using regex filter to match namespace patterns"""
     # Test regex filter that matches tests in Nyamu.Tests namespace
-    response = await mcp_client.run_tests(
-        test_mode="PlayMode",
-        test_filter="",
+    response = await mcp_client.tests_run_regex(
         test_filter_regex="Nyamu\\.Tests\\..*",
+        test_mode="PlayMode",
         timeout=60
     )
 
@@ -230,10 +227,9 @@ async def test_run_tests_regex_filter_namespace_pattern(mcp_client, unity_state_
 async def test_run_tests_regex_filter_specific_method_pattern(mcp_client, unity_state_manager):
     """Test using regex filter with specific method pattern"""
     # Test regex filter that matches specific method pattern
-    response = await mcp_client.run_tests(
-        test_mode="EditMode",
-        test_filter="",
+    response = await mcp_client.tests_run_regex(
         test_filter_regex=".*PassingTest[12]$",  # Matches PassingTest1 and PassingTest2 but not PassingTest3
+        test_mode="EditMode",
         timeout=60
     )
 
@@ -258,10 +254,9 @@ async def test_run_tests_regex_filter_specific_method_pattern(mcp_client, unity_
 async def test_run_tests_regex_filter_no_matches(mcp_client, unity_state_manager):
     """Test using regex filter that matches no tests"""
     # Test regex filter that matches no tests
-    response = await mcp_client.run_tests(
-        test_mode="EditMode",
-        test_filter="",
+    response = await mcp_client.tests_run_regex(
         test_filter_regex="NonExistentPattern.*",
+        test_mode="EditMode",
         timeout=60
     )
 
@@ -282,11 +277,10 @@ async def test_run_tests_regex_filter_no_matches(mcp_client, unity_state_manager
 @pytest.mark.asyncio
 async def test_run_tests_both_filters_specified(mcp_client, unity_state_manager):
     """Test behavior when both filter and regex filter are specified"""
-    # Test when both filters are provided - should use both
-    response = await mcp_client.run_tests(
-        test_mode="EditMode",
-        test_filter="NyamuTests.PassingTest1",
+    # Test when both filters are provided - using regex filter only (new API doesn't support both)
+    response = await mcp_client.tests_run_regex(
         test_filter_regex=".*PassingTest.*",
+        test_mode="EditMode",
         timeout=60
     )
 
@@ -309,9 +303,9 @@ async def test_run_tests_both_filters_specified(mcp_client, unity_state_manager)
 async def test_run_tests_filter_consistency_with_direct_call(mcp_client, unity_state_manager):
     """Test that MCP tool filter behavior matches direct Unity API calls"""
     # Run test with filter via MCP
-    mcp_response = await mcp_client.run_tests(
+    mcp_response = await mcp_client.tests_run_single(
+        test_name="NyamuTests.PassingTest1",
         test_mode="EditMode",
-        test_filter="NyamuTests.PassingTest1",
         timeout=60
     )
 

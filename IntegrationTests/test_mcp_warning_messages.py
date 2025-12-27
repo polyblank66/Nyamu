@@ -56,10 +56,10 @@ async def test_run_tests_warning_capability(unity_state_manager):
     await client.start()
 
     try:
-        # The run_tests functionality might fail due to no actual Unity tests
+        # The tests_run_all functionality might fail due to no actual Unity tests
         # but we can verify the warning message capability exists
         try:
-            response = await client.run_tests(test_mode="EditMode", timeout=30)
+            response = await client.tests_run_all(test_mode="EditMode", timeout=30)
 
             assert response["jsonrpc"] == "2.0"
             assert "result" in response

@@ -64,9 +64,9 @@ public class TestWithCompilationError
         start_time = time.time()
 
         # Try to run tests - Unity will return 0 tests due to compilation error
-        response = await client.run_tests(
+        response = await client.tests_run_single(
+            test_name="TestWithCompilationError",
             test_mode="EditMode",
-            test_filter="TestWithCompilationError",
             timeout=30
         )
 
@@ -100,9 +100,9 @@ async def test_error_callbacks_vs_normal_timeout(unity_helper, unity_state_manag
     try:
         # First, test normal execution time for a working test
         start_time = time.time()
-        response = await client.run_tests(
+        response = await client.tests_run_single(
+            test_name="NyamuTests.PassingTest1",
             test_mode="EditMode",
-            test_filter="NyamuTests.PassingTest1",
             timeout=10
         )
         normal_execution_time = time.time() - start_time
@@ -139,9 +139,9 @@ public class CompilationErrorTest
 
         try:
             # This should fail quickly due to IErrorCallbacks
-            await client.run_tests(
+            await client.tests_run_single(
+                test_name="CompilationErrorTest",
                 test_mode="EditMode",
-                test_filter="CompilationErrorTest",
                 timeout=20
             )
             pytest.fail("Expected test to fail due to compilation error")
@@ -203,9 +203,9 @@ async def test_error_callbacks_prebuild_failure():
         start_time = time.time()
 
         with pytest.raises(Exception) as exc_info:
-            await client.run_tests(
+            await client.tests_run_single(
+                test_name="NonExistentTestClass.NonExistentTest",
                 test_mode="EditMode",
-                test_filter="NonExistentTestClass.NonExistentTest",
                 timeout=15
             )
 
@@ -233,15 +233,15 @@ async def test_error_state_reset_between_runs(unity_helper, unity_state_manager,
 
     try:
         # First, run a normal test to ensure clean state
-        response = await client.run_tests(
+        response = await client.tests_run_single(
+            test_name="NyamuTests.PassingTest1",
             test_mode="EditMode",
-            test_filter="NyamuTests.PassingTest1",
             timeout=10
         )
         assert "Passed: 1" in response["result"]["content"][0]["text"]
 
         # Check status has no errors
-        status_response = await client.test_status()
+        status_response = await client.tests_status()
         import json
         status_data = json.loads(status_response["result"]["content"][0]["text"])
         assert status_data["hasError"] is False
@@ -270,9 +270,9 @@ public class ErrorStateResetTest
 
         # Try to run the error test (should fail)
         try:
-            await client.run_tests(
+            await client.tests_run_single(
+                test_name="ErrorStateResetTest",
                 test_mode="EditMode",
-                test_filter="ErrorStateResetTest",
                 timeout=10
             )
             pytest.fail("Expected compilation error")
@@ -291,15 +291,15 @@ public class ErrorStateResetTest
         await asyncio.sleep(2)
 
         # Run a normal test again - error state should be reset
-        response = await client.run_tests(
+        response = await client.tests_run_single(
+            test_name="NyamuTests.PassingTest1",
             test_mode="EditMode",
-            test_filter="NyamuTests.PassingTest1",
             timeout=10
         )
         assert "Passed: 1" in response["result"]["content"][0]["text"]
 
         # Verify error state was reset
-        status_response = await client.test_status()
+        status_response = await client.tests_status()
         status_data = json.loads(status_response["result"]["content"][0]["text"])
         assert status_data["hasError"] is False, "Error state should be reset after successful test"
 

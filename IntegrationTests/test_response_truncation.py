@@ -13,9 +13,9 @@ from mcp_client import MCPClient
 async def test_large_error_message_truncation(mcp_client, unity_state_manager):
     """Test that large error messages are properly truncated by MCP response formatter"""
     # Run the Unity test that generates a large error message (~50,000 characters)
-    response = await mcp_client.run_tests(
+    response = await mcp_client.tests_run_single(
+        test_name="NyamuTests.LargeErrorMessageTest",
         test_mode="EditMode",
-        test_filter="NyamuTests.LargeErrorMessageTest",
         timeout=60
     )
 
@@ -75,9 +75,9 @@ async def test_large_error_message_truncation(mcp_client, unity_state_manager):
 async def test_normal_test_not_truncated(mcp_client, unity_state_manager):
     """Test that normal-sized responses are not truncated"""
     # Run a normal test that should have a small response
-    response = await mcp_client.run_tests(
+    response = await mcp_client.tests_run_single(
+        test_name="NyamuTests.PassingTest1",
         test_mode="EditMode",
-        test_filter="NyamuTests.PassingTest1",
         timeout=60
     )
 
@@ -107,9 +107,9 @@ async def test_normal_test_not_truncated(mcp_client, unity_state_manager):
 async def test_truncation_preserves_json_structure(mcp_client, unity_state_manager):
     """Test that response truncation preserves valid JSON-RPC structure"""
     # Run the large error test
-    response = await mcp_client.run_tests(
+    response = await mcp_client.tests_run_single(
+        test_name="NyamuTests.LargeErrorMessageTest",
         test_mode="EditMode",
-        test_filter="NyamuTests.LargeErrorMessageTest",
         timeout=60
     )
 

@@ -141,7 +141,7 @@ async def test_cancel_tests_tool_registration(mcp_client, unity_state_manager):
     tools_response = await mcp_client.list_tools()
 
     assert tools_response["jsonrpc"] == "2.0"
-    assert "result" in response
+    assert "result" in tools_response
 
     tools = tools_response["result"]["tools"]
     tool_names = [tool["name"] for tool in tools]

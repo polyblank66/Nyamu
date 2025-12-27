@@ -54,15 +54,15 @@ async def test_tools_list_contains_compilation_trigger(mcp_client, unity_state_m
 @pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_tools_list_contains_run_tests(mcp_client, unity_state_manager):
-    """Test that tools list contains run_tests"""
+    """Test that tools list contains tests_run_all (replacement for run_tests)"""
     response = await mcp_client.list_tools()
     tools = response["result"]["tools"]
 
-    test_tool = next((tool for tool in tools if tool["name"] == "run_tests"), None)
+    test_tool = next((tool for tool in tools if tool["name"] == "tests_run_all"), None)
     assert test_tool is not None
 
     # Check tool structure
-    assert test_tool["name"] == "run_tests"
+    assert test_tool["name"] == "tests_run_all"
     assert isinstance(test_tool["description"], str)
     assert len(test_tool["description"]) > 0
 
@@ -71,7 +71,6 @@ async def test_tools_list_contains_run_tests(mcp_client, unity_state_manager):
     assert schema["type"] == "object"
     assert "properties" in schema
     assert "test_mode" in schema["properties"]
-    assert "test_filter" in schema["properties"]
     assert "timeout" in schema["properties"]
 
     # Check test_mode enum values

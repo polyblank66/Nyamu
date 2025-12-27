@@ -99,7 +99,7 @@ async def test_compile_status_call_success(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_test_status_call_success(mcp_client, unity_state_manager):
     """Test successful test_status tool call"""
-    response = await mcp_client.test_status()
+    response = await mcp_client.tests_status()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -148,7 +148,7 @@ async def test_compile_status_response_structure(mcp_client, unity_state_manager
 @pytest.mark.asyncio
 async def test_test_status_response_structure(mcp_client, unity_state_manager):
     """Test that test_status response has correct structure"""
-    response = await mcp_client.test_status()
+    response = await mcp_client.tests_status()
 
     status_text = response["result"]["content"][0]["text"]
     status_data = json.loads(status_text)
@@ -220,7 +220,7 @@ async def test_compile_status_idle_state(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_test_status_idle_state(mcp_client, unity_state_manager):
     """Test test_status when Unity is idle"""
-    response = await mcp_client.test_status()
+    response = await mcp_client.tests_status()
     status_data = json.loads(response["result"]["content"][0]["text"])
 
     # When idle, should not be running tests
@@ -250,7 +250,7 @@ async def test_compile_status_vs_editor_status_consistency(mcp_client, unity_sta
 async def test_test_status_vs_editor_status_consistency(mcp_client, unity_state_manager):
     """Test that test_status isRunning matches editor_status"""
     # Get both statuses
-    test_response = await mcp_client.test_status()
+    test_response = await mcp_client.tests_status()
     editor_response = await mcp_client.editor_status()
 
     test_data = json.loads(test_response["result"]["content"][0]["text"])

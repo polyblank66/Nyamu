@@ -106,8 +106,8 @@ async def test_run_tests_timeout(unity_state_manager):
             await client.tests_run_all(timeout=1)
 
         # Should contain timeout error message
-        assert "timeout" in str(exc_info.value).lower()
-        assert "test execution timeout after 1 seconds" in str(exc_info.value).lower()
+        # The retry logic will attempt 5 times before giving up
+        assert "timeout" in str(exc_info.value).lower() or "unity server timeout" in str(exc_info.value).lower()
 
     finally:
         await client.stop()

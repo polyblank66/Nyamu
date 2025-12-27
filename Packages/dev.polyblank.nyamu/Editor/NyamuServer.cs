@@ -31,11 +31,7 @@ using System.Text;
 using UnityEditor.Compilation;
 using System.Collections.Generic;
 using System;
-using UnityEditor.TestTools.TestRunner.Api;
-using System.Linq;
-using System.Threading.Tasks;
 using Nyamu.Core;
-using Nyamu.Core.Interfaces;
 using Nyamu.Core.StateManagers;
 using Nyamu.Tools.Compilation;
 using Nyamu.Tools.Testing;
@@ -43,7 +39,6 @@ using Nyamu.Tools.Shaders;
 using Nyamu.Tools.Editor;
 using Nyamu.Tools.Settings;
 using Nyamu.Tools.Assets;
-using Nyamu.ShaderCompilation;
 using Nyamu.TestExecution;
 
 namespace Nyamu
@@ -55,7 +50,6 @@ namespace Nyamu
     // Configuration constants for the Nyamu MCP server
     static class Constants
     {
-        public const int ServerPort = 17932;
         public const int CompileTimeoutSeconds = 5;
         public const int ThreadSleepMilliseconds = 50;
         public const int ThreadJoinTimeoutMilliseconds = 1000;
@@ -78,34 +72,6 @@ namespace Nyamu
             public const string ShaderCompilationStatus = "/shader-compilation-status";
             public const string ExecuteMenuItem = "/execute-menu-item";
         }
-
-        public static class JsonResponses
-        {
-            public const string CompileStarted = "{\"status\":\"ok\", \"message\":\"Compilation started.\"}";
-            public const string TestStarted = "{\"status\":\"ok\", \"message\":\"Test execution started.\"}";
-            public const string AssetsRefreshed = "{\"status\":\"ok\", \"message\":\"Asset database refreshed.\"}";
-        }
-    }
-
-    // ============================================================================
-    // DATA TRANSFER OBJECTS (DTOs)
-    // ============================================================================
-    // These classes define the JSON structure for API requests and responses
-
-    [Serializable]
-    public class NoneResult
-    {
-    }
-
-    [Serializable]
-    public class ShaderCompilationStatusResponse<T>
-    {
-        public string status;
-        public bool isCompiling;
-        public string lastCompilationType;
-        public string lastCompilationTime;
-        public T lastCompilationResult;
-        public ShaderRegexProgressInfo progress;  // Progress info for regex compilation (when isCompiling=true)
     }
 
     // ============================================================================
@@ -602,19 +568,6 @@ namespace Nyamu
             return Uri.UnescapeDataString(value);
         }
 
-        static string HandleTestStatusRequest()
-        {
-            NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestStatusRequest");
-
-            // Sync old state into state manager (during transition - Step 3)
-            SyncTestStateToManager();
-
-            // Use new tool architecture
-            var request = new TestsStatusRequest();
-            var response = _testsStatusTool.ExecuteAsync(request, _executionContext).Result;
-            return JsonUtility.ToJson(response);
-        }
-
         static void SyncTestStateToManager()
         {
             lock (_testStateManager.Lock)
@@ -722,59 +675,6 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleCancelTestsRequest(HttpListenerRequest request)
-        {
-            NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleCancelTestsRequest");
-            try
-            {
-                var query = request.Url.Query ?? "";
-                var testRunGuid = ExtractQueryParameter(query, "guid");
-
-                // Use provided guid or current test run ID
-                var guidToCancel = !string.IsNullOrEmpty(testRunGuid) ? testRunGuid : _currentTestRunId;
-
-                if (string.IsNullOrEmpty(guidToCancel))
-                {
-                    // Check if tests are running without a stored GUID (edge case)
-                    lock (_testLock)
-                    {
-                        if (_isRunningTests)
-                        {
-                            return "{\"status\":\"warning\", \"message\":\"Test run is active but no GUID available for cancellation. Provide explicit guid parameter.\"}";
-                        }
-                    }
-                    return "{\"status\":\"error\", \"message\":\"No test run to cancel. Either provide a guid parameter or start a test run first.\"}";
-                }
-
-                // Check if we have a test running first
-                lock (_testLock)
-                {
-                    if (!_isRunningTests && guidToCancel == _currentTestRunId)
-                    {
-                        return "{\"status\":\"warning\", \"message\":\"No test run currently active.\"}";
-                    }
-                }
-
-                // Try to cancel the test run using Unity's TestRunnerApi
-                bool cancelResult = TestRunnerApi.CancelTestRun(guidToCancel);
-
-                if (cancelResult)
-                {
-                    NyamuLogger.LogInfo($"[Nyamu][Server] Test run cancellation requested for ID: {guidToCancel}");
-                    return $"{{\"status\":\"ok\", \"message\":\"Test run cancellation requested for ID: {guidToCancel}\", \"guid\":\"{guidToCancel}\"}}";
-                }
-                else
-                {
-                    return $"{{\"status\":\"error\", \"message\":\"Failed to cancel test run with ID: {guidToCancel}. Test run may not exist or may not be cancellable.\", \"guid\":\"{guidToCancel}\"}}";
-                }
-            }
-            catch (Exception ex)
-            {
-                NyamuLogger.LogError($"[Nyamu][Server] Error cancelling tests: {ex.Message}");
-                return $"{{\"status\":\"error\", \"message\":\"Failed to cancel tests: {ex.Message}\"}}";
-            }
-        }
-
         static string HandleTestsStatusRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsStatusRequest");
@@ -838,7 +738,7 @@ namespace Nyamu
 
             SyncShaderStateToManager();
 
-            Tools.Shaders.CompileShaderRequest toolRequest = null;
+            CompileShaderRequest toolRequest = null;
             try
             {
                 using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
@@ -848,7 +748,7 @@ namespace Nyamu
                     var oldRequest = JsonUtility.FromJson<CompileShaderRequest>(body);
                     if (oldRequest != null)
                     {
-                        toolRequest = new Tools.Shaders.CompileShaderRequest
+                        toolRequest = new CompileShaderRequest
                         {
                             shaderName = oldRequest.shaderName,
                             timeout = 30
@@ -862,7 +762,7 @@ namespace Nyamu
             }
 
             if (toolRequest == null)
-                toolRequest = new Tools.Shaders.CompileShaderRequest { timeout = 30 };
+                toolRequest = new CompileShaderRequest { timeout = 30 };
 
             var response = _compileShaderTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
@@ -953,13 +853,6 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        class MenuItemExecutionResult
-        {
-            public bool success = false;
-            public string errorMessage = null;
-            public bool completed = false;
-        }
-
         static string HandleNotFoundRequest(HttpListenerResponse response)
         {
             response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -991,7 +884,7 @@ namespace Nyamu
                     _cachedSettings = newSettings;
                 }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 NyamuLogger.LogError($"[Nyamu][Server] Failed to refresh cached Nyamu settings: {ex.Message}");
             }
@@ -1157,9 +1050,5 @@ namespace Nyamu
             if (!_shouldStop)
                 NyamuLogger.LogError($"[Nyamu][Server] NyamuServer error: {ex.Message}");
         }
-
-        // ========================================================================
-        // TEST EXECUTION COORDINATION
-        // ========================================================================
     }
 }

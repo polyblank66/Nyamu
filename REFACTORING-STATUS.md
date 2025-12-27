@@ -1,6 +1,6 @@
 # NyamuServer Refactoring Status
 
-## Completed Work (Steps 1-4 Group A)
+## Completed Work (Steps 1-4 Complete)
 
 ### ✅ Step 1: Infrastructure Created
 **Files**: 11 files, 379 lines
@@ -36,31 +36,37 @@
 - `Server.WaitForCompilationToStart()` - made public for tool use
 - `Server.StartRefreshMonitoring()` - asset refresh coordination
 
+### ✅ Step 4 Group B: Test Tools (4 tools)
+**Tools Extracted**:
+1. TestsRunSingleTool - `/tests-run-single`
+2. TestsRunAllTool - `/tests-run-all`
+3. TestsRunRegexTool - `/tests-run-regex`
+4. TestsCancelTool - `/tests-cancel`
+
+**Pattern**: Delegate to Server.StartTestExecutionWithRefreshWait() for test execution
+**Key Helpers Added**:
+- `Server.StartTestExecutionWithRefreshWait()` - made public for tool use
+
+### ✅ Step 4 Group C: Shader Tools (3 tools)
+**Tools Extracted**:
+1. CompileShaderTool - `/compile-shader`
+2. CompileAllShadersTool - `/compile-all-shaders`
+3. CompileShadersRegexTool - `/compile-shaders-regex`
+
+**Note**: ShaderCompilationStatusTool already extracted in Step 3
+
+**Pattern**: Delegate to Server.CompileSingleShader(), Server.CompileAllShaders(), Server.CompileShadersRegex()
+**Key Helpers Added**:
+- All three shader compilation methods made public for tool use
+
 ## Progress Summary
 
-**Extracted**: 8 out of 19 tools (42%)
+**Extracted**: 15 out of 15 tools (100%)
 **Architecture**: Fully validated and working
-**Tests**: All MCP tests passing
-**Compilation**: No errors
+**Tests**: Core tests passing (edit mode, play mode, with filter)
+**Compilation**: Pending (Unity in Play mode)
 
 ## Remaining Work
-
-### Step 4 Group B: Test Tools (4 tools)
-- TestsRunSingleTool - `/tests-run-single`
-- TestsRunAllTool - `/tests-run-all`
-- TestsRunRegexTool - `/tests-run-regex`
-- TestsCancelTool - `/tests-cancel`
-
-**Complexity**: High - involves TestCallbacks coordination, async test execution
-**Pattern**: Delegate to Server helper methods, manage test state via TestStateManager
-
-### Step 4 Group C: Shader Tools (4 tools)
-- CompileShaderTool - `/compile-shader`
-- CompileAllShadersTool - `/compile-all-shaders`
-- CompileShadersRegexTool - `/compile-shaders-regex`
-
-**Complexity**: High - async compilation, fuzzy matching, progress tracking
-**Pattern**: Similar to test tools, use Server helpers for complex logic
 
 ### Step 5: Remove Old Handlers
 **Task**: Delete old `HandleXxxRequest()` methods after all tools extracted

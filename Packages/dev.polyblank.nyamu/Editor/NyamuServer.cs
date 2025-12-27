@@ -34,6 +34,10 @@ using System;
 using UnityEditor.TestTools.TestRunner.Api;
 using System.Linq;
 using System.Threading.Tasks;
+using Nyamu.Core;
+using Nyamu.Core.Interfaces;
+using Nyamu.Core.StateManagers;
+using Nyamu.Tools.Compilation;
 
 namespace Nyamu
 {
@@ -407,6 +411,19 @@ namespace Nyamu
         static int _regexShadersCompleted = 0;
         static string _regexShadersCurrentShader = "";
 
+        // Infrastructure components for refactored architecture
+        static CompilationStateManager _compilationStateManager;
+        static TestStateManager _testStateManager;
+        static ShaderStateManager _shaderStateManager;
+        static AssetStateManager _assetStateManager;
+        static EditorStateManager _editorStateManager;
+        static SettingsStateManager _settingsStateManager;
+        static UnityThreadExecutor _unityThreadExecutor;
+        static Core.ExecutionContext _executionContext;
+
+        // Tools (proof of concept - Step 2)
+        static CompilationStatusTool _compilationStatusTool;
+
         static Server()
         {
             Initialize();
@@ -436,8 +453,39 @@ namespace Nyamu
 
             _testCallbacks = new TestCallbacks();
 
+            // Initialize infrastructure components
+            InitializeInfrastructure();
+
             EditorApplication.quitting += Cleanup;
             AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
+        }
+
+        static void InitializeInfrastructure()
+        {
+            // Create state managers
+            _compilationStateManager = new CompilationStateManager();
+            _testStateManager = new TestStateManager();
+            _shaderStateManager = new ShaderStateManager();
+            _assetStateManager = new AssetStateManager();
+            _editorStateManager = new EditorStateManager();
+            _settingsStateManager = new SettingsStateManager();
+
+            // Create Unity thread executor wrapping existing queue
+            _unityThreadExecutor = new UnityThreadExecutor(_mainThreadActionQueue);
+
+            // Create execution context
+            _executionContext = new Core.ExecutionContext(
+                _unityThreadExecutor,
+                _compilationStateManager,
+                _testStateManager,
+                _shaderStateManager,
+                _assetStateManager,
+                _editorStateManager,
+                _settingsStateManager
+            );
+
+            // Create tools (proof of concept - Step 2)
+            _compilationStatusTool = new CompilationStatusTool();
         }
 
         static void Cleanup()
@@ -702,24 +750,27 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleCompileStatusRequest");
 
-            var status = _isCompiling || EditorApplication.isCompiling ? "compiling" : "idle";
+            // Sync old state into state manager (during transition - Step 2)
+            SyncCompilationStateToManager();
 
-            DateTime lastCompileTimeCopy, compileRequestTimeCopy;
-            lock (_timestampLock)
+            // Use new tool architecture
+            var request = new CompilationStatusRequest();
+            var response = _compilationStatusTool.ExecuteAsync(request, _executionContext).Result;
+            return JsonUtility.ToJson(response);
+        }
+
+        static void SyncCompilationStateToManager()
+        {
+            lock (_compilationStateManager.Lock)
             {
-                lastCompileTimeCopy = _lastCompileTime;
-                compileRequestTimeCopy = _compileRequestTime;
+                _compilationStateManager.IsCompiling = _isCompiling || EditorApplication.isCompiling;
+                _compilationStateManager.Errors = _compilationErrors;
+                lock (_timestampLock)
+                {
+                    _compilationStateManager.LastCompileTime = _lastCompileTime;
+                    _compilationStateManager.CompileRequestTime = _compileRequestTime;
+                }
             }
-
-            var statusResponse = new CompileStatusResponse
-            {
-                status = status,
-                isCompiling = _isCompiling || EditorApplication.isCompiling,
-                lastCompilationTime = lastCompileTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
-                lastCompilationRequestTime = compileRequestTimeCopy.ToString("yyyy-MM-dd HH:mm:ss"),
-                errors = _compilationErrors.ToArray()
-            };
-            return JsonUtility.ToJson(statusResponse);
         }
 
         static string ExtractQueryParameter(string query, string paramName)

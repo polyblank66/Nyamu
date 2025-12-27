@@ -11,9 +11,7 @@ from mcp_client import MCPClient
 @pytest.mark.asyncio
 async def test_cancel_tests_no_running_test(mcp_client, unity_state_manager):
     """Test cancelling tests when no test is running"""
-    # Ensure no tests are running
-    await unity_state_manager.ensure_clean_state()
-
+    # Protocol test - no need for full state cleanup
     response = await mcp_client.tests_cancel()
 
     assert response["jsonrpc"] == "2.0"

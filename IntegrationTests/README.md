@@ -10,6 +10,8 @@ The test suite features a **three-tier cleanup system** for dramatic performance
 - **Overall suite**: 60-70% faster execution
 - **Full randomized testing support** with `pytest-random-order`
 
+**Note**: The full integration test suite can take up to 20 minutes to complete, depending on Unity compilation times and system performance. For faster iteration, use `-m essential` or `-m protocol` to run subset of tests.
+
 ## Prerequisites
 
 1. **Unity Editor** must be running with the YAMU project open

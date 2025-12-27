@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Nyamu.Core.Interfaces;
+using Nyamu.ShaderCompilation;
 
 namespace Nyamu.Tools.Shaders
 {
@@ -63,7 +64,7 @@ namespace Nyamu.Tools.Shaders
                 // Async mode: queue compilation and return immediately
                 context.UnityExecutor.Enqueue(() =>
                 {
-                    var result = Server.CompileShadersRegex(request.pattern);
+                    var result = ShaderCompilationService.CompileShadersRegex(request.pattern);
 
                     lock (state.ResultLock)
                     {
@@ -98,7 +99,7 @@ namespace Nyamu.Tools.Shaders
 
             context.UnityExecutor.Enqueue(() =>
             {
-                response = Server.CompileShadersRegex(request.pattern);
+                response = ShaderCompilationService.CompileShadersRegex(request.pattern);
 
                 lock (state.ResultLock)
                 {

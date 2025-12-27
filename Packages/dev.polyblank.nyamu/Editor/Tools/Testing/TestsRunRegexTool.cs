@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using Nyamu.Core.Interfaces;
+using Nyamu.TestExecution;
 
 namespace Nyamu.Tools.Testing
 {
@@ -43,7 +44,7 @@ namespace Nyamu.Tools.Testing
 
             // Enqueue test execution on main thread
             context.UnityExecutor.Enqueue(() =>
-                Server.StartTestExecutionWithRefreshWait(mode, null, request.testFilterRegex)
+                TestExecutionService.StartTestExecutionWithRefreshWait(mode, null, request.testFilterRegex)
             );
 
             return Task.FromResult(new TestsRunRegexResponse

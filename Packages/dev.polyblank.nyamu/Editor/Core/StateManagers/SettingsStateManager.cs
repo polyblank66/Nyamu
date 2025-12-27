@@ -1,4 +1,5 @@
 using System;
+using Nyamu.Tools.Settings;
 
 namespace Nyamu.Core.StateManagers
 {

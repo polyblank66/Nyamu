@@ -1,4 +1,5 @@
 using System;
+using Nyamu.Tools.Shaders;
 
 namespace Nyamu.Core.StateManagers
 {

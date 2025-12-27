@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Nyamu.Core.Interfaces;
+using Nyamu.ShaderCompilation;
 
 namespace Nyamu.Tools.Shaders
 {
@@ -45,7 +46,7 @@ namespace Nyamu.Tools.Shaders
             // Enqueue shader compilation on main thread
             context.UnityExecutor.Enqueue(() =>
             {
-                response = Server.CompileAllShaders();
+                response = ShaderCompilationService.CompileAllShaders();
 
                 lock (state.ResultLock)
                 {

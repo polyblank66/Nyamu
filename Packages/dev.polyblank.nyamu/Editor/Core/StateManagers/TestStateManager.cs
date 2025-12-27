@@ -1,4 +1,6 @@
 using System;
+using Nyamu.Tools.Testing;
+using Nyamu.TestExecution;
 
 namespace Nyamu.Core.StateManagers
 {

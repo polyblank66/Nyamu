@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Nyamu.Tools.Compilation;
 
 namespace Nyamu.Core.StateManagers
 {

@@ -1648,10 +1648,7 @@ namespace Nyamu
             if (request.HttpMethod != "GET")
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use GET.\"}";
 
-            // Sync old state into state manager (during transition - Step 3)
-            SyncShaderStateToManager();
-
-            // Use new tool architecture
+            // Use new tool architecture (no sync needed - read-only operation)
             var toolRequest = new ShaderCompilationStatusRequest();
             var response = _shaderCompilationStatusTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);

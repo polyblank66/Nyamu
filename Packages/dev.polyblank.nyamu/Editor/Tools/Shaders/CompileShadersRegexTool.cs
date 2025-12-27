@@ -65,13 +65,17 @@ namespace Nyamu.Tools.Shaders
                 {
                     var result = Server.CompileShadersRegex(request.pattern);
 
-                    lock (state.Lock)
+                    lock (state.ResultLock)
                     {
                         state.LastSingleShaderResult = null;
                         state.LastAllShadersResult = null;
                         state.LastRegexShadersResult = result;
                         state.LastCompilationType = "regex";
                         state.LastCompilationTime = DateTime.Now;
+                    }
+
+                    lock (state.Lock)
+                    {
                         state.IsCompiling = false;
                     }
                 });
@@ -96,13 +100,17 @@ namespace Nyamu.Tools.Shaders
             {
                 response = Server.CompileShadersRegex(request.pattern);
 
-                lock (state.Lock)
+                lock (state.ResultLock)
                 {
                     state.LastSingleShaderResult = null;
                     state.LastAllShadersResult = null;
                     state.LastRegexShadersResult = response;
                     state.LastCompilationType = "regex";
                     state.LastCompilationTime = DateTime.Now;
+                }
+
+                lock (state.Lock)
+                {
                     state.IsCompiling = false;
                 }
             });

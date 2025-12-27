@@ -4,11 +4,11 @@ using Nyamu.Core.Interfaces;
 namespace Nyamu.Tools.Shaders
 {
     // Tool for retrieving shader compilation status without triggering compilation
-    public class ShaderCompilationStatusTool : INyamuTool<ShaderCompilationStatusRequest, object>
+    public class ShaderCompilationStatusTool : INyamuTool<ShaderCompilationStatusRequest, ShaderCompilationStatusResponse>
     {
         public string Name => "shader_compilation_status";
 
-        public Task<object> ExecuteAsync(
+        public Task<ShaderCompilationStatusResponse> ExecuteAsync(
             ShaderCompilationStatusRequest request,
             IExecutionContext context)
         {
@@ -39,8 +39,8 @@ namespace Nyamu.Tools.Shaders
                 };
             }
 
-            // Build generic response
-            var response = new
+            // Build proper response DTO
+            var response = new ShaderCompilationStatusResponse
             {
                 status = isCompiling ? "compiling" : "idle",
                 isCompiling = isCompiling,
@@ -49,7 +49,7 @@ namespace Nyamu.Tools.Shaders
                 lastCompilationResult = lastResult
             };
 
-            return Task.FromResult<object>(response);
+            return Task.FromResult(response);
         }
     }
 }

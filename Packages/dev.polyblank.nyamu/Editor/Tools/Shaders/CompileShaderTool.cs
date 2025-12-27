@@ -54,13 +54,17 @@ namespace Nyamu.Tools.Shaders
             {
                 response = Server.CompileSingleShader(request.shaderName);
 
-                lock (state.Lock)
+                lock (state.ResultLock)
                 {
                     state.LastSingleShaderResult = response;
                     state.LastAllShadersResult = null;
                     state.LastRegexShadersResult = null;
                     state.LastCompilationType = "single";
                     state.LastCompilationTime = DateTime.Now;
+                }
+
+                lock (state.Lock)
+                {
                     state.IsCompiling = false;
                 }
             });

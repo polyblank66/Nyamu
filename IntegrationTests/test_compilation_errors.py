@@ -13,11 +13,16 @@ from unity_helper import UnityHelper
 @pytest.mark.structural
 @pytest.mark.asyncio
 async def test_syntax_error_in_test_script(mcp_client, unity_helper, temp_files):
-    """Test compilation with syntax error in TestScript.cs"""
-    test_script_path = unity_helper.get_test_script_path()
+    """Test compilation with syntax error in test script"""
 
-    # Modify existing TestScript.cs with syntax error
-    unity_helper.modify_file_with_error(test_script_path, "syntax")
+    # Create temporary script with syntax error
+    error_script_path = unity_helper.create_temp_script_in_assets(
+        "SyntaxErrorTest",
+        "syntax"
+    )
+    temp_files(error_script_path)
+
+    # Refresh with force to ensure Unity detects the error
     await unity_helper.refresh_assets_if_available(force=True)
 
     # Trigger compilation
@@ -30,9 +35,7 @@ async def test_syntax_error_in_test_script(mcp_client, unity_helper, temp_files)
 
     # Should indicate compilation errors
     assert "Compilation completed with errors:" in content_text
-    assert "TestScript.cs" in content_text
-
-    # Note: Cleanup is now handled automatically by enhanced fixtures
+    assert "SyntaxErrorTest.cs" in content_text
 
 
 @pytest.mark.compilation

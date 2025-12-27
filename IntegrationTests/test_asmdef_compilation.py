@@ -211,7 +211,11 @@ async def test_fix_error_in_test_module(mcp_client, unity_helper, unity_state_ma
 
     # Fix the script by creating a correct version
     unity_helper.create_temp_script_in_test_module("TestModuleFixable", None)  # No error
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.refresh_assets_if_available(force=True)
+
+    # Give Unity a moment to process the file change
+    import asyncio
+    await asyncio.sleep(1)
 
     # Second compilation should be successful
     response2 = await mcp_client.compilation_trigger(timeout=30)

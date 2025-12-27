@@ -140,6 +140,10 @@ async def test_create_and_delete_file_with_error(mcp_client, unity_helper, unity
     # Use force refresh after file deletion to ensure Unity properly detects the removal
     await unity_helper.refresh_assets_if_available(force=True)
 
+    # Give Unity a moment to process the deletion
+    import asyncio
+    await asyncio.sleep(1)
+
     # Second compilation should be successful (error file removed)
     response2 = await mcp_client.compilation_trigger(timeout=30)
     content_text2 = response2["result"]["content"][0]["text"]

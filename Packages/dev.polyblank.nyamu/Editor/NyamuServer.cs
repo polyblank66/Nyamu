@@ -42,6 +42,7 @@ using Nyamu.Tools.Testing;
 using Nyamu.Tools.Shaders;
 using Nyamu.Tools.Editor;
 using Nyamu.Tools.Settings;
+using Nyamu.Tools.Assets;
 
 namespace Nyamu
 {
@@ -432,6 +433,11 @@ namespace Nyamu
         static EditorStatusTool _editorStatusTool;
         static McpSettingsTool _mcpSettingsTool;
 
+        // Tools (Step 4 Group A: simple write tools)
+        static CompilationTriggerTool _compilationTriggerTool;
+        static RefreshAssetsTool _refreshAssetsTool;
+        static ExecuteMenuItemTool _executeMenuItemTool;
+
         static Server()
         {
             Initialize();
@@ -498,6 +504,11 @@ namespace Nyamu
             _shaderCompilationStatusTool = new ShaderCompilationStatusTool();
             _editorStatusTool = new EditorStatusTool();
             _mcpSettingsTool = new McpSettingsTool();
+
+            // Create tools (Step 4 Group A: simple write tools)
+            _compilationTriggerTool = new CompilationTriggerTool();
+            _refreshAssetsTool = new RefreshAssetsTool();
+            _executeMenuItemTool = new ExecuteMenuItemTool();
         }
 
         static void Cleanup()
@@ -696,23 +707,24 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleCompileAndWaitRequest");
 
-            DateTime compileRequestTimeCopy;
+            // Sync old state (during transition - Step 4)
+            SyncCompilationStateToManager();
+
+            // Use new tool architecture
+            var request = new CompilationTriggerRequest();
+            var response = _compilationTriggerTool.ExecuteAsync(request, _executionContext).Result;
+
+            // Sync state back to old variables
             lock (_timestampLock)
             {
-                _compileRequestTime = DateTime.Now;
-                compileRequestTimeCopy = _compileRequestTime;
+                _compileRequestTime = _compilationStateManager.CompileRequestTime;
             }
 
-            lock (_mainThreadActionQueue)
-            {
-                _mainThreadActionQueue.Enqueue(() => CompilationPipeline.RequestScriptCompilation());
-            }
-
-            var (success, message) = WaitForCompilationToStart(compileRequestTimeCopy, TimeSpan.FromSeconds(Constants.CompileTimeoutSeconds));
-            return success ? Constants.JsonResponses.CompileStarted : $"{{\"status\":\"warning\", \"message\":\"{message}\"}}";
+            return JsonUtility.ToJson(response);
         }
 
-        static (bool success, string message) WaitForCompilationToStart(DateTime requestTime, TimeSpan timeout)
+        // Made public for CompilationTriggerTool
+        public static (bool success, string message) WaitForCompilationToStart(DateTime requestTime, TimeSpan timeout)
         {
             var waitStart = DateTime.Now;
 
@@ -1865,38 +1877,11 @@ namespace Nyamu
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use GET.\"}";
 
             var menuItemPath = request.QueryString["menuItemPath"];
-            if (string.IsNullOrEmpty(menuItemPath))
-                return "{\"status\":\"error\",\"message\":\"Missing required parameter: menuItemPath\"}";
 
-            var result = new MenuItemExecutionResult();
-
-            lock (_mainThreadActionQueue)
-            {
-                _mainThreadActionQueue.Enqueue(() =>
-                {
-                    try
-                    {
-                        result.success = EditorApplication.ExecuteMenuItem(menuItemPath);
-                        if (!result.success)
-                            result.errorMessage = "MenuItem not found or execution failed";
-                    }
-                    catch (System.Exception ex)
-                    {
-                        result.errorMessage = ex.Message;
-                    }
-                    result.completed = true;
-                });
-            }
-
-            // Wait for main thread to execute (max 1 second)
-            var startTime = DateTime.Now;
-            while (!result.completed && (DateTime.Now - startTime).TotalMilliseconds < 1000)
-                Thread.Sleep(10);
-
-            if (result.success)
-                return $"{{\"status\":\"ok\",\"message\":\"Menu item executed successfully\",\"menuItemPath\":\"{menuItemPath}\"}}";
-            else
-                return $"{{\"status\":\"error\",\"message\":\"{result.errorMessage ?? "MenuItem execution failed"}\",\"menuItemPath\":\"{menuItemPath}\"}}";
+            // Use new tool architecture
+            var toolRequest = new ExecuteMenuItemRequest { menuItemPath = menuItemPath };
+            var response = _executeMenuItemTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
         }
 
         class MenuItemExecutionResult
@@ -2002,6 +1987,20 @@ namespace Nyamu
             }
         }
 
+        // Helper for RefreshAssetsTool to start refresh monitoring
+        public static void StartRefreshMonitoring(AssetStateManager state)
+        {
+            lock (state.Lock)
+            {
+                if (!state.IsMonitoringRefresh)
+                {
+                    state.IsMonitoringRefresh = true;
+                    state.UnityIsUpdating = true;  // Assume refresh is starting
+                    EditorApplication.update += MonitorRefreshCompletion;
+                }
+            }
+        }
+
         static void MonitorRefreshCompletion()
         {
             // Update cached state (this runs on main thread)
@@ -2009,6 +2008,12 @@ namespace Nyamu
             lock (_refreshLock)
             {
                 _unityIsUpdating = unityIsUpdating;
+            }
+
+            // Also update state manager
+            lock (_assetStateManager.Lock)
+            {
+                _assetStateManager.UnityIsUpdating = unityIsUpdating;
             }
 
             // Check if AssetDatabase refresh is complete
@@ -2021,6 +2026,12 @@ namespace Nyamu
                     _isMonitoringRefresh = false;
                     _unityIsUpdating = false;
                 }
+                lock (_assetStateManager.Lock)
+                {
+                    _assetStateManager.IsRefreshing = false;
+                    _assetStateManager.IsMonitoringRefresh = false;
+                    _assetStateManager.UnityIsUpdating = false;
+                }
                 EditorApplication.update -= MonitorRefreshCompletion;
             }
         }
@@ -2028,65 +2039,39 @@ namespace Nyamu
         static string HandleRefreshAssetsRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleRefreshAssetsRequest");
+
             // Parse force parameter from query string
             bool force = request.Url.Query.Contains("force=true");
 
-            // Check if refresh is already in progress (non-blocking check)
+            // Sync old state (during transition - Step 4)
+            SyncAssetStateToManager();
+
+            // Use new tool architecture
+            var toolRequest = new RefreshAssetsRequest { force = force };
+            var response = _refreshAssetsTool.ExecuteAsync(toolRequest, _executionContext).Result;
+
+            // Sync state back to old variables
             lock (_refreshLock)
             {
-                if (_isRefreshing)
-                {
-                    // Return immediately with warning - don't queue another refresh
-                    return "{\"status\":\"warning\",\"message\":\"Asset refresh already in progress. Please wait for current refresh to complete.\"}";
-                }
-
-                // Mark refresh as starting
-                _isRefreshing = true;
+                _isRefreshing = _assetStateManager.IsRefreshing;
+                _isMonitoringRefresh = _assetStateManager.IsMonitoringRefresh;
+                _unityIsUpdating = _assetStateManager.UnityIsUpdating;
             }
 
-            // Queue the refresh operation on main thread
-            lock (_mainThreadActionQueue)
+            return JsonUtility.ToJson(response);
+        }
+
+        static void SyncAssetStateToManager()
+        {
+            lock (_assetStateManager.Lock)
             {
-                _mainThreadActionQueue.Enqueue(() =>
+                lock (_refreshLock)
                 {
-                    try
-                    {
-                        if (force)
-                        {
-                            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
-                        }
-                        else
-                        {
-                            AssetDatabase.Refresh();
-                        }
-
-                        // Start monitoring for refresh completion using EditorApplication.isUpdating
-                        lock (_refreshLock)
-                        {
-                            if (!_isMonitoringRefresh)
-                            {
-                                _isMonitoringRefresh = true;
-                                _unityIsUpdating = true;  // Assume refresh is starting
-                                EditorApplication.update += MonitorRefreshCompletion;
-                            }
-                        }
-                    }
-                    catch (System.Exception ex)
-                    {
-                        // Reset refresh flags immediately if AssetDatabase.Refresh() fails
-                        lock (_refreshLock)
-                        {
-                            _isRefreshing = false;
-                            _isMonitoringRefresh = false;
-                            _unityIsUpdating = false;
-                        }
-                        NyamuLogger.LogError($"[Nyamu][Server] AssetDatabase.Refresh failed: {ex.Message}");
-                    }
-                });
+                    _assetStateManager.IsRefreshing = _isRefreshing;
+                    _assetStateManager.IsMonitoringRefresh = _isMonitoringRefresh;
+                    _assetStateManager.UnityIsUpdating = _unityIsUpdating;
+                }
             }
-
-            // Return success response immediately (operation queued)
-            return Constants.JsonResponses.AssetsRefreshed;
         }
 
         static void HandleHttpException(Exception ex)

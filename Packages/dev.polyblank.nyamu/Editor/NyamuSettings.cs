@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.IO;
+using Nyamu.Core;
 
 namespace Nyamu
 {
@@ -23,6 +24,8 @@ namespace Nyamu
         public NyamuLogger.LogLevel minLogLevel = DefaultMinLogLevel;
 
         public int serverPort = 17932;
+
+        public bool manualPortMode = false;
 
         // Singleton pattern for easy access
         private static NyamuSettings _instance;
@@ -55,9 +58,48 @@ namespace Nyamu
             {
                 var json = File.ReadAllText(SettingsPath);
                 EditorJsonUtility.FromJsonOverwrite(json, settings);
+
+                // Auto port assignment on load
+                if (!settings.manualPortMode)
+                {
+                    var registeredPort = NyamuProjectRegistry.GetRegisteredPort();
+
+                    if (registeredPort.HasValue)
+                    {
+                        // Project already has registered port - use it
+                        settings.serverPort = registeredPort.Value;
+                    }
+                    else
+                    {
+                        // First time for this project - find free port
+                        var freePort = NyamuProjectRegistry.FindFreePort();
+                        settings.serverPort = freePort;
+                        NyamuProjectRegistry.RegisterProjectPort(freePort);
+
+                        // Save immediately to persist auto-assigned port
+                        var updatedJson = EditorJsonUtility.ToJson(settings, true);
+                        File.WriteAllText(SettingsPath, updatedJson);
+
+                        NyamuLogger.LogInfo($"[Nyamu][Settings] Auto-assigned port {freePort} for this project");
+                    }
+                }
+                else
+                {
+                    // Manual mode - just register the configured port
+                    NyamuProjectRegistry.RegisterProjectPort(settings.serverPort);
+                }
             }
             else
             {
+                // First time initialization
+                if (!settings.manualPortMode)
+                {
+                    var freePort = NyamuProjectRegistry.FindFreePort();
+                    settings.serverPort = freePort;
+                    NyamuProjectRegistry.RegisterProjectPort(freePort);
+                    NyamuLogger.LogInfo($"[Nyamu][Settings] Auto-assigned port {freePort} for new project");
+                }
+
                 var json = EditorJsonUtility.ToJson(settings, true);
                 File.WriteAllText(SettingsPath, json);
                 NyamuLogger.LogInfo($"[Nyamu][Settings] Created new Nyamu settings with default values at {SettingsPath}");
@@ -84,6 +126,21 @@ namespace Nyamu
                 }
                 catch { }
             }
+
+            // Validate and register port
+            if (manualPortMode)
+            {
+                // Manual mode - validate port availability
+                if (!NyamuProjectRegistry.IsPortAvailable(serverPort))
+                {
+                    NyamuLogger.LogWarning(
+                        $"[Nyamu][Settings] Port {serverPort} may be in use by another project or application. " +
+                        "Proceeding anyway.");
+                }
+            }
+
+            // Register port in global registry
+            NyamuProjectRegistry.RegisterProjectPort(serverPort);
 
             EnsureSettingsDirectory();
             var json = EditorJsonUtility.ToJson(this, true);
@@ -138,6 +195,16 @@ namespace Nyamu
         }
 
         /// <summary>
+        /// Find and apply a free port. Used by UI "Get Free Port" button.
+        /// </summary>
+        public void AssignFreePort()
+        {
+            var freePort = NyamuProjectRegistry.FindFreePort();
+            serverPort = freePort;
+            NyamuLogger.LogInfo($"[Nyamu][Settings] Assigned free port: {freePort}");
+        }
+
+        /// <summary>
         /// Reset settings to defaults
         /// </summary>
         public void ResetToDefaults()
@@ -146,7 +213,11 @@ namespace Nyamu
             enableTruncation = true;
             truncationMessage = "\n\n... (response truncated due to length limit)";
             minLogLevel = DefaultMinLogLevel;
-            serverPort = 17932;
+
+            // Reset to auto mode with free port
+            manualPortMode = false;
+            serverPort = NyamuProjectRegistry.FindFreePort();
+
             Save();
         }
 

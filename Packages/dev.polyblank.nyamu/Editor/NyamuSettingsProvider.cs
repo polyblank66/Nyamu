@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Nyamu.Core;
 
 namespace Nyamu
 {
@@ -132,17 +133,93 @@ namespace Nyamu
             // Server Configuration section
             EditorGUILayout.LabelField("Server Configuration", EditorStyles.boldLabel);
 
-            var serverPortProp = _settings.FindProperty("serverPort");
-            EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(serverPortProp, new GUIContent(
-                "Server Port",
-                "TCP port for the Nyamu MCP server (default: 17932)"));
+            // Help box explaining port management
+            EditorGUILayout.HelpBox(
+                "Nyamu automatically assigns unique ports to each project. Enable 'Manual Port' " +
+                "to specify a custom port.",
+                MessageType.Info);
 
-            // Validate server port range
-            if (serverPortProp.intValue < 1024 || serverPortProp.intValue > 65535)
+            EditorGUILayout.Space(5);
+
+            // Manual Port Mode checkbox
+            var manualPortModeProp = _settings.FindProperty("manualPortMode");
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(manualPortModeProp, new GUIContent(
+                "Manual Port",
+                "Enable to manually specify the server port. When disabled, Nyamu automatically assigns a unique port."));
+
+            var manualModeChanged = EditorGUI.EndChangeCheck();
+
+            EditorGUILayout.Space(5);
+
+            // Server Port field
+            var serverPortProp = _settings.FindProperty("serverPort");
+            var settingsInstance = NyamuSettings.Instance;
+
+            if (settingsInstance.manualPortMode)
             {
-                EditorGUILayout.HelpBox("Server Port must be between 1024 and 65535.", MessageType.Error);
+                // Manual mode - editable field
+                EditorGUI.BeginChangeCheck();
+                EditorGUILayout.PropertyField(serverPortProp, new GUIContent(
+                    "Server Port",
+                    "TCP port for the Nyamu MCP server"));
+
+                // Validate port range
+                if (serverPortProp.intValue < 1024 || serverPortProp.intValue > 65535)
+                {
+                    EditorGUILayout.HelpBox("Server Port must be between 1024 and 65535.", MessageType.Error);
+                }
+
+                // Check if port is potentially in use
+                if (!NyamuProjectRegistry.IsPortAvailable(serverPortProp.intValue))
+                {
+                    EditorGUILayout.HelpBox(
+                        $"Warning: Port {serverPortProp.intValue} may be in use by another project or application. " +
+                        "The server may fail to start.",
+                        MessageType.Warning);
+                }
             }
+            else
+            {
+                // Auto mode - read-only display
+                EditorGUI.BeginDisabledGroup(true);
+                EditorGUILayout.PropertyField(serverPortProp, new GUIContent(
+                    "Server Port (Auto-Assigned)",
+                    "Port automatically assigned for this project"));
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUILayout.LabelField(
+                    "   Automatically managed",
+                    EditorStyles.miniLabel);
+            }
+
+            // "Get Free Port" button
+            EditorGUILayout.Space(5);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.FlexibleSpace();
+
+                if (GUILayout.Button("Get Free Port", GUILayout.Width(120)))
+                {
+                    settingsInstance.AssignFreePort();
+                    _settings.Update();
+
+                    EditorUtility.DisplayDialog("Free Port Assigned",
+                        $"Port {settingsInstance.serverPort} has been assigned.\n\n" +
+                        "Remember to save settings and restart your coding agent or reconnect the Nyamu MCP tool.",
+                        "OK");
+                }
+            }
+
+            EditorGUILayout.Space();
+
+            // Reconnection reminder
+            EditorGUILayout.HelpBox(
+                "After changing the server port, you must:\n" +
+                "1. Save the settings\n" +
+                "2. Restart your coding agent (e.g., Claude Code)\n" +
+                "   OR reconnect the Nyamu MCP tool in your agent",
+                MessageType.Warning);
 
             EditorGUILayout.Space();
 

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEditor.TestTools.TestRunner.Api;
 using UnityEngine;
 using Nyamu.Core.StateManagers;
@@ -91,6 +92,17 @@ namespace Nyamu.TestExecution
             // Reset error state for new test execution
             _testState.TestExecutionError = null;
             _testState.HasTestExecutionError = false;
+
+            // Create a new empty scene to avoid save dialog blocking test execution
+            try
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                NyamuLogger.LogInfo("[Nyamu][Server] Created new empty scene for test execution");
+            }
+            catch (Exception ex)
+            {
+                NyamuLogger.LogWarning($"[Nyamu][Server] Failed to create new scene: {ex.Message}");
+            }
 
             bool apiExecuteCalled = false;
             try

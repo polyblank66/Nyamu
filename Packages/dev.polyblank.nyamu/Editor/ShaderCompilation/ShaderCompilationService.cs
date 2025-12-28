@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using Nyamu.Tools.Shaders;
 
@@ -13,6 +14,16 @@ namespace Nyamu.ShaderCompilation
     {
         public static CompileShaderResponse CompileSingleShader(string queryName)
         {
+            // Create a new empty scene to avoid save dialog blocking shader compilation
+            try
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+            catch (Exception ex)
+            {
+                NyamuLogger.LogWarning($"[Nyamu][ShaderCompilation] Failed to create new scene: {ex.Message}");
+            }
+
             try
             {
                 var shaderGuids = AssetDatabase.FindAssets("t:Shader");
@@ -80,6 +91,16 @@ namespace Nyamu.ShaderCompilation
 
         public static CompileAllShadersResponse CompileAllShaders()
         {
+            // Create a new empty scene to avoid save dialog blocking shader compilation
+            try
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+            catch (Exception ex)
+            {
+                NyamuLogger.LogWarning($"[Nyamu][ShaderCompilation] Failed to create new scene: {ex.Message}");
+            }
+
             var startTime = DateTime.Now;
             var results = new List<ShaderCompileResult>();
 
@@ -147,6 +168,16 @@ namespace Nyamu.ShaderCompilation
 
         public static CompileShadersRegexResponse CompileShadersRegex(string pattern)
         {
+            // Create a new empty scene to avoid save dialog blocking shader compilation
+            try
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+            catch (Exception ex)
+            {
+                NyamuLogger.LogWarning($"[Nyamu][ShaderCompilation] Failed to create new scene: {ex.Message}");
+            }
+
             try
             {
                 var regex = new System.Text.RegularExpressions.Regex(pattern);

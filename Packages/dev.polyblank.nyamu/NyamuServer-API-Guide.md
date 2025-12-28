@@ -13,9 +13,9 @@
 
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
-| `/tests-run-single` | GET | Run a single specific test | `test_name`, `mode`, `timeout` |
-| `/tests-run-all` | GET | Run all tests in specified mode | `mode`, `timeout` |
-| `/tests-run-regex` | GET | Run tests matching regex pattern | `filter_regex`, `mode`, `timeout` |
+| `/tests-run-single` | GET/POST | Run a single specific test | `test_name`, `mode`, `timeout` |
+| `/tests-run-all` | GET/POST | Run all tests in specified mode | `mode`, `timeout` |
+| `/tests-run-regex` | GET/POST | Run tests matching regex pattern | `filter_regex`, `mode`, `timeout` |
 | `/tests-status` | GET | Get test execution status | None |
 | `/tests-cancel` | GET | Cancel running tests | `guid` (optional) |
 
@@ -36,9 +36,17 @@
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
 | `/compile-shader` | GET | Compile single shader | `shader_name`, `timeout` |
-| `/compile-all-shaders` | GET | Compile all shaders | `timeout` |
-| `/compile-shaders-regex` | GET | Compile shaders by regex | `pattern`, `timeout` |
+| `/compile-all-shaders` | GET/POST | Compile all shaders | `timeout` |
+| `/compile-shaders-regex` | GET/POST | Compile shaders by regex | `pattern`, `timeout` |
 | `/shader-compilation-status` | GET | Get shader compilation status | None |
+
+### Menu Execution
+
+| Endpoint | Method | Purpose | Parameters |
+|----------|--------|---------|------------|
+| `/execute-menu-item` | POST | Execute Unity menu item | `menu_item_path` |
+
+**Note:** Editor log tools (`editor_log_path`, `editor_log_head`, `editor_log_tail`, `editor_log_grep`) are provided at the MCP layer by mcp-server.js, not as HTTP endpoints. They read the Unity Editor log file directly from the file system.
 
 ## Detailed Endpoint Documentation
 
@@ -197,6 +205,54 @@ GET /tests-run-regex?filter_regex=MyNamespace\..*&mode=EditMode
 **Compilation Errors:**
 - Check `/compilation-status` for error details
 - Fix compilation issues before running tests
+
+## Progress Notifications
+
+Long-running operations send real-time progress updates when accessed via MCP:
+
+### Compilation Progress
+- **Assembly count**: Shows completed/total assemblies
+- **Current assembly**: Name of assembly being compiled
+- **Elapsed time**: Seconds since compilation started
+
+**Example:** `"Compiled Assembly-CSharp (5/13, 2.3s)"`
+
+### Test Execution Progress
+- **Test count**: Shows completed/total tests
+- **Current test**: Full name of test being executed
+
+**Example:** `"Running MyProject.Tests.PlayerTests.TestJump (1/6)"`
+
+### Shader Compilation Progress
+- **Shader count**: Shows completed/total shaders
+- **Current shader**: Name of shader being compiled
+
+**Example:** `"Compiling Standard.shader (10/50)"`
+
+### MCP Protocol Details
+
+When using the MCP protocol:
+- Progress notifications are sent as JSON-RPC notifications (have `method` field, no `id` field)
+- Final responses have `id` field matching the request
+- MCP clients should skip progress notifications and wait for the actual response
+
+### Status Endpoints Include Progress
+
+Status endpoints (`/compilation-status`, `/tests-status`, `/shader-compilation-status`) return progress information when operations are in progress:
+
+**Example `/compilation-status` with progress:**
+```json
+{
+  "status": "compiling",
+  "isCompiling": true,
+  "progress": {
+    "totalAssemblies": 13,
+    "completedAssemblies": 5,
+    "currentAssembly": "Assembly-CSharp",
+    "elapsedSeconds": 2.3
+  }
+}
+```
 
 ## Best Practices
 

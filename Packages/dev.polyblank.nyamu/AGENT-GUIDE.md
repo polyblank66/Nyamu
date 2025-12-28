@@ -25,8 +25,9 @@ Edit file → compilation_trigger (no refresh needed)
 - **Always** use `refresh_assets` for structural changes (new/deleted/moved files)
 - **Never** use `refresh_assets` when only editing existing file contents
 - **Error -32603** is expected during compilation/refresh - wait 3-5s and retry
-- **Prefer** `test_filter_regex` over `test_filter` for pattern matching
+- **Use** `tests_run_regex` for flexible pattern-based test filtering
 - **Check status** before long operations to avoid redundant work
+- **Progress notifications** are sent for compilation, tests, and shader compilation
 
 ## Detailed Workflows
 
@@ -300,6 +301,57 @@ Progress notifications received:
 - Can take 15+ minutes for URP projects
 - Use for final validation only
 - Prefer targeted compilation
+
+## Progress Notifications
+
+All long-running MCP operations provide real-time progress updates:
+
+### Compilation Progress
+```
+compilation_trigger sends progress notifications including:
+- Assembly count (completed/total)
+- Current assembly name
+- Elapsed time in seconds
+```
+
+**Example progress:**
+```
+Progress: "Compiled Assembly-CSharp (5/13, 2.3s)"
+Progress: "Compiled Assembly-CSharp-Editor (6/13, 2.5s)"
+```
+
+### Test Execution Progress
+```
+tests_run_all, tests_run_single, tests_run_regex send progress including:
+- Test count (completed/total)
+- Current test name
+```
+
+**Example progress:**
+```
+Progress: "Running MyProject.Tests.PlayerTests.TestJump (1/6)"
+Progress: "Running MyProject.Tests.PlayerTests.TestRun (2/6)"
+```
+
+### Shader Compilation Progress
+```
+compile_shader, compile_all_shaders, compile_shaders_regex send progress including:
+- Shader count (completed/total)
+- Current shader name
+```
+
+**Example progress:**
+```
+Progress: "Compiling Standard.shader (10/50)"
+Progress: "Compiling StandardSpecular.shader (11/50)"
+```
+
+### Handling Progress in MCP Clients
+
+**Important:** MCP clients must properly handle progress notifications:
+- Progress notifications have `method` field but no `id` field
+- Actual responses have `id` field matching the request
+- Clients should skip progress notifications and wait for the final response
 
 ## Troubleshooting
 

@@ -1,14 +1,16 @@
 # Nyamu
 
-**Nyamu** is a minimal MCP server for Unity, designed to give coding agents a way to check script compilation. It is based on the **Yamu** project by Keijiro Takahashi.
+**Nyamu** is a minimal MCP server for Unity, designed to give coding agents a way to check script compilation. It is based on the **[Yamu](https://github.com/keijiro/Yamu)** PoC project by [Keijiro Takahashi](https://github.com/keijiro).
+
+Designed by a human, coded mostly by Claude Code.
 
 ## Compatibility with Coding Agents and Tools
 
-Prompt: Check scripts compilation with nyamu mcp tool
+Prompt: Check script compilation with Nyamu MCP tool
 
 | Tool                 | Result | Tool Version               | Nyamu Version | Test Date  | Notes                                            |
 |----------------------|--------|----------------------------|---------------|------------|--------------------------------------------------|
-| Claude Code          | ✅      | 2.0.69                     | 0.1.0         | 2025-12-13 | Best compatibility observed since the early days |
+| Claude Code          | ✅      | 2.0.69                     | 0.1.0         | 2025-12-13 | Excellent compatibility, thoroughly tested       |
 | Zed                  | ✅      | 0.216.1                    | 0.1.0         | 2025-12-13 |                                                  |
 | Rider + AI Assistant | ✅      | 2025.3.0.4 + 253.28294.360 | 0.1.0         | 2025-12-13 |                                                  |
 | Rider + Junie        | ❌      | 2025.3.0.4 + 253.549.29    | 0.1.0         | 2025-12-13 | Error in the settings for the nyamu tool         |
@@ -182,3 +184,9 @@ Each AI agent session can now interact with its corresponding Unity Editor indep
 [`AGENT-GUIDE.md`]: Packages/dev.polyblank.nyamu/AGENT-GUIDE.md
 [`nyamu-mcp-setup.md`]: Packages/dev.polyblank.nyamu/nyamu-mcp-setup.md
 [`NyamuServer-API-Guide.md`]: Packages/dev.polyblank.nyamu/NyamuServer-API-Guide.md
+
+## Similar Projects
+
+- [MCP for Unity](https://github.com/CoplayDev/unity-mcp) by [Coplay](https://github.com/CoplayDev) — a package with many tools for asset manipulation. Code change verification is limited and works only when changes are made through MCP code-manipulation tools. Verification is performed by running the Roslyn Compiler on the modified files only.
+
+- [MCP Unity](https://github.com/CoderGamester/mcp-unity) by [Miguel Tomas](https://github.com/CoderGamester) — another feature-rich package. Recent versions include a `recompile_scripts` tool for code verification, which relies on the Unity Editor compiler. When code changes involve structural modifications (such as adding or deleting files), an Asset Database Refresh is required. With this package, this can be triggered via a menu item called from the coding agent, but the user must configure the agent to do so.

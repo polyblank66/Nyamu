@@ -69,3 +69,8 @@ Check out Design.md for the project design and goal definitions.
 - If an operation requires scene editing or interaction with the Unity Editor,
   provide clear, step-by-step instructions.
 - Write all Git commit messages in English.
+
+# Other instructions 
+
+- `mcp-server.js` log is located at `\.nyamu\mcp-server.log`
+- When modifing `mcp-server.js` mcp tool reconnection is required.

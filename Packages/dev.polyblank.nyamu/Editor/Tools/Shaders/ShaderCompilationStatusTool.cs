@@ -17,11 +17,26 @@ namespace Nyamu.Tools.Shaders
             bool isCompiling;
             string lastCompilationType;
             System.DateTime lastCompilationTime;
-            object lastResult;
+            CompileShaderResponse singleResult = null;
+            CompileAllShadersResponse allResult = null;
+            CompileShadersRegexResponse regexResult = null;
+            ShaderRegexProgressInfo progressInfo = null;
 
             lock (state.Lock)
             {
                 isCompiling = state.IsCompiling;
+
+                // Get progress info if currently compiling regex shaders
+                if (isCompiling)
+                {
+                    progressInfo = new ShaderRegexProgressInfo
+                    {
+                        pattern = state.RegexShadersPattern,
+                        totalShaders = state.RegexShadersTotal,
+                        completedShaders = state.RegexShadersCompleted,
+                        currentShader = state.RegexShadersCurrentShader
+                    };
+                }
             }
 
             lock (state.ResultLock)
@@ -29,14 +44,19 @@ namespace Nyamu.Tools.Shaders
                 lastCompilationType = state.LastCompilationType;
                 lastCompilationTime = state.LastCompilationTime;
 
-                // Return the appropriate result based on compilation type
-                lastResult = lastCompilationType switch
+                // Set the appropriate result based on compilation type
+                switch (lastCompilationType)
                 {
-                    "single" => state.LastSingleShaderResult,
-                    "all" => state.LastAllShadersResult,
-                    "regex" => state.LastRegexShadersResult,
-                    _ => null
-                };
+                    case "single":
+                        singleResult = state.LastSingleShaderResult;
+                        break;
+                    case "all":
+                        allResult = state.LastAllShadersResult;
+                        break;
+                    case "regex":
+                        regexResult = state.LastRegexShadersResult;
+                        break;
+                }
             }
 
             // Build proper response DTO
@@ -46,7 +66,10 @@ namespace Nyamu.Tools.Shaders
                 isCompiling = isCompiling,
                 lastCompilationType = lastCompilationType,
                 lastCompilationTime = lastCompilationTime.ToString("yyyy-MM-dd HH:mm:ss"),
-                lastCompilationResult = lastResult
+                singleShaderResult = singleResult,
+                allShadersResult = allResult,
+                regexShadersResult = regexResult,
+                progress = progressInfo
             };
 
             return Task.FromResult(response);

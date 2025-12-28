@@ -9,6 +9,9 @@ namespace Nyamu.Tools.Shaders
         public bool isCompiling;
         public string lastCompilationType;
         public string lastCompilationTime;
-        public object lastCompilationResult;
+        public CompileShaderResponse singleShaderResult;
+        public CompileAllShadersResponse allShadersResult;
+        public CompileShadersRegexResponse regexShadersResult;
+        public ShaderRegexProgressInfo progress;
     }
 }

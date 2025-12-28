@@ -689,6 +689,11 @@ class MCPServer {
             notification.params.message = message;
         }
 
+        // Log progress notification
+        if (logger) {
+            logger.logInfo(`[PROGRESS] token=${progressToken}, ${progress}/${total}${message ? `, msg="${message}"` : ''}`);
+        }
+
         // Send notification using existing sendJsonResponse method
         // Notifications don't have an 'id' field (only 'method' and 'params')
         this.sendJsonResponse(notification, this.activeProtocol);
@@ -1286,13 +1291,14 @@ class MCPServer {
     }
 
     async callCompileShadersRegex(id, pattern, timeoutSeconds, progressToken) {
-        if (progressToken) {
-            // Asynchronous mode with progress notifications
-            return await this.callCompileShadersRegexWithProgress(id, pattern, timeoutSeconds, progressToken);
-        } else {
-            // Original blocking mode (backward compatibility)
-            return await this.callCompileShadersRegexBlocking(id, pattern, timeoutSeconds);
-        }
+        // Always use async mode with progress notifications
+        // Use provided progressToken, or null if not provided (client may still display)
+        return await this.callCompileShadersRegexWithProgress(
+            id,
+            pattern,
+            timeoutSeconds,
+            progressToken || null
+        );
     }
 
     async callCompileShadersRegexBlocking(id, pattern, timeoutSeconds) {
@@ -1330,13 +1336,12 @@ class MCPServer {
             let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/shader-compilation-status');
-                    const status = JSON.parse(statusResponse);
+                    const status = await this.makeHttpRequest('/shader-compilation-status');
 
                     // Check if compilation complete
-                    if (!status.isCompiling && status.lastCompilationType === 'regex') {
+                    if (!status.isCompiling && status.lastCompilationType === 'regex' && status.regexShadersResult) {
                         // Return final result
-                        const formatted = this.formatCompileShadersRegexResponse(status.lastCompilationResult);
+                        const formatted = this.formatCompileShadersRegexResponse(status.regexShadersResult);
                         const finalText = this.responseFormatter.formatResponse(formatted);
                         return {
                             jsonrpc: '2.0',
@@ -1366,7 +1371,7 @@ class MCPServer {
 
                 } catch (pollError) {
                     // Handle Unity restart errors
-                    if (this.isUnityRestartingError(pollError)) {
+                    if (pollError instanceof UnityRestartingError) {
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         continue;
                     }

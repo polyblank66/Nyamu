@@ -9,9 +9,9 @@ import json
 
 @pytest.mark.compilation
 @pytest.mark.protocol
-def test_compile_status_endpoint():
+def test_compile_status_endpoint(unity_base_url):
     """Test compilation-status HTTP endpoint directly"""
-    response = requests.get("http://localhost:17932/compilation-status")
+    response = requests.get(f"{unity_base_url}/compilation-status")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -31,9 +31,9 @@ def test_compile_status_endpoint():
 
 @pytest.mark.compilation
 @pytest.mark.protocol
-def test_compile_status_response_structure():
+def test_compile_status_response_structure(unity_base_url):
     """Test that compile status response has correct structure"""
-    response = requests.get("http://localhost:17932/compilation-status")
+    response = requests.get(f"{unity_base_url}/compilation-status")
     data = response.json()
 
     # Check all required fields are present
@@ -60,24 +60,24 @@ def test_compile_status_response_structure():
 
 @pytest.mark.compilation
 @pytest.mark.protocol
-def test_compile_status_idle_state():
+def test_compile_status_idle_state(unity_base_url):
     """Test compile status when Unity is idle"""
     # First trigger compilation to ensure it completes
-    requests.get("http://localhost:17932/compilation-trigger", timeout=60)
+    requests.get(f"{unity_base_url}/compilation-trigger", timeout=60)
 
     # Poll status until idle (with timeout)
     import time
     max_wait = 10
     start_time = time.time()
     while time.time() - start_time < max_wait:
-        response = requests.get("http://localhost:17932/compilation-status")
+        response = requests.get(f"{unity_base_url}/compilation-status")
         data = response.json()
         if data["status"] == "idle":
             break
         time.sleep(0.5)
 
     # Should be idle after compilation
-    response = requests.get("http://localhost:17932/compilation-status")
+    response = requests.get(f"{unity_base_url}/compilation-status")
     data = response.json()
     assert data["status"] == "idle"
     assert data["isCompiling"] is False
@@ -85,9 +85,9 @@ def test_compile_status_idle_state():
 
 @pytest.mark.compilation
 @pytest.mark.protocol
-def test_compile_status_headers():
+def test_compile_status_headers(unity_base_url):
     """Test that compile status endpoint returns proper headers"""
-    response = requests.get("http://localhost:17932/compilation-status")
+    response = requests.get(f"{unity_base_url}/compilation-status")
 
     # Check CORS headers
     assert response.headers.get("access-control-allow-origin") == "*"
@@ -97,12 +97,12 @@ def test_compile_status_headers():
 
 @pytest.mark.compilation
 @pytest.mark.protocol
-def test_compile_status_multiple_requests():
+def test_compile_status_multiple_requests(unity_base_url):
     """Test multiple consecutive requests to compile status"""
     responses = []
 
     for i in range(3):
-        response = requests.get("http://localhost:17932/compilation-status")
+        response = requests.get(f"{unity_base_url}/compilation-status")
         assert response.status_code == 200
         responses.append(response.json())
 

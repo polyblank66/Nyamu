@@ -134,7 +134,7 @@ async def test_truncation_preserves_json_structure(mcp_client, unity_state_manag
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
-async def test_response_character_limit_configuration():
+async def test_response_character_limit_configuration(unity_base_url):
     """Test that MCP server respects the configured character limit"""
     # This test verifies the configuration endpoint is working
     client = MCPClient()
@@ -150,7 +150,7 @@ async def test_response_character_limit_configuration():
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get('http://localhost:17932/mcp-settings') as resp:
+                async with session.get(f'{unity_base_url}/mcp-settings') as resp:
                     if resp.status == 200:
                         config = await resp.json()
 

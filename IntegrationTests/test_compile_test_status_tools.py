@@ -171,14 +171,14 @@ async def test_test_status_response_structure(mcp_client, unity_state_manager):
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
-async def test_compile_status_consistency_with_http_endpoint(mcp_client, unity_state_manager):
+async def test_compile_status_consistency_with_http_endpoint(mcp_client, unity_state_manager, unity_base_url):
     """Test that compile_status MCP tool matches HTTP endpoint"""
     # Get status via MCP tool
     mcp_response = await mcp_client.compilation_status()
     mcp_data = json.loads(mcp_response["result"]["content"][0]["text"])
 
     # Get status via direct HTTP call
-    http_response = requests.get("http://localhost:17932/compilation-status")
+    http_response = requests.get(f"{unity_base_url}/compilation-status")
     http_data = http_response.json()
 
     # Should match exactly
@@ -188,14 +188,14 @@ async def test_compile_status_consistency_with_http_endpoint(mcp_client, unity_s
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
-async def test_test_status_consistency_with_http_endpoint(mcp_client, unity_state_manager):
+async def test_test_status_consistency_with_http_endpoint(mcp_client, unity_state_manager, unity_base_url):
     """Test that tests_status MCP tool matches HTTP endpoint"""
     # Get status via MCP tool
     mcp_response = await mcp_client.tests_status()
     mcp_data = json.loads(mcp_response["result"]["content"][0]["text"])
 
     # Get status via direct HTTP call
-    http_response = requests.get("http://localhost:17932/tests-status")
+    http_response = requests.get(f"{unity_base_url}/tests-status")
     http_data = http_response.json()
 
     # Should match exactly

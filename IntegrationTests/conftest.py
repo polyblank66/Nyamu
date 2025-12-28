@@ -7,6 +7,7 @@ import pytest_asyncio
 import asyncio
 import os
 import sys
+import json
 from pathlib import Path
 
 # Add current directory to Python path
@@ -14,6 +15,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from mcp_client import MCPClient
 from unity_helper import UnityHelper, UnityStateManager
+
+# Settings file location - resolves to project_root/.nyamu/NyamuSettings.json
+SETTINGS_FILE = Path(__file__).parent.parent / ".nyamu" / "NyamuSettings.json"
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -108,13 +112,41 @@ async def temp_files(mcp_client):
                     print(f"Could not remove {file_path}: {cleanup_error}")
 
 
+@pytest.fixture(scope="session")
+def unity_port():
+    """Read Unity server port from NyamuSettings.json"""
+    try:
+        with open(SETTINGS_FILE, 'r') as f:
+            settings = json.load(f)
+
+        port = settings["MonoBehaviour"]["serverPort"]
+
+        if not isinstance(port, int) or not (1 <= port <= 65535):
+            pytest.skip(f"Invalid port value in {SETTINGS_FILE}: {port}")
+
+        return port
+
+    except FileNotFoundError:
+        pytest.skip(f"Settings file not found: {SETTINGS_FILE}")
+    except KeyError as e:
+        pytest.skip(f"Missing required field in {SETTINGS_FILE}: {e}")
+    except json.JSONDecodeError as e:
+        pytest.skip(f"Invalid JSON in {SETTINGS_FILE}: {e}")
+
+
+@pytest.fixture(scope="session")
+def unity_base_url(unity_port):
+    """Get base URL for Unity HTTP server"""
+    return f"http://localhost:{unity_port}"
+
+
 @pytest.fixture(autouse=True)
-def check_unity_running():
+def check_unity_running(unity_base_url):
     """Checks that Unity is running and available"""
     # Check that Unity HTTP server is available
     import requests
     try:
-        response = requests.get("http://localhost:17932/compilation-status", timeout=5)
+        response = requests.get(f"{unity_base_url}/compilation-status", timeout=5)
         if response.status_code != 200:
             pytest.skip("Unity HTTP server unavailable")
     except requests.exceptions.RequestException:

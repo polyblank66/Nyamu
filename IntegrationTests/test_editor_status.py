@@ -83,9 +83,9 @@ async def test_editor_status_response_structure(mcp_client, unity_state_manager)
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_editor_status_endpoint_direct():
+def test_editor_status_endpoint_direct(unity_base_url):
     """Test editor-status HTTP endpoint directly"""
-    response = requests.get("http://localhost:17932/editor-status")
+    response = requests.get(f"{unity_base_url}/editor-status")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -103,9 +103,9 @@ def test_editor_status_endpoint_direct():
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_editor_status_headers():
+def test_editor_status_headers(unity_base_url):
     """Test that editor-status endpoint returns proper headers"""
-    response = requests.get("http://localhost:17932/editor-status")
+    response = requests.get(f"{unity_base_url}/editor-status")
 
     # Check CORS headers
     assert response.headers.get("access-control-allow-origin") == "*"
@@ -115,9 +115,9 @@ def test_editor_status_headers():
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_editor_status_idle_state():
+def test_editor_status_idle_state(unity_base_url):
     """Test editor_status when Unity is idle"""
-    response = requests.get("http://localhost:17932/editor-status")
+    response = requests.get(f"{unity_base_url}/editor-status")
     data = response.json()
 
     # When idle, compilation and tests should not be running
@@ -133,12 +133,12 @@ def test_editor_status_idle_state():
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_editor_status_multiple_requests():
+def test_editor_status_multiple_requests(unity_base_url):
     """Test multiple consecutive requests to editor_status"""
     responses = []
 
     for i in range(3):
-        response = requests.get("http://localhost:17932/editor-status")
+        response = requests.get(f"{unity_base_url}/editor-status")
         assert response.status_code == 200
         responses.append(response.json())
 
@@ -202,11 +202,11 @@ async def test_editor_status_during_compilation(unity_state_manager):
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
-async def test_editor_status_consistency_with_compile_status(mcp_client, unity_state_manager):
+async def test_editor_status_consistency_with_compile_status(mcp_client, unity_state_manager, unity_base_url):
     """Test that editor_status isCompiling matches compile_status"""
     # Get both statuses
     editor_status = await mcp_client.editor_status()
-    compile_status_response = requests.get("http://localhost:17932/compilation-status")
+    compile_status_response = requests.get(f"{unity_base_url}/compilation-status")
 
     editor_data = json.loads(editor_status["result"]["content"][0]["text"])
     compile_data = compile_status_response.json()
@@ -218,11 +218,11 @@ async def test_editor_status_consistency_with_compile_status(mcp_client, unity_s
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
-async def test_editor_status_consistency_with_test_status(mcp_client, unity_state_manager):
+async def test_editor_status_consistency_with_test_status(mcp_client, unity_state_manager, unity_base_url):
     """Test that editor_status isRunningTests matches tests_status"""
     # Get both statuses
     editor_status = await mcp_client.editor_status()
-    test_status_response = requests.get("http://localhost:17932/tests-status")
+    test_status_response = requests.get(f"{unity_base_url}/tests-status")
 
     editor_data = json.loads(editor_status["result"]["content"][0]["text"])
     test_data = test_status_response.json()

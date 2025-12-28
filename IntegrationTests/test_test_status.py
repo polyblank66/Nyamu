@@ -8,9 +8,9 @@ import json
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_test_status_endpoint():
+def test_test_status_endpoint(unity_base_url):
     """Test tests-status HTTP endpoint directly"""
-    response = requests.get("http://localhost:17932/tests-status")
+    response = requests.get(f"{unity_base_url}/tests-status")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -27,9 +27,9 @@ def test_test_status_endpoint():
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_test_status_response_structure():
+def test_test_status_response_structure(unity_base_url):
     """Test that tests status response has correct structure"""
-    response = requests.get("http://localhost:17932/tests-status")
+    response = requests.get(f"{unity_base_url}/tests-status")
     data = response.json()
 
     # Check required fields
@@ -48,10 +48,10 @@ def test_test_status_response_structure():
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_test_status_with_results():
+def test_test_status_with_results(unity_base_url):
     """Test tests status when test results are available"""
     # First run some tests to get results
-    requests.get("http://localhost:17932/tests-run-all?mode=EditMode")
+    requests.get(f"{unity_base_url}/tests-run-all?mode=EditMode")
 
     # Wait for tests to complete
     import time
@@ -59,7 +59,7 @@ def test_test_status_with_results():
     waited = 0
 
     while waited < max_wait:
-        response = requests.get("http://localhost:17932/tests-status")
+        response = requests.get(f"{unity_base_url}/tests-status")
         data = response.json()
 
         if data["status"] == "idle" and data["testResults"] is not None:
@@ -85,10 +85,10 @@ def test_test_status_with_results():
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_test_status_idle_state():
+def test_test_status_idle_state(unity_base_url):
     """Test tests status when no tests are running"""
     # Make sure no tests are running by checking status multiple times
-    response = requests.get("http://localhost:17932/tests-status")
+    response = requests.get(f"{unity_base_url}/tests-status")
     data = response.json()
 
     if data["status"] == "idle":
@@ -96,9 +96,9 @@ def test_test_status_idle_state():
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_test_status_headers():
+def test_test_status_headers(unity_base_url):
     """Test that tests status endpoint returns proper headers"""
-    response = requests.get("http://localhost:17932/tests-status")
+    response = requests.get(f"{unity_base_url}/tests-status")
 
     # Check CORS headers
     assert response.headers.get("access-control-allow-origin") == "*"
@@ -107,12 +107,12 @@ def test_test_status_headers():
 
 @pytest.mark.mcp
 @pytest.mark.protocol
-def test_test_status_multiple_requests():
+def test_test_status_multiple_requests(unity_base_url):
     """Test multiple consecutive requests to tests status"""
     responses = []
 
     for i in range(3):
-        response = requests.get("http://localhost:17932/tests-status")
+        response = requests.get(f"{unity_base_url}/tests-status")
         assert response.status_code == 200
         responses.append(response.json())
 

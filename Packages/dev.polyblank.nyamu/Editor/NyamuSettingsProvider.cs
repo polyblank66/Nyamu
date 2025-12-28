@@ -166,18 +166,44 @@ namespace Nyamu
 
             EditorGUILayout.Space(5);
 
-            // Server Port field
+            // Server Port field and button on same line
             var serverPortProp = _settings.FindProperty("serverPort");
             var settingsInstance = NyamuSettings.Instance;
 
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (settingsInstance.manualPortMode)
+                {
+                    // Manual mode - editable field
+                    EditorGUILayout.LabelField(new GUIContent("Server Port", "TCP port for the Nyamu MCP server"), GUILayout.Width(100));
+                    EditorGUI.BeginChangeCheck();
+                    serverPortProp.intValue = EditorGUILayout.IntField(serverPortProp.intValue, GUILayout.Width(80));
+                }
+                else
+                {
+                    // Auto mode - read-only display
+                    EditorGUILayout.LabelField(new GUIContent("Server Port", "Port automatically assigned for this project"), GUILayout.Width(100));
+                    EditorGUI.BeginDisabledGroup(true);
+                    EditorGUILayout.IntField(serverPortProp.intValue, GUILayout.Width(80));
+                    EditorGUI.EndDisabledGroup();
+                    EditorGUILayout.LabelField("(Auto)", EditorStyles.miniLabel, GUILayout.Width(40));
+                }
+
+                if (GUILayout.Button("Get Free Port", GUILayout.Width(120)))
+                {
+                    settingsInstance.AssignFreePort();
+                    _settings.Update();
+
+                    EditorUtility.DisplayDialog("Free Port Assigned",
+                        $"Port {settingsInstance.serverPort} has been assigned.\n\n" +
+                        "Remember to save settings and restart your coding agent or reconnect the Nyamu MCP tool.",
+                        "OK");
+                }
+            }
+
+            // Validation messages below the port field
             if (settingsInstance.manualPortMode)
             {
-                // Manual mode - editable field
-                EditorGUI.BeginChangeCheck();
-                EditorGUILayout.PropertyField(serverPortProp, new GUIContent(
-                    "Server Port",
-                    "TCP port for the Nyamu MCP server"));
-
                 // Validate port range
                 if (serverPortProp.intValue < 1024 || serverPortProp.intValue > 65535)
                 {
@@ -191,35 +217,6 @@ namespace Nyamu
                         $"Warning: Port {serverPortProp.intValue} may be in use by another project or application. " +
                         "The server may fail to start.",
                         MessageType.Warning);
-                }
-            }
-            else
-            {
-                // Auto mode - read-only display
-                EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.PropertyField(serverPortProp, new GUIContent(
-                    "Server Port",
-                    "Port automatically assigned for this project"));
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUILayout.LabelField("Auto-Assigned", EditorStyles.miniLabel);
-            }
-
-            // "Get Free Port" button
-            EditorGUILayout.Space(5);
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUILayout.FlexibleSpace();
-
-                if (GUILayout.Button("Get Free Port", GUILayout.Width(120)))
-                {
-                    settingsInstance.AssignFreePort();
-                    _settings.Update();
-
-                    EditorUtility.DisplayDialog("Free Port Assigned",
-                        $"Port {settingsInstance.serverPort} has been assigned.\n\n" +
-                        "Remember to save settings and restart your coding agent or reconnect the Nyamu MCP tool.",
-                        "OK");
                 }
             }
 

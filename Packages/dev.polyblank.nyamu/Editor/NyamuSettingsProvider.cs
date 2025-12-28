@@ -102,6 +102,20 @@ namespace Nyamu
 
             EditorGUILayout.Space();
 
+            // Information about current settings
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Current Settings:", EditorStyles.label, GUILayout.Width(120));
+
+                var settings = NyamuSettings.Instance;
+                var overhead = EstimateResponseOverhead(settings);
+                var availableForContent = Mathf.Max(0, settings.responseCharacterLimit - overhead);
+
+                EditorGUILayout.LabelField($"~{availableForContent} chars available for content", GUILayout.ExpandWidth(true));
+            }
+
+            EditorGUILayout.Space();
+
             // Logging Configuration section
             EditorGUILayout.LabelField("Logging Configuration", EditorStyles.boldLabel);
 
@@ -184,13 +198,11 @@ namespace Nyamu
                 // Auto mode - read-only display
                 EditorGUI.BeginDisabledGroup(true);
                 EditorGUILayout.PropertyField(serverPortProp, new GUIContent(
-                    "Server Port (Auto-Assigned)",
+                    "Server Port",
                     "Port automatically assigned for this project"));
                 EditorGUI.EndDisabledGroup();
 
-                EditorGUILayout.LabelField(
-                    "   Automatically managed",
-                    EditorStyles.miniLabel);
+                EditorGUILayout.LabelField("Auto-Assigned", EditorStyles.miniLabel);
             }
 
             // "Get Free Port" button
@@ -220,20 +232,6 @@ namespace Nyamu
                 "2. Restart your coding agent (e.g., Claude Code)\n" +
                 "   OR reconnect the Nyamu MCP tool in your agent",
                 MessageType.Warning);
-
-            EditorGUILayout.Space();
-
-            // Information about current settings
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                EditorGUILayout.LabelField("Current Settings:", EditorStyles.boldLabel, GUILayout.Width(120));
-
-                var settings = NyamuSettings.Instance;
-                var overhead = EstimateResponseOverhead(settings);
-                var availableForContent = Mathf.Max(0, settings.responseCharacterLimit - overhead);
-
-                EditorGUILayout.LabelField($"~{availableForContent} chars available for content", GUILayout.ExpandWidth(true));
-            }
 
             // Buttons section
             EditorGUILayout.Space();

@@ -432,7 +432,7 @@ public class {script_name}
         import time
         time.sleep(2)  # Give Unity time to process files
 
-    async def refresh_assets_if_available(self, force: bool = False, max_retries: int = 3):
+    async def refresh_assets_if_available(self, force: bool = False, max_retries: int = 10):
         """Refresh Unity assets using MCP client if available
 
         Args:
@@ -450,11 +450,13 @@ public class {script_name}
                         content = result['result']['content'][0]['text']
                         if 'refresh already in progress' in content.lower():
                             if attempt < max_retries - 1:
-                                print(f"Asset refresh in progress, retrying in 0.5s (attempt {attempt + 1}/{max_retries})")
-                                await asyncio.sleep(0.5)
+                                print(f"Asset refresh in progress, waiting 1s (attempt {attempt + 1}/{max_retries})")
+                                await asyncio.sleep(1.0)
                                 continue
                             else:
-                                print(f"Warning: Asset refresh still in progress after {max_retries} attempts")
+                                # Even on last attempt, wait for in-progress refresh to complete
+                                print(f"Asset refresh still in progress after {max_retries} attempts, waiting for completion...")
+                                await self._wait_for_mcp_responsive()
                                 return
 
                     # Successful refresh, wait for MCP to be responsive
@@ -464,7 +466,7 @@ public class {script_name}
                 except Exception as e:
                     if attempt < max_retries - 1:
                         print(f"Warning: Could not refresh assets (attempt {attempt + 1}/{max_retries}): {e}")
-                        await asyncio.sleep(0.5)
+                        await asyncio.sleep(1.0)
                         continue
                     else:
                         print(f"Warning: Could not refresh assets after {max_retries} attempts: {e}")

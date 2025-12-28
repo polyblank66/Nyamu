@@ -13,6 +13,12 @@ namespace Nyamu.Core.StateManagers
         DateTime _lastCompileTime = DateTime.MinValue;
         DateTime _compileRequestTime = DateTime.MinValue;
 
+        // Compilation progress tracking
+        int _totalAssemblies;
+        int _completedAssemblies;
+        string _currentAssembly = "";
+        DateTime _compilationStartTime = DateTime.MinValue;
+
         public object Lock => _lock;
 
         public bool IsCompiling
@@ -52,6 +58,31 @@ namespace Nyamu.Core.StateManagers
         public CompileError[] GetErrorsSnapshot()
         {
             lock (_lock) return _errors.ToArray();
+        }
+
+        // Compilation progress properties
+        public int TotalAssemblies
+        {
+            get { lock (_lock) return _totalAssemblies; }
+            set { lock (_lock) _totalAssemblies = value; }
+        }
+
+        public int CompletedAssemblies
+        {
+            get { lock (_lock) return _completedAssemblies; }
+            set { lock (_lock) _completedAssemblies = value; }
+        }
+
+        public string CurrentAssembly
+        {
+            get { lock (_lock) return _currentAssembly; }
+            set { lock (_lock) _currentAssembly = value; }
+        }
+
+        public DateTime CompilationStartTime
+        {
+            get { lock (_lock) return _compilationStartTime; }
+            set { lock (_lock) _compilationStartTime = value; }
         }
     }
 }

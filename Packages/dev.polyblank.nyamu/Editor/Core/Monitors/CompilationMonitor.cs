@@ -23,22 +23,33 @@ namespace Nyamu.Core.Monitors
 
         public void Initialize()
         {
-            CompilationPipeline.assemblyCompilationFinished += OnCompilationFinished;
             CompilationPipeline.compilationStarted += OnCompilationStarted;
+            CompilationPipeline.compilationFinished += OnCompilationFinished;
+            CompilationPipeline.assemblyCompilationFinished += OnAssemblyCompilationFinished;
         }
 
         public void Cleanup()
         {
-            CompilationPipeline.assemblyCompilationFinished -= OnCompilationFinished;
             CompilationPipeline.compilationStarted -= OnCompilationStarted;
+            CompilationPipeline.compilationFinished -= OnCompilationFinished;
+            CompilationPipeline.assemblyCompilationFinished -= OnAssemblyCompilationFinished;
         }
 
         void OnCompilationStarted(object obj)
         {
             _state.IsCompiling = true;
+            _state.CompilationStartTime = DateTime.Now;
+
+            // Get total assembly count for progress tracking
+            var assemblies = CompilationPipeline.GetAssemblies();
+            _state.TotalAssemblies = assemblies.Length;
+            _state.CompletedAssemblies = 0;
+            _state.CurrentAssembly = "";
+
+            NyamuLogger.LogInfo($"[Nyamu][Compilation] Started - Total assemblies: {assemblies.Length}");
         }
 
-        void OnCompilationFinished(string assemblyPath, CompilerMessage[] messages)
+        void OnCompilationFinished(object obj)
         {
             _state.IsCompiling = false;
 
@@ -47,6 +58,21 @@ namespace Nyamu.Core.Monitors
             {
                 _state.LastCompileTime = DateTime.Now;
             }
+
+            // Clear progress tracking
+            _state.TotalAssemblies = 0;
+            _state.CompletedAssemblies = 0;
+            _state.CurrentAssembly = "";
+
+            NyamuLogger.LogInfo($"[Nyamu][Compilation] Finished");
+        }
+
+        void OnAssemblyCompilationFinished(string assemblyPath, CompilerMessage[] messages)
+        {
+            var assemblyName = System.IO.Path.GetFileName(assemblyPath);
+
+            _state.CompletedAssemblies++;
+            _state.CurrentAssembly = assemblyName;
 
             // Update compilation errors
             var errors = new List<CompileError>();
@@ -61,6 +87,8 @@ namespace Nyamu.Core.Monitors
                     });
             }
             _state.Errors = errors;
+
+            NyamuLogger.LogInfo($"[Nyamu][Compilation] Assembly finished: {assemblyName} ({_state.CompletedAssemblies}/{_state.TotalAssemblies})");
         }
     }
 }

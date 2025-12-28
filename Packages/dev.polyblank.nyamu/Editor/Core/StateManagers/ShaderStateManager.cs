@@ -22,6 +22,11 @@ namespace Nyamu.Core.StateManagers
         int _regexShadersCompleted = 0;
         string _regexShadersCurrentShader = "";
 
+        // All shaders compilation progress tracking
+        int _allShadersTotal = 0;
+        int _allShadersCompleted = 0;
+        string _allShadersCurrentShader = "";
+
         public object Lock => _compileLock;
         public object ResultLock => _resultLock;
 
@@ -84,6 +89,25 @@ namespace Nyamu.Core.StateManagers
         {
             get { lock (_compileLock) return _regexShadersCurrentShader; }
             set { lock (_compileLock) _regexShadersCurrentShader = value; }
+        }
+
+        // All shaders compilation progress (thread-safe access)
+        public int AllShadersTotal
+        {
+            get { lock (_compileLock) return _allShadersTotal; }
+            set { lock (_compileLock) _allShadersTotal = value; }
+        }
+
+        public int AllShadersCompleted
+        {
+            get { lock (_compileLock) return _allShadersCompleted; }
+            set { lock (_compileLock) _allShadersCompleted = value; }
+        }
+
+        public string AllShadersCurrentShader
+        {
+            get { lock (_compileLock) return _allShadersCurrentShader; }
+            set { lock (_compileLock) _allShadersCurrentShader = value; }
         }
     }
 }

@@ -21,6 +21,7 @@ namespace Nyamu.Tools.Testing
             string testRunId;
             bool hasError;
             string errorMessage;
+            TestProgressInfo progressInfo = null;
 
             lock (state.Lock)
             {
@@ -30,6 +31,17 @@ namespace Nyamu.Tools.Testing
                 testRunId = state.CurrentTestRunId;
                 hasError = state.HasTestExecutionError;
                 errorMessage = state.TestExecutionError;
+
+                // Get progress info if currently running tests
+                if (isRunning && state.TestsTotal > 0)
+                {
+                    progressInfo = new TestProgressInfo
+                    {
+                        totalTests = state.TestsTotal,
+                        completedTests = state.TestsCompleted,
+                        currentTest = state.CurrentTestName
+                    };
+                }
             }
 
             status = isRunning ? "running" : "idle";
@@ -42,7 +54,8 @@ namespace Nyamu.Tools.Testing
                 testResults = testResults,
                 testRunId = testRunId,
                 hasError = hasError,
-                errorMessage = errorMessage
+                errorMessage = errorMessage,
+                progress = progressInfo
             };
 
             return Task.FromResult(response);

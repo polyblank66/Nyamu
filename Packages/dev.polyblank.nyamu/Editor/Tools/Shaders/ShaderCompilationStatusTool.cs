@@ -26,16 +26,32 @@ namespace Nyamu.Tools.Shaders
             {
                 isCompiling = state.IsCompiling;
 
-                // Get progress info if currently compiling regex shaders
+                // Get progress info if currently compiling shaders
                 if (isCompiling)
                 {
-                    progressInfo = new ShaderRegexProgressInfo
+                    // Check which type of compilation is running
+                    if (state.RegexShadersTotal > 0)
                     {
-                        pattern = state.RegexShadersPattern,
-                        totalShaders = state.RegexShadersTotal,
-                        completedShaders = state.RegexShadersCompleted,
-                        currentShader = state.RegexShadersCurrentShader
-                    };
+                        // Regex shader compilation progress
+                        progressInfo = new ShaderRegexProgressInfo
+                        {
+                            pattern = state.RegexShadersPattern,
+                            totalShaders = state.RegexShadersTotal,
+                            completedShaders = state.RegexShadersCompleted,
+                            currentShader = state.RegexShadersCurrentShader
+                        };
+                    }
+                    else if (state.AllShadersTotal > 0)
+                    {
+                        // All shaders compilation progress
+                        progressInfo = new ShaderRegexProgressInfo
+                        {
+                            pattern = "",
+                            totalShaders = state.AllShadersTotal,
+                            completedShaders = state.AllShadersCompleted,
+                            currentShader = state.AllShadersCurrentShader
+                        };
+                    }
                 }
             }
 

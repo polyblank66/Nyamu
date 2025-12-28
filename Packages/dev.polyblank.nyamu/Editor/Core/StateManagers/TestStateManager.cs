@@ -16,6 +16,11 @@ namespace Nyamu.Core.StateManagers
         string _testExecutionError = null;
         bool _hasTestExecutionError = false;
 
+        // Test execution progress tracking
+        int _testsTotal = 0;
+        int _testsCompleted = 0;
+        string _currentTestName = "";
+
         public object Lock => _lock;
 
         public bool IsRunningTests
@@ -58,6 +63,25 @@ namespace Nyamu.Core.StateManagers
         {
             get { lock (_lock) return _hasTestExecutionError; }
             set { lock (_lock) _hasTestExecutionError = value; }
+        }
+
+        // Test execution progress (thread-safe access)
+        public int TestsTotal
+        {
+            get { lock (_lock) return _testsTotal; }
+            set { lock (_lock) _testsTotal = value; }
+        }
+
+        public int TestsCompleted
+        {
+            get { lock (_lock) return _testsCompleted; }
+            set { lock (_lock) _testsCompleted = value; }
+        }
+
+        public string CurrentTestName
+        {
+            get { lock (_lock) return _currentTestName; }
+            set { lock (_lock) _currentTestName = value; }
         }
     }
 }

@@ -12,5 +12,6 @@ namespace Nyamu.Tools.Testing
         public string testRunId;
         public bool hasError;
         public string errorMessage;
+        public TestProgressInfo progress;
     }
 }

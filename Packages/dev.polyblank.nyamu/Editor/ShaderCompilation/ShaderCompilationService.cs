@@ -88,10 +88,16 @@ namespace Nyamu.ShaderCompilation
                 var shaderGuids = AssetDatabase.FindAssets("t:Shader");
                 NyamuLogger.LogInfo($"[Nyamu][ShaderCompilation] Compiling {shaderGuids.Length} shaders...");
 
+                // Initialize progress tracking
+                Server.UpdateAllShadersProgress(shaderGuids.Length, 0, "");
+
                 for (var i = 0; i < shaderGuids.Length; i++)
                 {
                     var path = AssetDatabase.GUIDToAssetPath(shaderGuids[i]);
                     NyamuLogger.LogInfo($"[Nyamu][ShaderCompilation] Compiling shader {i + 1}/{shaderGuids.Length}: {path}");
+
+                    // Update progress tracking
+                    Server.UpdateAllShadersProgress(shaderGuids.Length, i, path);
 
                     var result = ShaderCompiler.CompileShaderAtPath(path);
                     results.Add(result);
@@ -104,6 +110,9 @@ namespace Nyamu.ShaderCompilation
                 }
 
                 var totalTime = (DateTime.Now - startTime).TotalSeconds;
+
+                // Mark progress as complete
+                Server.UpdateAllShadersProgress(shaderGuids.Length, shaderGuids.Length, "");
                 var successCount = results.Count(r => !r.hasErrors);
                 var failCount = results.Count(r => r.hasErrors);
 

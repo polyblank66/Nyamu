@@ -706,13 +706,13 @@ class MCPServer {
         try {
             switch (name) {
                 case 'compilation_trigger':
-                    return await this.callCompileAndWait(id, args.timeout || 30);
+                    return await this.callCompileAndWait(id, args.timeout || 30, progressToken);
                 case 'tests_run_single':
-                    return await this.callTestsRunSingle(id, args.test_name, args.test_mode || 'EditMode', args.timeout || 60);
+                    return await this.callTestsRunSingle(id, args.test_name, args.test_mode || 'EditMode', args.timeout || 60, progressToken);
                 case 'tests_run_all':
-                    return await this.callTestsRunAll(id, args.test_mode || 'EditMode', args.timeout || 60);
+                    return await this.callTestsRunAll(id, args.test_mode || 'EditMode', args.timeout || 60, progressToken);
                 case 'tests_run_regex':
-                    return await this.callTestsRunRegex(id, args.test_filter_regex, args.test_mode || 'EditMode', args.timeout || 60);
+                    return await this.callTestsRunRegex(id, args.test_filter_regex, args.test_mode || 'EditMode', args.timeout || 60, progressToken);
                 case 'refresh_assets':
                     return await this.callRefreshAssets(id, args.force || false);
                 case 'editor_status':
@@ -726,7 +726,7 @@ class MCPServer {
                 case 'compile_shader':
                     return await this.callCompileShader(id, args.shader_name, args.timeout || 30);
                 case 'compile_all_shaders':
-                    return await this.callCompileAllShaders(id, args.timeout || 120);
+                    return await this.callCompileAllShaders(id, args.timeout || 120, progressToken);
                 case 'compile_shaders_regex':
                     return await this.callCompileShadersRegex(id, args.pattern, args.timeout || 120, progressToken);
                 case 'shader_compilation_status':
@@ -777,7 +777,7 @@ class MCPServer {
         }
     }
 
-    async callCompileAndWait(id, timeoutSeconds) {
+    async callCompileAndWait(id, timeoutSeconds, progressToken) {
         try {
             // Ensure response formatter is ready
             await this.ensureResponseFormatter();
@@ -785,11 +785,56 @@ class MCPServer {
             // Start compilation
             const compileResponse = await this.makeHttpRequest('/compilation-trigger');
 
-            // C# side now ensures compilation has started, so we can immediately begin polling
-
-            // Wait for completion with polling
             const startTime = Date.now();
             const timeoutMs = timeoutSeconds * 1000;
+
+            // First, wait for compilation to actually start (isCompiling becomes true)
+            let compilationStarted = false;
+            const startCheckTimeout = 5000; // 5 seconds to wait for compilation to start
+
+            while (Date.now() - startTime < startCheckTimeout) {
+                try {
+                    const statusResponse = await this.makeHttpRequest('/compilation-status');
+
+                    if (statusResponse.isCompiling) {
+                        compilationStarted = true;
+                        break;
+                    }
+
+                    // Wait 100ms before next poll
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (pollError) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    continue;
+                }
+            }
+
+            // If compilation never started, check if it already completed (very fast compilation)
+            if (!compilationStarted) {
+                const statusResponse = await this.makeHttpRequest('/compilation-status');
+                if (statusResponse.status === 'idle') {
+                    // Compilation completed before we could detect it started
+                    const errorText = statusResponse.errors && statusResponse.errors.length > 0
+                        ? `Compilation completed with errors:\n${statusResponse.errors.map(err => `${err.file}:${err.line} - ${err.message}`).join('\n')}`
+                        : 'Compilation completed successfully with no errors.';
+
+                    const formattedText = this.responseFormatter.formatResponse(errorText);
+
+                    return {
+                        jsonrpc: '2.0',
+                        id,
+                        result: {
+                            content: [{
+                                type: 'text',
+                                text: formattedText
+                            }]
+                        }
+                    };
+                }
+            }
+
+            // Track last progress state for progress notifications
+            let lastCompletedAssemblies = -1;
 
             // Wait for compilation to complete
             while (Date.now() - startTime < timeoutMs) {
@@ -818,8 +863,24 @@ class MCPServer {
                         };
                     }
 
-                    // Wait 1 second before next poll
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Send progress notification if progress changed
+                    if (statusResponse.isCompiling && statusResponse.progress) {
+                        const currentCompleted = statusResponse.progress.completedAssemblies;
+                        if (currentCompleted > lastCompletedAssemblies) {
+                            const elapsed = statusResponse.progress.elapsedSeconds.toFixed(1);
+                            const assemblyName = statusResponse.progress.currentAssembly || 'assembly';
+                            this.sendProgressNotification(
+                                progressToken || null,
+                                currentCompleted,
+                                statusResponse.progress.totalAssemblies,
+                                `Compiled ${assemblyName} (${currentCompleted}/${statusResponse.progress.totalAssemblies}, ${elapsed}s)`
+                            );
+                            lastCompletedAssemblies = currentCompleted;
+                        }
+                    }
+
+                    // Wait 500ms before next poll (faster for better progress updates)
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (pollError) {
                     // Continue polling despite individual request failures
                     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -835,7 +896,7 @@ class MCPServer {
         }
     }
 
-    async callTestsRunSingle(id, testName, testMode, timeoutSeconds) {
+    async callTestsRunSingle(id, testName, testMode, timeoutSeconds, progressToken) {
         try {
             // Ensure response formatter is ready
             await this.ensureResponseFormatter();
@@ -883,7 +944,8 @@ class MCPServer {
                 throw new Error('Test execution failed to start - no new test run ID detected');
             }
 
-            // Now wait for completion with the specific test run ID
+            // Now wait for completion with the specific test run ID and send progress
+            let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
                     const statusResponse = await this.makeHttpRequest('/tests-status');
@@ -891,6 +953,22 @@ class MCPServer {
                     // Check for errors during test execution
                     if (statusResponse.hasError && statusResponse.errorMessage) {
                         throw new Error(`Test execution error: ${statusResponse.errorMessage}`);
+                    }
+
+                    // Send progress notification if progress changed
+                    if (statusResponse.isRunning && statusResponse.progress) {
+                        const currentProgress = statusResponse.progress.completedTests;
+                        if (currentProgress > lastProgress) {
+                            const currentTestName = statusResponse.progress.currentTest || '';
+                            const testShortName = currentTestName.split('.').pop();
+                            this.sendProgressNotification(
+                                progressToken || null,
+                                currentProgress,
+                                statusResponse.progress.totalTests,
+                                `Running ${testShortName} (${currentProgress}/${statusResponse.progress.totalTests})`
+                            );
+                            lastProgress = currentProgress;
+                        }
                     }
 
                     // Check if this is the same test run and it's completed
@@ -913,8 +991,8 @@ class MCPServer {
                         };
                     }
 
-                    // Wait 1 second before next poll
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Wait 500ms before next poll (faster than 1s for better progress updates)
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (pollError) {
                     // Continue polling despite individual request failures
                     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -930,7 +1008,7 @@ class MCPServer {
         }
     }
 
-    async callTestsRunAll(id, testMode, timeoutSeconds) {
+    async callTestsRunAll(id, testMode, timeoutSeconds, progressToken) {
         try {
             // Ensure response formatter is ready
             await this.ensureResponseFormatter();
@@ -978,7 +1056,8 @@ class MCPServer {
                 throw new Error('Test execution failed to start - no new test run ID detected');
             }
 
-            // Now wait for completion with the specific test run ID
+            // Now wait for completion with the specific test run ID and send progress
+            let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
                     const statusResponse = await this.makeHttpRequest('/tests-status');
@@ -986,6 +1065,22 @@ class MCPServer {
                     // Check for errors during test execution
                     if (statusResponse.hasError && statusResponse.errorMessage) {
                         throw new Error(`Test execution error: ${statusResponse.errorMessage}`);
+                    }
+
+                    // Send progress notification if progress changed
+                    if (statusResponse.isRunning && statusResponse.progress) {
+                        const currentProgress = statusResponse.progress.completedTests;
+                        if (currentProgress > lastProgress) {
+                            const currentTestName = statusResponse.progress.currentTest || '';
+                            const testShortName = currentTestName.split('.').pop();
+                            this.sendProgressNotification(
+                                progressToken || null,
+                                currentProgress,
+                                statusResponse.progress.totalTests,
+                                `Running ${testShortName} (${currentProgress}/${statusResponse.progress.totalTests})`
+                            );
+                            lastProgress = currentProgress;
+                        }
                     }
 
                     // Check if this is the same test run and it's completed
@@ -1006,8 +1101,8 @@ class MCPServer {
                         };
                     }
 
-                    // Wait 1 second before next poll
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Wait 500ms before next poll (faster than 1s for better progress updates)
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (pollError) {
                     // Continue polling despite individual request failures
                     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1022,7 +1117,7 @@ class MCPServer {
         }
     }
 
-    async callTestsRunRegex(id, testFilterRegex, testMode, timeoutSeconds) {
+    async callTestsRunRegex(id, testFilterRegex, testMode, timeoutSeconds, progressToken) {
         try {
             // Ensure response formatter is ready
             await this.ensureResponseFormatter();
@@ -1070,7 +1165,8 @@ class MCPServer {
                 throw new Error('Test execution failed to start - no new test run ID detected');
             }
 
-            // Now wait for completion with the specific test run ID
+            // Now wait for completion with the specific test run ID and send progress
+            let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
                     const statusResponse = await this.makeHttpRequest('/tests-status');
@@ -1078,6 +1174,22 @@ class MCPServer {
                     // Check for errors during test execution
                     if (statusResponse.hasError && statusResponse.errorMessage) {
                         throw new Error(`Test execution error: ${statusResponse.errorMessage}`);
+                    }
+
+                    // Send progress notification if progress changed
+                    if (statusResponse.isRunning && statusResponse.progress) {
+                        const currentProgress = statusResponse.progress.completedTests;
+                        if (currentProgress > lastProgress) {
+                            const currentTestName = statusResponse.progress.currentTest || '';
+                            const testShortName = currentTestName.split('.').pop();
+                            this.sendProgressNotification(
+                                progressToken || null,
+                                currentProgress,
+                                statusResponse.progress.totalTests,
+                                `Running ${testShortName} (${currentProgress}/${statusResponse.progress.totalTests})`
+                            );
+                            lastProgress = currentProgress;
+                        }
                     }
 
                     // Check if this is the same test run and it's completed
@@ -1098,8 +1210,8 @@ class MCPServer {
                         };
                     }
 
-                    // Wait 1 second before next poll
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Wait 500ms before next poll (faster than 1s for better progress updates)
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (pollError) {
                     // Continue polling despite individual request failures
                     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1271,22 +1383,78 @@ class MCPServer {
         }
     }
 
-    async callCompileAllShaders(id, timeoutSeconds) {
+    async callCompileAllShaders(id, timeoutSeconds, progressToken) {
+        // Always use async mode with progress notifications
+        // Use provided progressToken, or null if not provided (client may still display)
+        return await this.callCompileAllShadersWithProgress(
+            id,
+            timeoutSeconds,
+            progressToken || null
+        );
+    }
+
+    async callCompileAllShadersWithProgress(id, timeoutSeconds, progressToken) {
         try {
             await this.ensureResponseFormatter();
 
             const timeoutMs = timeoutSeconds * 1000;
-            const compileResponse = await this.makeHttpPostRequest('/compile-all-shaders', '{}', timeoutMs);
+            const startTime = Date.now();
 
-            const formattedText = this.formatCompileAllShadersResponse(compileResponse);
-            const finalText = this.responseFormatter.formatResponse(formattedText);
+            // 1. Start compilation asynchronously
+            const startBody = JSON.stringify({ async: true });
+            await this.makeHttpPostRequest('/compile-all-shaders', startBody);
 
-            return {
-                jsonrpc: '2.0', id,
-                result: { content: [{ type: 'text', text: finalText }] }
-            };
+            // 2. Poll for progress
+            let lastProgress = -1;
+            while (Date.now() - startTime < timeoutMs) {
+                try {
+                    const status = await this.makeHttpRequest('/shader-compilation-status');
+
+                    // Check if compilation complete
+                    if (!status.isCompiling && status.lastCompilationType === 'all' && status.allShadersResult) {
+                        // Return final result
+                        const formatted = this.formatCompileAllShadersResponse(status.allShadersResult);
+                        const finalText = this.responseFormatter.formatResponse(formatted);
+                        return {
+                            jsonrpc: '2.0',
+                            id,
+                            result: { content: [{ type: 'text', text: finalText }] }
+                        };
+                    }
+
+                    // Send progress notification if progress changed
+                    if (status.isCompiling && status.progress) {
+                        const currentProgress = status.progress.completedShaders;
+                        if (currentProgress > lastProgress) {
+                            const currentShaderName = status.progress.currentShader ?
+                                status.progress.currentShader.split('/').pop() : '';
+                            this.sendProgressNotification(
+                                progressToken,
+                                currentProgress,
+                                status.progress.totalShaders,
+                                `Compiling ${currentShaderName} (${currentProgress}/${status.progress.totalShaders})`
+                            );
+                            lastProgress = currentProgress;
+                        }
+                    }
+
+                    // Wait before next poll
+                    await new Promise(resolve => setTimeout(resolve, 500)); // 500ms polling interval
+
+                } catch (pollError) {
+                    // Handle Unity restart errors
+                    if (pollError instanceof UnityRestartingError) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        continue;
+                    }
+                    throw pollError;
+                }
+            }
+
+            // Timeout
+            throw new Error(`Shader compilation timed out after ${timeoutSeconds} seconds`);
         } catch (error) {
-            throw new Error(`Failed to compile all shaders: ${error.message}`);
+            throw new Error(`Failed to compile all shaders with progress: ${error.message}`);
         }
     }
 

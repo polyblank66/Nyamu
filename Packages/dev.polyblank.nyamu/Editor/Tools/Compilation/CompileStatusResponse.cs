@@ -10,5 +10,6 @@ namespace Nyamu.Tools.Compilation
         public string lastCompilationTime;
         public string lastCompilationRequestTime;
         public CompileError[] errors;
+        public CompilationProgressInfo progress;
     }
 }

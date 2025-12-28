@@ -491,15 +491,32 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunSingleRequest");
 
-            var query = request.Url.Query ?? "";
-            var testName = ExtractQueryParameter(query, "test_name");
-            var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
+            TestsRunSingleRequest toolRequest = null;
 
-            var toolRequest = new TestsRunSingleRequest
+            // Try to read request body first (for async/timeout params)
+            if (request.HttpMethod == "POST" && request.ContentLength64 > 0)
             {
-                testName = testName,
-                testMode = mode
-            };
+                try
+                {
+                    var bodyText = new StreamReader(request.InputStream).ReadToEnd();
+                    toolRequest = JsonUtility.FromJson<TestsRunSingleRequest>(bodyText);
+                }
+                catch { }
+            }
+
+            // Fallback to query parameters if body not available
+            if (toolRequest == null)
+            {
+                var query = request.Url.Query ?? "";
+                var testName = ExtractQueryParameter(query, "test_name");
+                var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
+
+                toolRequest = new TestsRunSingleRequest
+                {
+                    testName = testName,
+                    testMode = mode
+                };
+            }
 
             var response = _testsRunSingleTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
@@ -509,13 +526,30 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunAllRequest");
 
-            var query = request.Url.Query ?? "";
-            var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
+            TestsRunAllRequest toolRequest = null;
 
-            var toolRequest = new TestsRunAllRequest
+            // Try to read request body first (for async/timeout params)
+            if (request.HttpMethod == "POST" && request.ContentLength64 > 0)
             {
-                testMode = mode
-            };
+                try
+                {
+                    var bodyText = new StreamReader(request.InputStream).ReadToEnd();
+                    toolRequest = JsonUtility.FromJson<TestsRunAllRequest>(bodyText);
+                }
+                catch { }
+            }
+
+            // Fallback to query parameters if body not available
+            if (toolRequest == null)
+            {
+                var query = request.Url.Query ?? "";
+                var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
+
+                toolRequest = new TestsRunAllRequest
+                {
+                    testMode = mode
+                };
+            }
 
             var response = _testsRunAllTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
@@ -525,15 +559,32 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunRegexRequest");
 
-            var query = request.Url.Query ?? "";
-            var filterRegex = ExtractQueryParameter(query, "filter_regex");
-            var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
+            TestsRunRegexRequest toolRequest = null;
 
-            var toolRequest = new TestsRunRegexRequest
+            // Try to read request body first (for async/timeout params)
+            if (request.HttpMethod == "POST" && request.ContentLength64 > 0)
             {
-                testFilterRegex = filterRegex,
-                testMode = mode
-            };
+                try
+                {
+                    var bodyText = new StreamReader(request.InputStream).ReadToEnd();
+                    toolRequest = JsonUtility.FromJson<TestsRunRegexRequest>(bodyText);
+                }
+                catch { }
+            }
+
+            // Fallback to query parameters if body not available
+            if (toolRequest == null)
+            {
+                var query = request.Url.Query ?? "";
+                var filterRegex = ExtractQueryParameter(query, "filter_regex");
+                var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
+
+                toolRequest = new TestsRunRegexRequest
+                {
+                    testFilterRegex = filterRegex,
+                    testMode = mode
+                };
+            }
 
             var response = _testsRunRegexTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
@@ -577,6 +628,17 @@ namespace Nyamu
             }
         }
 
+        // Helper method for ShaderCompilationService to update all shaders progress tracking
+        public static void UpdateAllShadersProgress(int total, int completed, string currentShader)
+        {
+            lock (_shaderStateManager.Lock)
+            {
+                _shaderStateManager.AllShadersTotal = total;
+                _shaderStateManager.AllShadersCompleted = completed;
+                _shaderStateManager.AllShadersCurrentShader = currentShader;
+            }
+        }
+
 
         static string HandleCompileShaderRequest(HttpListenerRequest request)
         {
@@ -612,11 +674,26 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleCompileAllShadersRequest(HttpListenerRequest _)
+        static string HandleCompileAllShadersRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileAllShadersRequest");
+            if (request.HttpMethod != "POST")
+                return "{\"status\":\"error\",\"message\":\"Method not allowed. Use POST.\"}";
 
-            var toolRequest = new CompileAllShadersRequest { timeout = 120 };
+            CompileAllShadersRequest toolRequest = null;
+            try
+            {
+                var bodyText = new StreamReader(request.InputStream).ReadToEnd();
+                toolRequest = JsonUtility.FromJson<CompileAllShadersRequest>(bodyText);
+            }
+            catch
+            {
+                return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
+            }
+
+            if (toolRequest == null)
+                toolRequest = new CompileAllShadersRequest { timeout = 120 };
+
             var response = _compileAllShadersTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
         }

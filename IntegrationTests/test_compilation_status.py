@@ -63,16 +63,22 @@ def test_compile_status_response_structure():
 def test_compile_status_idle_state():
     """Test compile status when Unity is idle"""
     # First trigger compilation to ensure it completes
-    requests.get("http://localhost:17932/compilation-trigger")
+    requests.get("http://localhost:17932/compilation-trigger", timeout=60)
 
-    # Wait a moment and check status
+    # Poll status until idle (with timeout)
     import time
-    time.sleep(1)
-
-    response = requests.get("http://localhost:17932/compilation-status")
-    data = response.json()
+    max_wait = 10
+    start_time = time.time()
+    while time.time() - start_time < max_wait:
+        response = requests.get("http://localhost:17932/compilation-status")
+        data = response.json()
+        if data["status"] == "idle":
+            break
+        time.sleep(0.5)
 
     # Should be idle after compilation
+    response = requests.get("http://localhost:17932/compilation-status")
+    data = response.json()
     assert data["status"] == "idle"
     assert data["isCompiling"] is False
 

@@ -36,6 +36,16 @@ namespace Nyamu.TestExecution
             // Reset error state when new test run starts
             _state.TestExecutionError = null;
             _state.HasTestExecutionError = false;
+
+            // Initialize progress tracking
+            int total = CountTests(testsToRun);
+            NyamuLogger.LogInfo($"[Nyamu][TestCallbacks] RunStarted - Total tests: {total}");
+            lock (_state.Lock)
+            {
+                _state.TestsTotal = total;
+                _state.TestsCompleted = 0;
+                _state.CurrentTestName = "";
+            }
         }
 
         public void RunFinished(ITestResultAdaptor result)
@@ -75,10 +85,30 @@ namespace Nyamu.TestExecution
                 EditorSettings.enterPlayModeOptions = _originalEnterPlayModeOptions;
                 NyamuLogger.LogInfo("[Nyamu][Server] Restored original Enter Play Mode settings after PlayMode test completion");
             }
+
+            // Clear progress tracking
+            lock (_state.Lock)
+            {
+                _state.TestsTotal = 0;
+                _state.TestsCompleted = 0;
+                _state.CurrentTestName = "";
+            }
         }
 
         public void TestStarted(ITestAdaptor test)
         {
+            // Update progress tracking
+            lock (_state.Lock)
+            {
+                // Only count actual tests (leaf nodes without children), not test suites or assemblies
+                // This matches the logic in CountTests()
+                if (!test.HasChildren)
+                {
+                    _state.TestsCompleted++;
+                    _state.CurrentTestName = test.FullName;
+                    NyamuLogger.LogInfo($"[Nyamu][TestCallbacks] TestStarted - {_state.TestsCompleted}/{_state.TestsTotal}: {test.FullName}");
+                }
+            }
         }
 
         public void TestFinished(ITestResultAdaptor result)
@@ -129,6 +159,16 @@ namespace Nyamu.TestExecution
                     duration = result.Duration
                 });
             }
+        }
+
+        int CountTests(ITestAdaptor test)
+        {
+            if (!test.HasChildren) return test.IsSuite ? 0 : 1;
+
+            int count = 0;
+            foreach (var child in test.Children)
+                count += CountTests(child);
+            return count;
         }
     }
 }

@@ -15,6 +15,8 @@ namespace Nyamu.Tools.Shaders
             CompileAllShadersRequest request,
             IExecutionContext context)
         {
+            NyamuLogger.LogInfo($"[Nyamu][CompileAllShaders] async={request.async}, timeout={request.timeout}");
+
             var state = context.ShaderState;
 
             // Check if shader compilation is already in progress
@@ -41,9 +43,43 @@ namespace Nyamu.Tools.Shaders
                 state.LastRegexShadersResult = null;
             }
 
+            // Check if async mode is requested
+            if (request.async)
+            {
+                // Async mode: queue compilation and return immediately
+                context.UnityExecutor.Enqueue(() =>
+                {
+                    var result = ShaderCompilationService.CompileAllShaders();
+
+                    lock (state.ResultLock)
+                    {
+                        state.LastSingleShaderResult = null;
+                        state.LastAllShadersResult = result;
+                        state.LastRegexShadersResult = null;
+                        state.LastCompilationType = "all";
+                        state.LastCompilationTime = DateTime.Now;
+                    }
+
+                    lock (state.Lock)
+                    {
+                        state.IsCompiling = false;
+                    }
+                });
+
+                return Task.FromResult(new CompileAllShadersResponse
+                {
+                    status = "ok",
+                    totalShaders = 0,
+                    successfulCompilations = 0,
+                    failedCompilations = 0,
+                    totalCompilationTime = 0,
+                    results = new ShaderCompileResult[0]
+                });
+            }
+
+            // Blocking mode: wait for compilation to complete
             CompileAllShadersResponse response = null;
 
-            // Enqueue shader compilation on main thread
             context.UnityExecutor.Enqueue(() =>
             {
                 response = ShaderCompilationService.CompileAllShaders();

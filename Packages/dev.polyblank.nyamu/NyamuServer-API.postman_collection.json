@@ -114,6 +114,295 @@
       "description": "Endpoints for managing Unity script compilation."
     },
     {
+      "name": "Shader Compilation",
+      "item": [
+        {
+          "name": "Compile Single Shader",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"shaderName\": \"Standard\",\n    \"timeout\": 30\n}"
+            },
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/compile-shader",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "compile-shader"
+              ]
+            },
+            "description": "Compiles a single shader with fuzzy name matching.\n\n**Request Body:**\n- `shaderName` (required): Shader name to search for (fuzzy matching)\n- `timeout` (optional): Timeout in seconds (default: 30)\n\n**Response:**\n- Shows all matches but auto-compiles best match\n- Returns compilation errors/warnings and time"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"shaderName\": \"Standard\",\n    \"timeout\": 30\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/compile-shader",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "compile-shader"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ok\",\n    \"message\": \"Compiled shader: Standard\",\n    \"bestMatch\": {\n        \"name\": \"Standard\",\n        \"path\": \"Assets/Shaders/Standard.shader\",\n        \"score\": 1.0\n    },\n    \"result\": {\n        \"shaderName\": \"Standard\",\n        \"shaderPath\": \"Assets/Shaders/Standard.shader\",\n        \"compilationTime\": 0.234,\n        \"hasErrors\": false,\n        \"hasWarnings\": false,\n        \"errorCount\": 0,\n        \"warningCount\": 0,\n        \"errors\": [],\n        \"warnings\": []\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Compile All Shaders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"async\": true,\n    \"timeout\": 120\n}"
+            },
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/compile-all-shaders",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "compile-all-shaders"
+              ]
+            },
+            "description": "Compiles all shaders in the Unity project.\n\n**Request Body:**\n- `async` (optional): If true, return immediately after queuing compilation\n- `timeout` (optional): Timeout in seconds (default: 120)\n\n**WARNING:** Can take 15+ minutes for large projects. Use async mode and poll status.\n\n**Response:**\n- Per-shader results with errors/warnings\n- Total compilation statistics"
+          },
+          "response": [
+            {
+              "name": "Async Started",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"async\": true\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/compile-all-shaders",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "compile-all-shaders"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ok\",\n    \"totalShaders\": 0,\n    \"successfulCompilations\": 0,\n    \"failedCompilations\": 0,\n    \"totalCompilationTime\": 0,\n    \"results\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Compile Shaders by Regex",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"pattern\": \".*Standard.*\",\n    \"async\": true,\n    \"timeout\": 120\n}"
+            },
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/compile-shaders-regex",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "compile-shaders-regex"
+              ]
+            },
+            "description": "Compiles shaders matching a regex pattern applied to shader file paths.\n\n**Request Body:**\n- `pattern` (required): Regex pattern to match against shader file paths\n- `async` (optional): If true, return immediately after queuing compilation\n- `timeout` (optional): Timeout in seconds (default: 120)\n\n**Response:**\n- Per-shader results with errors/warnings\n- Supports MCP progress notifications"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"pattern\": \".*Standard.*\",\n    \"async\": false,\n    \"timeout\": 120\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/compile-shaders-regex",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "compile-shaders-regex"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ok\",\n    \"message\": \"Compiled 2 shaders matching pattern\",\n    \"pattern\": \".*Standard.*\",\n    \"totalShaders\": 2,\n    \"successfulCompilations\": 2,\n    \"failedCompilations\": 0,\n    \"totalCompilationTime\": 0.456,\n    \"results\": [\n        {\n            \"shaderName\": \"Standard\",\n            \"shaderPath\": \"Assets/Shaders/Standard.shader\",\n            \"compilationTime\": 0.234,\n            \"hasErrors\": false,\n            \"hasWarnings\": false,\n            \"errorCount\": 0,\n            \"warningCount\": 0,\n            \"errors\": [],\n            \"warnings\": []\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Shader Compilation Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/shader-compilation-status",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "shader-compilation-status"
+              ]
+            },
+            "description": "Gets current shader compilation status without triggering compilation.\n\n**Response Fields:**\n- `status`: \"compiling\" or \"idle\"\n- `isCompiling`: boolean - whether shaders are currently compiling\n- `lastCompilationType`: \"single\", \"all\", \"regex\", or \"none\"\n- `lastCompilationTime`: ISO timestamp\n- `singleShaderResult`: Result from last single shader compilation\n- `allShadersResult`: Result from last all shaders compilation\n- `regexShadersResult`: Result from last regex shaders compilation\n- `progress`: Current progress info (only when compiling)\n  - `pattern`: Regex pattern (for regex compilations)\n  - `totalShaders`: Total number of shaders\n  - `completedShaders`: Number completed so far\n  - `currentShader`: Currently compiling shader path"
+          },
+          "response": [
+            {
+              "name": "Idle",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/shader-compilation-status",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "shader-compilation-status"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"idle\",\n    \"isCompiling\": false,\n    \"lastCompilationType\": \"all\",\n    \"lastCompilationTime\": \"2025-12-28 15:30:45\",\n    \"singleShaderResult\": null,\n    \"allShadersResult\": {\n        \"status\": \"ok\",\n        \"totalShaders\": 150,\n        \"successfulCompilations\": 148,\n        \"failedCompilations\": 2,\n        \"totalCompilationTime\": 45.67,\n        \"results\": []\n    },\n    \"regexShadersResult\": null,\n    \"progress\": null\n}"
+            },
+            {
+              "name": "Compiling with Progress",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/shader-compilation-status",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "shader-compilation-status"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"compiling\",\n    \"isCompiling\": true,\n    \"lastCompilationType\": \"all\",\n    \"lastCompilationTime\": \"2025-12-28 15:30:45\",\n    \"singleShaderResult\": null,\n    \"allShadersResult\": null,\n    \"regexShadersResult\": null,\n    \"progress\": {\n        \"pattern\": \"\",\n        \"totalShaders\": 150,\n        \"completedShaders\": 45,\n        \"currentShader\": \"Assets/Shaders/Custom/MyShader.shader\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Endpoints for compiling Unity shaders and monitoring shader compilation."
+    },
+    {
       "name": "Testing",
       "item": [
         {

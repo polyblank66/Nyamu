@@ -81,19 +81,31 @@ class MCPClient:
         self.process.stdin.write(request_line.encode())
         await self.process.stdin.drain()
 
-        # Read response from stdout
-        response_line = await self.process.stdout.readline()
-        response_data = response_line.decode().strip()
+        # Read response from stdout, skipping progress notifications
+        # Progress notifications have 'method' field but no 'id'
+        # Actual responses have 'id' field matching our request
+        while True:
+            response_line = await self.process.stdout.readline()
+            response_data = response_line.decode().strip()
 
-        if not response_data:
-            raise RuntimeError("Empty response from MCP server")
+            if not response_data:
+                raise RuntimeError("Empty response from MCP server")
 
-        response = json.loads(response_data)
+            response = json.loads(response_data)
 
-        if "error" in response:
-            raise RuntimeError(f"MCP error: {response['error']}")
+            # Check if this is a progress notification (has 'method' but no 'id')
+            if "method" in response and "id" not in response:
+                # This is a notification, skip it and read next line
+                continue
 
-        return response
+            # Check if this is our response (has 'id' matching our request)
+            if "id" in response and response["id"] == self.request_id:
+                if "error" in response:
+                    raise RuntimeError(f"MCP error: {response['error']}")
+                return response
+
+            # Unexpected message format
+            raise RuntimeError(f"Unexpected message format: {response}")
 
     async def _send_unity_request_with_retry(self, method: str, params: Dict[str, Any] = None, max_retries: int = 5,
                                              retry_delay: float = 3.0) -> Dict[str, Any]:

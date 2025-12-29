@@ -152,7 +152,7 @@ namespace Nyamu.TestExecution
                 _testState.CurrentTestRunId = api.Execute(new ExecutionSettings(filterObj));
                 apiExecuteCalled = true; // If we reach here, api.Execute was called successfully
 
-                NyamuLogger.LogInfo($"[Nyamu][Server] Started test execution with ID: {_testState.CurrentTestRunId}");
+                NyamuLogger.LogDebug($"[Nyamu][Server] Started test execution with ID: {_testState.CurrentTestRunId}");
             }
             catch (Exception ex)
             {

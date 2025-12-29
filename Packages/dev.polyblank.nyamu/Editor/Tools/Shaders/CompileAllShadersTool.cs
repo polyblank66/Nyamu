@@ -15,7 +15,7 @@ namespace Nyamu.Tools.Shaders
             CompileAllShadersRequest request,
             IExecutionContext context)
         {
-            NyamuLogger.LogInfo($"[Nyamu][CompileAllShaders] async={request.async}, timeout={request.timeout}");
+            NyamuLogger.LogDebug($"[Nyamu][CompileAllShaders] async={request.async}, timeout={request.timeout}");
 
             var state = context.ShaderState;
 

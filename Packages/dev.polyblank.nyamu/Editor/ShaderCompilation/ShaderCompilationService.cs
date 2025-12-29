@@ -107,7 +107,7 @@ namespace Nyamu.ShaderCompilation
             try
             {
                 var shaderGuids = AssetDatabase.FindAssets("t:Shader");
-                NyamuLogger.LogInfo($"[Nyamu][ShaderCompilation] Compiling {shaderGuids.Length} shaders...");
+                NyamuLogger.LogDebug($"[Nyamu][ShaderCompilation] Compiling {shaderGuids.Length} shaders...");
 
                 // Initialize progress tracking
                 Server.UpdateAllShadersProgress(shaderGuids.Length, 0, "");
@@ -115,7 +115,7 @@ namespace Nyamu.ShaderCompilation
                 for (var i = 0; i < shaderGuids.Length; i++)
                 {
                     var path = AssetDatabase.GUIDToAssetPath(shaderGuids[i]);
-                    NyamuLogger.LogInfo($"[Nyamu][ShaderCompilation] Compiling shader {i + 1}/{shaderGuids.Length}: {path}");
+                    NyamuLogger.LogDebug($"[Nyamu][ShaderCompilation] Compiling shader {i + 1}/{shaderGuids.Length}: {path}");
 
                     // Update progress tracking
                     Server.UpdateAllShadersProgress(shaderGuids.Length, i, path);
@@ -206,7 +206,7 @@ namespace Nyamu.ShaderCompilation
                     };
                 }
 
-                NyamuLogger.LogInfo($"[Nyamu][ShaderCompilation] Compiling {matchingShaders.Count} shaders matching pattern: {pattern}");
+                NyamuLogger.LogDebug($"[Nyamu][ShaderCompilation] Compiling {matchingShaders.Count} shaders matching pattern: {pattern}");
 
                 var results = new List<ShaderCompileResult>();
                 var startTime = DateTime.Now;
@@ -219,7 +219,7 @@ namespace Nyamu.ShaderCompilation
                 for (var i = 0; i < matchingShaders.Count; i++)
                 {
                     var shaderPath = matchingShaders[i];
-                    NyamuLogger.LogInfo($"[Nyamu][ShaderCompilation] Compiling shader {i + 1}/{matchingShaders.Count}: {shaderPath}");
+                    NyamuLogger.LogDebug($"[Nyamu][ShaderCompilation] Compiling shader {i + 1}/{matchingShaders.Count}: {shaderPath}");
 
                     // Update progress tracking
                     Server.UpdateRegexShadersProgress(pattern, matchingShaders.Count, i, shaderPath);

@@ -46,7 +46,7 @@ namespace Nyamu.Core.Monitors
             _state.CompletedAssemblies = 0;
             _state.CurrentAssembly = "";
 
-            NyamuLogger.LogInfo($"[Nyamu][Compilation] Started - Total assemblies: {assemblies.Length}");
+            NyamuLogger.LogDebug($"[Nyamu][Compilation] Started - Total assemblies: {assemblies.Length}");
         }
 
         void OnCompilationFinished(object obj)
@@ -64,7 +64,7 @@ namespace Nyamu.Core.Monitors
             _state.CompletedAssemblies = 0;
             _state.CurrentAssembly = "";
 
-            NyamuLogger.LogInfo($"[Nyamu][Compilation] Finished");
+            NyamuLogger.LogDebug($"[Nyamu][Compilation] Finished");
         }
 
         void OnAssemblyCompilationFinished(string assemblyPath, CompilerMessage[] messages)
@@ -88,7 +88,7 @@ namespace Nyamu.Core.Monitors
             }
             _state.Errors = errors;
 
-            NyamuLogger.LogInfo($"[Nyamu][Compilation] Assembly finished: {assemblyName} ({_state.CompletedAssemblies}/{_state.TotalAssemblies})");
+            NyamuLogger.LogDebug($"[Nyamu][Compilation] Assembly finished: {assemblyName} ({_state.CompletedAssemblies}/{_state.TotalAssemblies})");
         }
     }
 }

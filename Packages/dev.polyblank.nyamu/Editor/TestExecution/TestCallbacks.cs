@@ -39,7 +39,7 @@ namespace Nyamu.TestExecution
 
             // Initialize progress tracking
             int total = CountTests(testsToRun);
-            NyamuLogger.LogInfo($"[Nyamu][TestCallbacks] RunStarted - Total tests: {total}");
+            NyamuLogger.LogDebug($"[Nyamu][TestCallbacks] RunStarted - Total tests: {total}");
             lock (_state.Lock)
             {
                 _state.TestsTotal = total;
@@ -50,7 +50,7 @@ namespace Nyamu.TestExecution
 
         public void RunFinished(ITestResultAdaptor result)
         {
-            NyamuLogger.LogInfo($"[Nyamu][Server] Test run finished with status: {result.TestStatus}, ID: {_state.CurrentTestRunId}");
+            NyamuLogger.LogDebug($"[Nyamu][Server] Test run finished with status: {result.TestStatus}, ID: {_state.CurrentTestRunId}");
 
             var results = new List<TestResult>();
             CollectTestResults(result, results);
@@ -83,7 +83,7 @@ namespace Nyamu.TestExecution
             {
                 EditorSettings.enterPlayModeOptionsEnabled = _originalEnterPlayModeOptionsEnabled;
                 EditorSettings.enterPlayModeOptions = _originalEnterPlayModeOptions;
-                NyamuLogger.LogInfo("[Nyamu][Server] Restored original Enter Play Mode settings after PlayMode test completion");
+                NyamuLogger.LogDebug("[Nyamu][Server] Restored original Enter Play Mode settings after PlayMode test completion");
             }
 
             // Clear progress tracking
@@ -106,7 +106,7 @@ namespace Nyamu.TestExecution
                 {
                     _state.TestsCompleted++;
                     _state.CurrentTestName = test.FullName;
-                    NyamuLogger.LogInfo($"[Nyamu][TestCallbacks] TestStarted - {_state.TestsCompleted}/{_state.TestsTotal}: {test.FullName}");
+                    NyamuLogger.LogDebug($"[Nyamu][TestCallbacks] TestStarted - {_state.TestsCompleted}/{_state.TestsTotal}: {test.FullName}");
                 }
             }
         }

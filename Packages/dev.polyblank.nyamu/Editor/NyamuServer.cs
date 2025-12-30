@@ -151,10 +151,64 @@ namespace Nyamu
 
             _shouldStop = false;
             _listenerReady = new ManualResetEvent(false);
-            _listener = new HttpListener();
-            int port = NyamuSettings.Instance.serverPort;
-            _listener.Prefixes.Add($"http://localhost:{port}/");
-            _listener.Start();
+
+            // Try to start HTTP listener with retry logic for port release delays
+            const int maxRetries = 3;
+            const int retryDelayMs = 300;
+            var port = NyamuSettings.Instance.serverPort;
+            var success = false;
+
+            for (var attempt = 0; attempt < maxRetries; attempt++)
+            {
+                try
+                {
+                    _listener = new HttpListener();
+                    _listener.Prefixes.Add($"http://localhost:{port}/");
+                    _listener.Start();
+                    success = true;
+                    if (attempt > 0)
+                        NyamuLogger.LogInfo($"[Nyamu][Server] Server started on port {port} after {attempt + 1} attempt(s)");
+                    break;
+                }
+                catch (HttpListenerException ex) when (ex.ErrorCode == 48 || ex.ErrorCode == 32 || ex.Message.Contains("already in use") || ex.Message.Contains("normally permitted"))
+                {
+                    // Port still in use (likely TIME_WAIT state after domain reload)
+                    try
+                    {
+                        _listener?.Close();
+                    }
+                    catch { }
+                    _listener = null;
+
+                    if (attempt < maxRetries - 1)
+                    {
+                        NyamuLogger.LogDebug($"[Nyamu][Server] Port {port} temporarily unavailable, retrying in {retryDelayMs}ms (attempt {attempt + 1}/{maxRetries})");
+                        System.Threading.Thread.Sleep(retryDelayMs);
+                    }
+                    else
+                    {
+                        NyamuLogger.LogError($"[Nyamu][Server] Port {port} remains in use after {maxRetries} attempts: {ex.Message}. " +
+                            "This may happen if another Unity Editor instance is using this port. Please check Project Settings > Nyamu to change the port.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    NyamuLogger.LogError($"[Nyamu][Server] Unexpected error starting HTTP listener: {ex.Message}");
+                    try
+                    {
+                        _listener?.Close();
+                    }
+                    catch { }
+                    _listener = null;
+                    break;
+                }
+            }
+
+            if (!success)
+            {
+                NyamuLogger.LogError("[Nyamu][Server] Failed to start Nyamu MCP server. MCP integration will not be available.");
+                return;
+            }
 
             _thread = new(HttpRequestProcessor);
             _thread.IsBackground = true;
@@ -244,13 +298,20 @@ namespace Nyamu
             // Save timestamps before shutdown/domain reload
             SaveTimestampsCache();
 
-            if (_listener?.IsListening == true)
+            // Properly close HttpListener to release port
+            if (_listener != null)
             {
                 try
                 {
-                    _listener.Stop();
+                    if (_listener.IsListening)
+                        _listener.Stop();
+                    _listener.Close();
                 }
                 catch { }
+                finally
+                {
+                    _listener = null;
+                }
             }
 
             // Dispose ManualResetEvent
@@ -258,6 +319,7 @@ namespace Nyamu
             {
                 _listenerReady?.Set(); // Unblock any waiting threads
                 _listenerReady?.Dispose();
+                _listenerReady = null;
             }
             catch { }
 
@@ -265,11 +327,7 @@ namespace Nyamu
             {
                 if (!_thread.Join(Constants.ThreadJoinTimeoutMilliseconds))
                 {
-                    try
-                    {
-                        _thread.Abort();
-                    }
-                    catch { }
+                    NyamuLogger.LogWarning("[Nyamu][Server] HTTP thread did not stop gracefully");
                 }
             }
         }

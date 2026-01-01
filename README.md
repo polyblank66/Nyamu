@@ -70,7 +70,7 @@ Prompt: Check script compilation with Nyamu MCP tool
 5. Enter the following URL:
 
    ```
-   https://github.com/polyblank66/Nyamu.git?path=/Packages/dev.polyblank.nyamu
+   https://github.com/polyblank66/Nyamu.git?path=/Nyamu.UnityPackage
    ```
 6. Click **Add**
 

@@ -20,6 +20,9 @@ Prompt: Check script compilation with Nyamu MCP tool
 
 ## Features
 
+### Asset Management
+* `assets_refresh` – Forces Unity to refresh the asset database and returns compilation error information. Shows the last compilation status even if no new compilation occurred during the refresh. This is critical after file operations to ensure Unity detects file system changes (new, deleted, or moved files). Use this single command to both refresh assets and check compilation status.
+
 ### Script Compilation
 * `compilation_trigger` – Triggers Unity Editor compilation, waits for completion, and returns compilation results, including any errors.
 * `compilation_status` – Returns the current compilation status without triggering a compilation. Includes compilation state, last compile time, and any errors.
@@ -36,9 +39,6 @@ Prompt: Check script compilation with Nyamu MCP tool
 * `tests_run_single` – Runs a single specific Unity test by its full name.
 * `tests_status` – Returns the current test execution status without running tests. Includes execution state, last test time, test results, and test run ID.
 * `tests_cancel` – Cancels running Unity test execution. Supports cancellation of EditMode tests by GUID or current test run.
-
-### Asset Management
-* `assets_refresh` – Forces Unity to refresh the asset database and returns compilation error information. Shows the last compilation status even if no new compilation occurred during the refresh. This is critical after file operations to ensure Unity detects file system changes (new, deleted, or moved files). Use this single command to both refresh assets and check compilation status.
 
 ### Editor Status
 * `editor_status` – Returns the current Unity Editor status, including compilation state, test execution state, and play mode state, for real-time monitoring.

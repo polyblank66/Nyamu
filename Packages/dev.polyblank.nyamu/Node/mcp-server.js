@@ -312,90 +312,6 @@ class MCPServer {
         this.activeProtocol = null; // 'content-length' | 'newline'
         this.capabilities = {
             tools: {
-                scripts_compile: {
-                    description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. WHEN EDITING EXISTING FILES: Call scripts_compile directly without refresh. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with NYAMU project open.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            timeout: {
-                                type: "number",
-                                description: "Timeout in seconds (default: 30). LLM HINT: Use longer timeouts (45-60s) for large projects or complex compilation tasks.",
-                                default: 30
-                            }
-                        },
-                        required: []
-                    }
-                },
-                tests_run_single: {
-                    description: "Execute a single specific Unity test by its full name. Returns test results including pass/fail status and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for running individual tests, ideal for focused testing of specific functionality.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            test_name: {
-                                type: "string",
-                                description: "Full name of the test to run (required). The full name of the test including namespace and fixture. Format: Namespace.FixtureName.TestName. Example: MyProject.Tests.PlayerControllerTests.TestJump",
-                                default: ""
-                            },
-                            test_mode: {
-                                type: "string",
-                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
-                                enum: ["EditMode", "PlayMode"],
-                                default: "EditMode"
-                            },
-                            timeout: {
-                                type: "number",
-                                description: "Timeout in seconds (default: 60). LLM HINT: PlayMode tests typically need 60-120s, EditMode tests usually complete within 30s.",
-                                default: 60
-                            }
-                        },
-                        required: ["test_name"]
-                    }
-                },
-                tests_run_all: {
-                    description: "Execute all Unity tests in the specified mode. Returns comprehensive test results including pass/fail counts and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for complete test suite execution, ideal for CI/CD pipelines and comprehensive verification.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            test_mode: {
-                                type: "string",
-                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
-                                enum: ["EditMode", "PlayMode"],
-                                default: "EditMode"
-                            },
-                            timeout: {
-                                type: "number",
-                                description: "Timeout in seconds (default: 60). LLM HINT: PlayMode tests typically need 60-120s, EditMode tests usually complete within 30s.",
-                                default: 60
-                            }
-                        },
-                        required: []
-                    }
-                },
-                tests_run_regex: {
-                    description: "Execute Unity tests matching a regex pattern. Returns test results including pass/fail counts and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for flexible test selection by patterns, ideal for running test suites by namespace, category, or naming conventions.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            test_filter_regex: {
-                                type: "string",
-                                description: "Regex pattern for filtering tests (required). Use .NET Regex syntax to match test names by pattern. Example patterns: '.*PlayerController.*' for all PlayerController tests, 'Tests\\\\.Movement\\\\..*' for all tests in Movement namespace, '.*(Jump|Run).*' for tests containing Jump or Run.",
-                                default: ""
-                            },
-                            test_mode: {
-                                type: "string",
-                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
-                                enum: ["EditMode", "PlayMode"],
-                                default: "EditMode"
-                            },
-                            timeout: {
-                                type: "number",
-                                description: "Timeout in seconds (default: 60). LLM HINT: PlayMode tests typically need 60-120s, EditMode tests usually complete within 30s.",
-                                default: 60
-                            }
-                        },
-                        required: ["test_filter_regex"]
-                    }
-                },
                 assets_refresh: {
                     description: "Force Unity to refresh the asset database and wait for completion (including compilation and domain reload if triggered). Returns compilation error information, showing the last compilation status even if no new compilation occurred during this refresh. CRITICAL for file operations - Unity may not detect file system changes without this. Regular refresh works for new files, but force=true is required for deletions to prevent CS2001 errors. This tool waits for the complete refresh chain: asset refresh → compilation (if C# files changed) → domain reload (if compilation occurred). Response includes: compilation errors (if any), error count, and last compilation timestamp. LLM HINTS: Always call this after creating/deleting/moving files. Use this single command to both refresh assets AND check compilation status - no need to call compilation_status separately.",
                     inputSchema: {
@@ -410,150 +326,6 @@ class MCPServer {
                                 type: "number",
                                 description: "Timeout in seconds (default: 60). Maximum time to wait for refresh completion including compilation and domain reload. LLM HINT: Use longer timeouts (90-120s) for large projects with many files.",
                                 default: 60
-                            }
-                        },
-                        required: []
-                    }
-                },
-                editor_status: {
-                    description: "Get current Unity Editor status including compilation state, test execution state, and play mode state. Returns real-time information about what the editor is currently doing.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {},
-                        required: []
-                    }
-                },
-                scripts_compile_status: {
-                    description: "Get current compilation status without triggering compilation. Returns compilation state, last compile time, and any compilation errors.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {},
-                        required: []
-                    }
-                },
-                tests_run_status: {
-                    description: "Get current test execution status without running tests. Returns test execution state, last test time, test results, and test run ID.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {},
-                        required: []
-                    }
-                },
-                tests_run_cancel: {
-                    description: "Cancel running Unity test execution. Uses Unity's TestRunnerApi.CancelTestRun(guid). Currently only supports EditMode tests. If no guid is provided, cancels the current test run. LLM HINTS: Only EditMode tests can be cancelled. PlayMode test cancellation is not supported by Unity's API.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            test_run_guid: {
-                                type: "string",
-                                description: "GUID of the test run to cancel (optional). If not provided, cancels the current running test. The GUID is typically returned when starting a test run.",
-                                default: ""
-                            }
-                        },
-                        required: []
-                    }
-                },
-                shaders_compile_single: {
-                    description: "Compile a single shader with fuzzy name matching. Shows all matches but auto-compiles best match. Returns compilation errors/warnings and time. LLM HINTS: Fuzzy search supported - exact names not required.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            shader_name: {
-                                type: "string",
-                                description: "Shader name to search for (fuzzy matching). Example: 'Standard', 'unlit', 'custom/myshader'"
-                            },
-                            timeout: {
-                                type: "number",
-                                description: "Timeout in seconds (default: 30)",
-                                default: 30
-                            }
-                        },
-                        required: ["shader_name"]
-                    }
-                },
-                shaders_compile_all: {
-                    description: "Compile all shaders in Unity project. Returns per-shader results with errors/warnings. WARNING: Can take 15+ minutes or much longer, especially for URP projects. Strongly consider using shaders_compile_regex instead. LLM HINTS: Avoid this tool unless absolutely necessary. Use shaders_compile_single or shaders_compile_regex for targeted compilation.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            timeout: {
-                                type: "number",
-                                description: "Timeout in seconds (default: 120)",
-                                default: 120
-                            }
-                        },
-                        required: []
-                    }
-                },
-                shaders_compile_regex: {
-                    description: "Compile shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. Supports MCP progress notifications when progressToken is provided in request _meta. LLM HINTS: Use this to compile a subset of shaders based on path patterns. Progress notifications sent roughly every 500ms during compilation.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            pattern: {
-                                type: "string",
-                                description: "Regex pattern to match against shader file paths. Example: '.*Standard.*', 'Assets/Shaders/Custom/.*'"
-                            },
-                            timeout: {
-                                type: "number",
-                                description: "Timeout in seconds (default: 120)",
-                                default: 120
-                            }
-                        },
-                        required: ["pattern"]
-                    }
-                },
-                shaders_compile_status: {
-                    description: "Get current shader compilation status without triggering compilation. Returns whether shaders are compiling, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command. LLM HINTS: Always check this before calling shaders_compile_single/shaders_compile_all/shaders_compile_regex to avoid redundant compilations.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {},
-                        required: []
-                    }
-                },
-                editor_log_path: {
-                    description: "Get Unity Editor log file path. Returns the platform-specific path to the Unity Editor log file along with existence status. LLM HINTS: Use this to verify log file location before reading. Log path is platform-dependent (Windows: %LOCALAPPDATA%/Unity/Editor/Editor.log, Mac: ~/Library/Logs/Unity/Editor.log, Linux: ~/.config/unity3d/Editor.log). The log file contains all Unity Editor output including compilation errors, warnings, and debug messages.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {},
-                        required: []
-                    }
-                },
-                editor_log_head: {
-                    description: "Read first N lines from Unity Editor log file. Returns the beginning of the log file, useful for session startup information and initialization logs. LLM HINTS: Use this to see Unity startup sequence, package loading, and early initialization messages. Default line count is 100. Supports filtering by log type (error, warning, info) to quickly find specific issues during startup.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            line_count: {
-                                type: "number",
-                                description: "Number of lines to read from the beginning (default: 100, max: 10000). LLM HINT: Use 100-500 for quick checks, 1000+ for detailed startup analysis.",
-                                default: 100
-                            },
-                            log_type: {
-                                type: "string",
-                                description: "Filter by log type: 'all', 'error', 'warning', 'info' (default: 'all'). LLM HINT: Use 'error' to quickly identify startup errors, 'warning' for potential issues.",
-                                enum: ["all", "error", "warning", "info"],
-                                default: "all"
-                            }
-                        },
-                        required: []
-                    }
-                },
-                editor_log_tail: {
-                    description: "Read last N lines from Unity Editor log file. Returns the most recent log entries, useful for debugging current Unity Editor state and recent operations. LLM HINTS: Use this to see latest compilation errors, recent warnings, or current Unity state. Default line count is 100. Supports filtering by log type to quickly isolate errors or warnings from recent activity.",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            line_count: {
-                                type: "number",
-                                description: "Number of lines to read from the end (default: 100, max: 10000). LLM HINT: Use 100-200 for recent activity, 500+ for broader context.",
-                                default: 100
-                            },
-                            log_type: {
-                                type: "string",
-                                description: "Filter by log type: 'all', 'error', 'warning', 'info' (default: 'all'). LLM HINT: Use 'error' for recent errors, 'warning' for recent issues.",
-                                enum: ["all", "error", "warning", "info"],
-                                default: "all"
                             }
                         },
                         required: []
@@ -593,6 +365,62 @@ class MCPServer {
                         required: ["pattern"]
                     }
                 },
+                editor_log_head: {
+                    description: "Read first N lines from Unity Editor log file. Returns the beginning of the log file, useful for session startup information and initialization logs. LLM HINTS: Use this to see Unity startup sequence, package loading, and early initialization messages. Default line count is 100. Supports filtering by log type (error, warning, info) to quickly find specific issues during startup.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            line_count: {
+                                type: "number",
+                                description: "Number of lines to read from the beginning (default: 100, max: 10000). LLM HINT: Use 100-500 for quick checks, 1000+ for detailed startup analysis.",
+                                default: 100
+                            },
+                            log_type: {
+                                type: "string",
+                                description: "Filter by log type: 'all', 'error', 'warning', 'info' (default: 'all'). LLM HINT: Use 'error' to quickly identify startup errors, 'warning' for potential issues.",
+                                enum: ["all", "error", "warning", "info"],
+                                default: "all"
+                            }
+                        },
+                        required: []
+                    }
+                },
+                editor_log_path: {
+                    description: "Get Unity Editor log file path. Returns the platform-specific path to the Unity Editor log file along with existence status. LLM HINTS: Use this to verify log file location before reading. Log path is platform-dependent (Windows: %LOCALAPPDATA%/Unity/Editor/Editor.log, Mac: ~/Library/Logs/Unity/Editor.log, Linux: ~/.config/unity3d/Editor.log). The log file contains all Unity Editor output including compilation errors, warnings, and debug messages.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
+                        required: []
+                    }
+                },
+                editor_log_tail: {
+                    description: "Read last N lines from Unity Editor log file. Returns the most recent log entries, useful for debugging current Unity Editor state and recent operations. LLM HINTS: Use this to see latest compilation errors, recent warnings, or current Unity state. Default line count is 100. Supports filtering by log type to quickly isolate errors or warnings from recent activity.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            line_count: {
+                                type: "number",
+                                description: "Number of lines to read from the end (default: 100, max: 10000). LLM HINT: Use 100-200 for recent activity, 500+ for broader context.",
+                                default: 100
+                            },
+                            log_type: {
+                                type: "string",
+                                description: "Filter by log type: 'all', 'error', 'warning', 'info' (default: 'all'). LLM HINT: Use 'error' for recent errors, 'warning' for recent issues.",
+                                enum: ["all", "error", "warning", "info"],
+                                default: "all"
+                            }
+                        },
+                        required: []
+                    }
+                },
+                editor_status: {
+                    description: "Get current Unity Editor status including compilation state, test execution state, and play mode state. Returns real-time information about what the editor is currently doing.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
+                        required: []
+                    }
+                },
                 menu_items_execute: {
                     description: "Execute Unity Editor menu item by path. Triggers any Unity menu command programmatically. LLM HINTS: Use full menu path like 'Assets/Create/C# Script' or 'GameObject/Create Empty'. Returns success/failure status. Useful for automating Unity Editor operations.",
                     inputSchema: {
@@ -604,6 +432,178 @@ class MCPServer {
                             }
                         },
                         required: ["menu_item_path"]
+                    }
+                },
+                scripts_compile: {
+                    description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. WHEN EDITING EXISTING FILES: Call scripts_compile directly without refresh. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with NYAMU project open.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 30). LLM HINT: Use longer timeouts (45-60s) for large projects or complex compilation tasks.",
+                                default: 30
+                            }
+                        },
+                        required: []
+                    }
+                },
+                scripts_compile_status: {
+                    description: "Get current compilation status without triggering compilation. Returns compilation state, last compile time, and any compilation errors.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
+                        required: []
+                    }
+                },
+                shaders_compile_all: {
+                    description: "Compile all shaders in Unity project. Returns per-shader results with errors/warnings. WARNING: Can take 15+ minutes or much longer, especially for URP projects. Strongly consider using shaders_compile_regex instead. LLM HINTS: Avoid this tool unless absolutely necessary. Use shaders_compile_single or shaders_compile_regex for targeted compilation.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 120)",
+                                default: 120
+                            }
+                        },
+                        required: []
+                    }
+                },
+                shaders_compile_regex: {
+                    description: "Compile shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. Supports MCP progress notifications when progressToken is provided in request _meta. LLM HINTS: Use this to compile a subset of shaders based on path patterns. Progress notifications sent roughly every 500ms during compilation.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            pattern: {
+                                type: "string",
+                                description: "Regex pattern to match against shader file paths. Example: '.*Standard.*', 'Assets/Shaders/Custom/.*'"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 120)",
+                                default: 120
+                            }
+                        },
+                        required: ["pattern"]
+                    }
+                },
+                shaders_compile_single: {
+                    description: "Compile a single shader with fuzzy name matching. Shows all matches but auto-compiles best match. Returns compilation errors/warnings and time. LLM HINTS: Fuzzy search supported - exact names not required.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            shader_name: {
+                                type: "string",
+                                description: "Shader name to search for (fuzzy matching). Example: 'Standard', 'unlit', 'custom/myshader'"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 30)",
+                                default: 30
+                            }
+                        },
+                        required: ["shader_name"]
+                    }
+                },
+                shaders_compile_status: {
+                    description: "Get current shader compilation status without triggering compilation. Returns whether shaders are compiling, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command. LLM HINTS: Always check this before calling shaders_compile_single/shaders_compile_all/shaders_compile_regex to avoid redundant compilations.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
+                        required: []
+                    }
+                },
+                tests_run_all: {
+                    description: "Execute all Unity tests in the specified mode. Returns comprehensive test results including pass/fail counts and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for complete test suite execution, ideal for CI/CD pipelines and comprehensive verification.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            test_mode: {
+                                type: "string",
+                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
+                                enum: ["EditMode", "PlayMode"],
+                                default: "EditMode"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 60). LLM HINT: PlayMode tests typically need 60-120s, EditMode tests usually complete within 30s.",
+                                default: 60
+                            }
+                        },
+                        required: []
+                    }
+                },
+                tests_run_cancel: {
+                    description: "Cancel running Unity test execution. Uses Unity's TestRunnerApi.CancelTestRun(guid). Currently only supports EditMode tests. If no guid is provided, cancels the current test run. LLM HINTS: Only EditMode tests can be cancelled. PlayMode test cancellation is not supported by Unity's API.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            test_run_guid: {
+                                type: "string",
+                                description: "GUID of the test run to cancel (optional). If not provided, cancels the current running test. The GUID is typically returned when starting a test run.",
+                                default: ""
+                            }
+                        },
+                        required: []
+                    }
+                },
+                tests_run_regex: {
+                    description: "Execute Unity tests matching a regex pattern. Returns test results including pass/fail counts and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for flexible test selection by patterns, ideal for running test suites by namespace, category, or naming conventions.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            test_filter_regex: {
+                                type: "string",
+                                description: "Regex pattern for filtering tests (required). Use .NET Regex syntax to match test names by pattern. Example patterns: '.*PlayerController.*' for all PlayerController tests, 'Tests\\\\.Movement\\\\..*' for all tests in Movement namespace, '.*(Jump|Run).*' for tests containing Jump or Run.",
+                                default: ""
+                            },
+                            test_mode: {
+                                type: "string",
+                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
+                                enum: ["EditMode", "PlayMode"],
+                                default: "EditMode"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 60). LLM HINT: PlayMode tests typically need 60-120s, EditMode tests usually complete within 30s.",
+                                default: 60
+                            }
+                        },
+                        required: ["test_filter_regex"]
+                    }
+                },
+                tests_run_single: {
+                    description: "Execute a single specific Unity test by its full name. Returns test results including pass/fail status and detailed failure information. Supports both EditMode and PlayMode execution. LLM HINTS: Use for running individual tests, ideal for focused testing of specific functionality.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            test_name: {
+                                type: "string",
+                                description: "Full name of the test to run (required). The full name of the test including namespace and fixture. Format: Namespace.FixtureName.TestName. Example: MyProject.Tests.PlayerControllerTests.TestJump",
+                                default: ""
+                            },
+                            test_mode: {
+                                type: "string",
+                                description: "Test mode: EditMode or PlayMode (default: EditMode). LLM HINT: Use EditMode for quick verification, PlayMode for comprehensive runtime testing.",
+                                enum: ["EditMode", "PlayMode"],
+                                default: "EditMode"
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 60). LLM HINT: PlayMode tests typically need 60-120s, EditMode tests usually complete within 30s.",
+                                default: 60
+                            }
+                        },
+                        required: ["test_name"]
+                    }
+                },
+                tests_run_status: {
+                    description: "Get current test execution status without running tests. Returns test execution state, last test time, test results, and test run ID.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
+                        required: []
                     }
                 }
             }

@@ -5,22 +5,23 @@ using UnityEditor;
 namespace Nyamu.Tools.Assets
 {
     // Tool for refreshing Unity asset database
-    public class RefreshAssetsTool : INyamuTool<RefreshAssetsRequest, RefreshAssetsResponse>
+    public class AssetsRefreshTool : INyamuTool<AssetsRefreshRequest, AssetsRefreshResponse>
     {
-        public string Name => "refresh_assets";
+        public string Name => "assets_refresh";
 
-        public Task<RefreshAssetsResponse> ExecuteAsync(
-            RefreshAssetsRequest request,
+        public Task<AssetsRefreshResponse> ExecuteAsync(
+            AssetsRefreshRequest request,
             IExecutionContext context)
         {
             var state = context.AssetState;
 
             // Check if refresh is already in progress
+            System.DateTime refreshRequestTime = System.DateTime.MinValue;
             lock (state.Lock)
             {
                 if (state.IsRefreshing)
                 {
-                    return Task.FromResult(new RefreshAssetsResponse
+                    return Task.FromResult(new AssetsRefreshResponse
                     {
                         status = "warning",
                         message = "Asset refresh already in progress. Please wait for current refresh to complete."
@@ -29,6 +30,10 @@ namespace Nyamu.Tools.Assets
 
                 // Mark refresh as starting
                 state.IsRefreshing = true;
+                refreshRequestTime = System.DateTime.Now;
+                state.RefreshRequestTime = refreshRequestTime;
+                state.RefreshCompletedTime = System.DateTime.MinValue;
+                state.IsWaitingForCompilation = false;
             }
 
             // Queue the refresh operation on main thread
@@ -36,6 +41,10 @@ namespace Nyamu.Tools.Assets
             {
                 try
                 {
+                    // Store in SessionState (must be on main thread!)
+                    SessionState.SetString(Server.SESSION_KEY_REFRESH_REQUEST_TIME, refreshRequestTime.ToString("o"));
+                    SessionState.EraseString(Server.SESSION_KEY_REFRESH_COMPLETED_TIME);
+
                     if (request.force)
                     {
                         AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
@@ -62,7 +71,7 @@ namespace Nyamu.Tools.Assets
             });
 
             // Return success response immediately (operation queued)
-            return Task.FromResult(new RefreshAssetsResponse
+            return Task.FromResult(new AssetsRefreshResponse
             {
                 status = "ok",
                 message = "Asset database refreshed."

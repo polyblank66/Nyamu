@@ -6,12 +6,12 @@ This document provides practical examples of using the YAMU MCP server tools for
 
 ### File Operations Workflow
 ```
-File Changes → refresh_assets (force=true for deletions) → Wait for MCP → compile_and_wait
+File Changes → assets_refresh (force=true for deletions) → Response includes compilation errors
 ```
 
 ### Tool Overview
-- `refresh_assets`: Updates Unity's file tracking (CRITICAL for file operations)
-- `compile_and_wait`: Triggers Unity compilation and reports errors
+- `assets_refresh`: Updates Unity's file tracking and returns compilation error information (CRITICAL for file operations)
+- `compile_and_wait`: Triggers Unity compilation and reports errors (for editing existing files only)
 - `run_tests`: Executes Unity Test Runner tests
 
 ## Common Usage Patterns
@@ -31,12 +31,10 @@ public class MyScript : MonoBehaviour
     void Start() { Debug.Log("Hello World"); }
 }''')
 
-        # 2. Refresh assets (regular refresh for new files)
-        await client.refresh_assets(force=False)
-
-        # 3. Compile
-        result = await client.compile_and_wait(timeout=30)
+        # 2. Refresh assets (includes compilation error information)
+        result = await client.assets_refresh(force=False)
         print(result["result"]["content"][0]["text"])
+        # Response shows compilation status and any errors
 ```
 
 ### 2. Delete File and Compile
@@ -50,12 +48,10 @@ async def delete_and_compile():
             # Also remove Unity meta file
             os.remove("Assets/MyScript.cs.meta")
 
-        # 2. Force refresh (CRITICAL for deletions to prevent CS2001 errors)
-        await client.refresh_assets(force=True)
-
-        # 3. Compile
-        result = await client.compile_and_wait(timeout=30)
+        # 2. Force refresh (CRITICAL for deletions, includes compilation status)
+        result = await client.assets_refresh(force=True)
         print(result["result"]["content"][0]["text"])
+        # Response shows compilation status (should be clean if deletion was successful)
 ```
 
 ### 3. Modify Existing File and Compile
@@ -114,7 +110,7 @@ public class {filename[:-3]} : MonoBehaviour
 }}''')
 
         # 2. Single refresh for all new files
-        await client.refresh_assets(force=False)
+        await client.assets_refresh(force=False)
 
         # 3. Compile all at once
         result = await client.compile_and_wait(timeout=45)
@@ -160,7 +156,7 @@ async def robust_compilation():
         except Exception as e:
             print(f"💥 MCP Error: {e}")
             # Try force refresh and retry
-            await client.refresh_assets(force=True)
+            await client.assets_refresh(force=True)
             result = await client.compile_and_wait(timeout=30)
             print("Retry result:", result["result"]["content"][0]["text"])
 ```
@@ -182,7 +178,7 @@ public class ModuleScript
 }''')
 
         # 2. Refresh for new directory and file
-        await client.refresh_assets(force=False)
+        await client.assets_refresh(force=False)
 
         # 3. Compile
         result = await client.compile_and_wait()
@@ -195,7 +191,7 @@ public class ModuleScript
             os.remove("Assets/MyModule.meta")
 
         # 5. Force refresh for directory deletion
-        await client.refresh_assets(force=True)
+        await client.assets_refresh(force=True)
 
         # 6. Compile again
         result = await client.compile_and_wait()
@@ -205,8 +201,8 @@ public class ModuleScript
 ## Best Practices
 
 ### ✅ DO
-- Always call `refresh_assets(force=True)` after deleting files/directories
-- Use `refresh_assets(force=False)` after creating new files
+- Always call `assets_refresh(force=True)` after deleting files/directories
+- Use `assets_refresh(force=False)` after creating new files
 - Wait for MCP responsiveness after refresh before compiling
 - Handle compilation errors gracefully
 - Use appropriate timeouts for large projects
@@ -224,7 +220,7 @@ public class ModuleScript
 ### CS2001 "Source file could not be found"
 ```python
 # Fix with force refresh
-await client.refresh_assets(force=True)
+await client.assets_refresh(force=True)
 await client.compile_and_wait()
 ```
 
@@ -241,7 +237,7 @@ except Exception as e:
 ### Compilation Hanging
 ```python
 # Use shorter timeout and force refresh
-await client.refresh_assets(force=True)
+await client.assets_refresh(force=True)
 result = await client.compile_and_wait(timeout=15)
 ```
 
@@ -258,7 +254,7 @@ async def test_scenario():
     test_file = unity_helper.create_temp_script_in_assets("TestScript", "syntax")
 
     # Refresh and compile
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
     result = await client.compile_and_wait()
 
     # Cleanup with force refresh

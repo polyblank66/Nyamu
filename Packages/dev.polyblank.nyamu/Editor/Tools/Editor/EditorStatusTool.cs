@@ -15,10 +15,13 @@ namespace Nyamu.Tools.Editor
             var compilationState = context.CompilationState;
             var testState = context.TestState;
             var editorState = context.EditorState;
+            var assetState = context.AssetState;
 
             bool isCompiling;
             bool isRunningTests;
             bool isPlaying;
+            bool isRefreshing;
+            bool isWaitingForCompilation;
 
             lock (compilationState.Lock)
             {
@@ -35,11 +38,19 @@ namespace Nyamu.Tools.Editor
                 isPlaying = editorState.IsPlaying;
             }
 
+            lock (assetState.Lock)
+            {
+                isRefreshing = assetState.IsRefreshing;
+                isWaitingForCompilation = assetState.IsWaitingForCompilation;
+            }
+
             var response = new EditorStatusResponse
             {
                 isCompiling = isCompiling,
                 isRunningTests = isRunningTests,
-                isPlaying = isPlaying
+                isPlaying = isPlaying,
+                isRefreshing = isRefreshing,
+                isWaitingForCompilation = isWaitingForCompilation
             };
 
             return Task.FromResult(response);

@@ -8,12 +8,12 @@ This guide provides best practices and workflows for AI coding agents working wi
 
 **Creating files:**
 ```
-Write file → refresh_assets(force=false) → Wait for MCP → compilation_trigger
+Write file → assets_refresh(force=false) → Check compilation errors in response
 ```
 
 **Deleting files:**
 ```
-Delete file → refresh_assets(force=true) → Wait for MCP → compilation_trigger
+Delete file → assets_refresh(force=true) → Check compilation errors in response
 ```
 
 **Editing existing files:**
@@ -22,8 +22,8 @@ Edit file → compilation_trigger (no refresh needed)
 ```
 
 ### Key Points
-- **Always** use `refresh_assets` for structural changes (new/deleted/moved files)
-- **Never** use `refresh_assets` when only editing existing file contents
+- **Always** use `assets_refresh` for structural changes (new/deleted/moved files)
+- **Never** use `assets_refresh` when only editing existing file contents
 - **Error -32603** is expected during compilation/refresh - wait 3-5s and retry
 - **Use** `tests_run_regex` for flexible pattern-based test filtering
 - **Check status** before long operations to avoid redundant work
@@ -35,47 +35,57 @@ Edit file → compilation_trigger (no refresh needed)
 
 ```
 1. Write the new .cs file to Assets/ directory
-2. Call: refresh_assets(force=false)
-3. Wait for MCP to become responsive again
-4. Call: compilation_trigger(timeout=30)
-5. Handle compilation results
+2. Call: assets_refresh(force=false)
+3. Wait for response (includes compilation error information)
 ```
 
 **Why this works:**
 - Unity needs to be notified about new files in the asset database
 - Regular refresh (force=false) is sufficient for new file creation
 - Without refresh, Unity won't detect the new file and compilation will fail
+- **Response includes compilation errors** - no need to call compilation_trigger separately
 
 **Example scenario:**
 ```
 Creating Assets/Scripts/PlayerController.cs
-→ refresh_assets(force=false)
-→ [Wait ~2-3 seconds for Unity to process]
-→ compilation_trigger(timeout=30)
-→ Check for compilation errors
+→ assets_refresh(force=false)
+→ [Response includes compilation status and errors if any]
+```
+
+**Example response:**
+```
+Asset database refresh completed (including compilation and domain reload).
+Compilation FAILED with 1 error:
+Assets/Scripts/PlayerController.cs:15 - The name 'undefinedVar' does not exist
+Last compilation: 2024-01-15T10:30:45.123Z
 ```
 
 ### Workflow 2: Deleting C# Scripts
 
 ```
 1. Delete the .cs file and its .meta file
-2. Call: refresh_assets(force=true)  ← Note: force=true is critical
-3. Wait for MCP to become responsive
-4. Call: compilation_trigger(timeout=30)
+2. Call: assets_refresh(force=true)  ← Note: force=true is critical
+3. Wait for response (includes compilation status)
 ```
 
 **Why force=true is required:**
 - Unity may still reference deleted files without force refresh
 - Without force=true, you'll get CS2001 "Source file could not be found" errors
 - Force refresh uses ImportAssetOptions.ForceUpdate to clear all references
+- **Response shows compilation status** - should compile successfully if done correctly
 
 **Example scenario:**
 ```
 Deleting Assets/Scripts/OldController.cs
-→ refresh_assets(force=true)  ← Critical: force=true
-→ [Wait ~2-3 seconds]
-→ compilation_trigger(timeout=30)
-→ Should compile successfully (no CS2001 errors)
+→ assets_refresh(force=true)  ← Critical: force=true
+→ [Response shows compilation completed successfully]
+```
+
+**Example response:**
+```
+Asset database refresh completed (including compilation and domain reload).
+Compilation completed successfully with no errors.
+Last compilation: 2024-01-15T10:35:00.000Z
 ```
 
 ### Workflow 3: Editing Existing Files
@@ -101,15 +111,15 @@ Modifying Assets/Scripts/PlayerController.cs (fixing a bug)
 
 ```
 1. Move or rename the file
-2. Call: refresh_assets(force=true)  ← Treat like deletion
-3. Wait for MCP responsiveness
-4. Call: compilation_trigger(timeout=30)
+2. Call: assets_refresh(force=true)  ← Treat like deletion
+3. Wait for response (includes compilation status)
 ```
 
 **Why force=true:**
 - File moves are treated as delete+create operations
 - Unity needs to update all internal references
 - Force refresh ensures clean state
+- **Response includes compilation errors** to verify the move was successful
 
 ## Error Handling
 
@@ -130,7 +140,7 @@ Modifying Assets/Scripts/PlayerController.cs (fixing a bug)
 
 **When it happens:**
 - During `compilation_trigger` - Unity is compiling
-- During `refresh_assets` - Unity is refreshing asset database
+- During `assets_refresh` - Unity is refreshing asset database
 - During `tests_run_*` - Unity Test Runner is initializing
 
 **Example retry pattern:**
@@ -148,8 +158,8 @@ Attempt 2: compilation_trigger → Success
 - HTTP server failed to start (check Unity console)
 
 **CS2001: Source file could not be found**
-- You deleted a file but didn't use force=true in refresh_assets
-- Solution: Call refresh_assets(force=true) and recompile
+- You deleted a file but didn't use force=true in assets_refresh
+- Solution: Call assets_refresh(force=true) and recompile
 
 **Compilation timeout**
 - Project is large or has many files
@@ -230,16 +240,15 @@ Before running tests:
 
 ```
 1. Write new .cs files in Assets/
-2. refresh_assets(force=false)
-3. Wait for MCP
-4. compilation_trigger(timeout=30)
-5. Fix any compilation errors (edit + compile)
-6. Write test files in Assets/Tests/
-7. refresh_assets(force=false)
-8. compilation_trigger(timeout=30)
-9. tests_run_regex(test_filter_regex=".*NewFeature.*", test_mode="EditMode")
-10. Fix issues and iterate
+2. assets_refresh(force=false) - response shows compilation errors
+3. Fix any compilation errors (edit + compilation_trigger)
+4. Write test files in Assets/Tests/
+5. assets_refresh(force=false) - response shows compilation errors
+6. tests_run_regex(test_filter_regex=".*NewFeature.*", test_mode="EditMode")
+7. Fix issues and iterate
 ```
+
+**Note:** `assets_refresh` returns compilation information, so steps 2 and 5 provide compilation status without needing separate `compilation_trigger` calls.
 
 ### Pattern 3: Refactor with Safety
 
@@ -257,11 +266,11 @@ Before running tests:
 ```
 1. Identify files to delete
 2. Delete files and .meta files
-3. refresh_assets(force=true) ← Critical
-4. Wait for MCP
-5. compilation_trigger()
-6. Verify no CS2001 errors
+3. assets_refresh(force=true) ← Critical: returns compilation status
+4. Verify no CS2001 errors in response
 ```
+
+**Note:** `assets_refresh(force=true)` returns compilation information showing whether deletion was successful (no CS2001 errors).
 
 ## Shader Compilation
 
@@ -356,10 +365,10 @@ Progress: "Compiling StandardSpecular.shader (11/50)"
 ## Troubleshooting
 
 ### Issue: "File changes not detected"
-**Solution:** Did you call refresh_assets? Required for new/deleted/moved files.
+**Solution:** Did you call assets_refresh? Required for new/deleted/moved files.
 
 ### Issue: "CS2001 errors after deleting file"
-**Solution:** Use `refresh_assets(force=true)` when deleting files.
+**Solution:** Use `assets_refresh(force=true)` when deleting files.
 
 ### Issue: "Constant -32603 errors"
 **Solution:**
@@ -387,7 +396,7 @@ Progress: "Compiling StandardSpecular.shader (11/50)"
 
 ## Best Practices Summary
 
-1. **Always refresh for structural changes** - new/deleted/moved files require refresh_assets
+1. **Always refresh for structural changes** - new/deleted/moved files require assets_refresh
 2. **Never refresh for edits** - Editing existing files doesn't need refresh
 3. **Use force=true for deletions** - Prevents CS2001 errors
 4. **Expect -32603 errors** - Normal during compilation, wait and retry
@@ -396,7 +405,7 @@ Progress: "Compiling StandardSpecular.shader (11/50)"
 7. **Use appropriate timeouts** - EditMode: 30s, PlayMode: 60-120s, Large projects: 45-60s
 8. **Iterate on compilation errors** - Edit and compile until clean
 9. **Test after refactoring** - Ensure changes don't break functionality
-10. **Wait for MCP responsiveness** - After refresh_assets, wait before next operation
+10. **Wait for MCP responsiveness** - After assets_refresh, wait before next operation
 
 ## Additional Resources
 

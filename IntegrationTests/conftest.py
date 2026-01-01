@@ -55,7 +55,7 @@ async def unity_state_manager(mcp_client, request):
     # Light pre-test check - skip for protocol tests that don't need Unity state
     if cleanup_level != "noop":
         try:
-            await manager.refresh_assets(force=False)
+            await manager.assets_refresh(force=False)
         except:
             pass  # Non-critical if this fails
 

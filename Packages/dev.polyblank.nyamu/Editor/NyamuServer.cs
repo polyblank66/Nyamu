@@ -62,7 +62,8 @@ namespace Nyamu
             public const string TestsRunAll = "/tests-run-all";
             public const string TestsRunRegex = "/tests-run-regex";
             public const string TestsStatus = "/tests-status";
-            public const string RefreshAssets = "/refresh-assets";
+            public const string AssetsRefresh = "/assets-refresh";
+            public const string AssetsRefreshStatus = "/assets-refresh-status";
             public const string EditorStatus = "/editor-status";
             public const string McpSettings = "/mcp-settings";
             public const string TestsCancel = "/tests-cancel";
@@ -85,6 +86,11 @@ namespace Nyamu
         // ========================================================================
         // STATE VARIABLES
         // ========================================================================
+
+        // SessionState keys for detecting fresh editor start vs domain reload
+        internal const string SESSION_KEY_EDITOR_RUNNING = "Nyamu_EditorRunning";
+        internal const string SESSION_KEY_REFRESH_REQUEST_TIME = "Nyamu_RefreshRequestTime";
+        internal const string SESSION_KEY_REFRESH_COMPLETED_TIME = "Nyamu_RefreshCompletedTime";
 
         // HTTP server components
         static HttpListener _listener;
@@ -120,7 +126,7 @@ namespace Nyamu
 
         // Tools (Step 4 Group A: simple write tools)
         static CompilationTriggerTool _compilationTriggerTool;
-        static RefreshAssetsTool _refreshAssetsTool;
+        static AssetsRefreshTool _assetsRefreshTool;
         static ExecuteMenuItemTool _executeMenuItemTool;
 
         // Step 4 Group B: test tools
@@ -148,6 +154,9 @@ namespace Nyamu
 
             // Load cached timestamps after infrastructure is ready
             LoadTimestampsCache();
+
+            // Detect if domain reload occurred after a pending refresh
+            DetectRefreshCompletion();
 
             _shouldStop = false;
             _listenerReady = new ManualResetEvent(false);
@@ -272,7 +281,7 @@ namespace Nyamu
 
             // Create tools (Step 4 Group A: simple write tools)
             _compilationTriggerTool = new CompilationTriggerTool();
-            _refreshAssetsTool = new RefreshAssetsTool();
+            _assetsRefreshTool = new AssetsRefreshTool();
             _executeMenuItemTool = new ExecuteMenuItemTool();
 
             // Create tools (Step 4 Group B: test tools)
@@ -427,7 +436,8 @@ namespace Nyamu
                 Constants.Endpoints.TestsRunAll => HandleTestsRunAllRequest(request),
                 Constants.Endpoints.TestsRunRegex => HandleTestsRunRegexRequest(request),
                 Constants.Endpoints.TestsStatus => HandleTestsStatusRequest(),
-                Constants.Endpoints.RefreshAssets => HandleRefreshAssetsRequest(request),
+                Constants.Endpoints.AssetsRefresh => HandleAssetsRefreshRequest(request),
+                Constants.Endpoints.AssetsRefreshStatus => HandleAssetsRefreshStatusRequest(request),
                 Constants.Endpoints.EditorStatus => HandleEditorStatusRequest(),
                 Constants.Endpoints.McpSettings => HandleMcpSettingsRequest(),
                 Constants.Endpoints.TestsCancel => HandleTestsCancelRequest(request),
@@ -837,6 +847,39 @@ namespace Nyamu
                     _testStateManager.LastTestTime = ParseDateTime(cache.lastTestRunTime);
                 }
 
+                // Detect if this is a fresh editor start or domain reload
+                bool isEditorRunning = SessionState.GetBool(SESSION_KEY_EDITOR_RUNNING, false);
+
+                if (!isEditorRunning)
+                {
+                    // Fresh editor start - set the flag for subsequent domain reloads
+                    SessionState.SetBool(SESSION_KEY_EDITOR_RUNNING, true);
+                    NyamuLogger.LogDebug("[Nyamu][Server] Fresh Unity Editor start detected. Clearing any stale refresh state.");
+
+                    // Clear refresh state in AssetStateManager
+                    _assetStateManager.RefreshRequestTime = DateTime.MinValue;
+                    _assetStateManager.RefreshCompletedTime = DateTime.MinValue;
+                    _assetStateManager.IsRefreshing = false;
+                    _assetStateManager.IsWaitingForCompilation = false;
+
+                    // Clear SessionState refresh timestamps
+                    SessionState.EraseString(SESSION_KEY_REFRESH_REQUEST_TIME);
+                    SessionState.EraseString(SESSION_KEY_REFRESH_COMPLETED_TIME);
+                }
+                else
+                {
+                    // Domain reload within same editor session - restore refresh state from SessionState
+                    NyamuLogger.LogDebug("[Nyamu][Server] Domain reload detected. Restoring refresh state from SessionState.");
+
+                    var refreshRequestStr = SessionState.GetString(SESSION_KEY_REFRESH_REQUEST_TIME, "");
+                    var refreshCompletedStr = SessionState.GetString(SESSION_KEY_REFRESH_COMPLETED_TIME, "");
+
+                    _assetStateManager.RefreshRequestTime = ParseDateTime(refreshRequestStr);
+                    _assetStateManager.RefreshCompletedTime = ParseDateTime(refreshCompletedStr);
+
+                    // Don't restore IsRefreshing/IsWaitingForCompilation flags - they'll be detected in DetectRefreshCompletion()
+                }
+
                 NyamuLogger.LogDebug($"[Nyamu][Server] Restored timestamps from cache - " +
                          $"LastCompile: {_compilationStateManager.LastCompileTime:yyyy-MM-dd HH:mm:ss}, " +
                          $"CompileRequest: {_compilationStateManager.CompileRequestTime:yyyy-MM-dd HH:mm:ss}, " +
@@ -845,6 +888,46 @@ namespace Nyamu
             catch (Exception ex)
             {
                 NyamuLogger.LogError($"[Nyamu][Server] Failed to load timestamp cache: {ex.Message}");
+            }
+        }
+
+        static void DetectRefreshCompletion()
+        {
+            if (_assetStateManager == null) return;
+
+            var refreshRequest = _assetStateManager.RefreshRequestTime;
+            var refreshCompleted = _assetStateManager.RefreshCompletedTime;
+
+            // Check if there's a pending refresh (requested but not yet marked complete)
+            if (refreshRequest > refreshCompleted && refreshRequest > DateTime.MinValue)
+            {
+                // Check if request is recent (within 60 seconds) - protects against clock issues
+                var age = DateTime.Now - refreshRequest;
+                if (age.TotalSeconds < 60)
+                {
+                    // Domain reload occurred within current session, mark refresh as completed
+                    _assetStateManager.RefreshCompletedTime = DateTime.Now;
+                    _assetStateManager.IsRefreshing = false;
+                    _assetStateManager.IsWaitingForCompilation = false;
+
+                    // Update SessionState
+                    SessionState.SetString(SESSION_KEY_REFRESH_COMPLETED_TIME, DateTime.Now.ToString("o"));
+
+                    NyamuLogger.LogDebug($"[Nyamu][Server] Detected domain reload after refresh. Age: {age.TotalSeconds:F1}s");
+                }
+                else
+                {
+                    // Too old, even within session - clear it
+                    NyamuLogger.LogDebug($"[Nyamu][Server] Refresh request too old ({age.TotalSeconds:F1}s), clearing");
+                    _assetStateManager.RefreshRequestTime = DateTime.MinValue;
+                    _assetStateManager.RefreshCompletedTime = DateTime.MinValue;
+                    _assetStateManager.IsRefreshing = false;
+                    _assetStateManager.IsWaitingForCompilation = false;
+
+                    // Clear SessionState
+                    SessionState.EraseString(SESSION_KEY_REFRESH_REQUEST_TIME);
+                    SessionState.EraseString(SESSION_KEY_REFRESH_COMPLETED_TIME);
+                }
             }
         }
 
@@ -906,6 +989,7 @@ namespace Nyamu
         {
             // Update cached state (this runs on main thread)
             bool unityIsUpdating = EditorApplication.isUpdating;
+            bool isCompiling = EditorApplication.isCompiling;
 
             // Update state manager
             lock (_assetStateManager.Lock)
@@ -913,30 +997,157 @@ namespace Nyamu
                 _assetStateManager.UnityIsUpdating = unityIsUpdating;
             }
 
-            // Check if AssetDatabase refresh is complete
-            if (!unityIsUpdating)
+            // Phase 1: Wait for asset refresh to complete
+            if (unityIsUpdating)
+                return;  // Still refreshing assets
+
+            // Phase 2: After refresh completes, check if compilation started
+            bool waitingForCompilation;
+            lock (_assetStateManager.Lock)
             {
-                // Refresh is complete, reset the flags and unsubscribe
-                lock (_assetStateManager.Lock)
+                waitingForCompilation = _assetStateManager.IsWaitingForCompilation;
+            }
+
+            if (!waitingForCompilation)
+            {
+                // First time asset refresh completed - check if compilation is starting
+                if (isCompiling || _compilationStateManager.IsCompiling)
                 {
-                    _assetStateManager.IsRefreshing = false;
-                    _assetStateManager.IsMonitoringRefresh = false;
-                    _assetStateManager.UnityIsUpdating = false;
+                    // Compilation triggered by refresh
+                    lock (_assetStateManager.Lock)
+                    {
+                        _assetStateManager.IsWaitingForCompilation = true;
+                    }
+                    NyamuLogger.LogDebug("[Nyamu][Server] Asset refresh completed, compilation detected");
+                    return;  // Keep monitoring for compilation completion
                 }
-                EditorApplication.update -= MonitorRefreshCompletion;
+            }
+
+            // Phase 3: If waiting for compilation, check if it completed
+            if (waitingForCompilation)
+            {
+                if (!isCompiling && !_compilationStateManager.IsCompiling)
+                {
+                    // Compilation finished, domain reload will occur soon
+                    // Mark as completed - domain reload detection will happen on next Initialize()
+                    lock (_assetStateManager.Lock)
+                    {
+                        _assetStateManager.RefreshCompletedTime = DateTime.Now;
+                        _assetStateManager.IsRefreshing = false;
+                        _assetStateManager.IsWaitingForCompilation = false;
+                        _assetStateManager.IsMonitoringRefresh = false;
+                    }
+
+                    // Update SessionState
+                    SessionState.SetString(SESSION_KEY_REFRESH_COMPLETED_TIME, DateTime.Now.ToString("o"));
+
+                    EditorApplication.update -= MonitorRefreshCompletion;
+                    NyamuLogger.LogDebug("[Nyamu][Server] Refresh chain completed (with compilation)");
+                    return;
+                }
+            }
+            else
+            {
+                // No compilation after reasonable wait, mark as completed
+                var timeSinceNotUpdating = DateTime.Now - _assetStateManager.RefreshRequestTime;
+                if (timeSinceNotUpdating.TotalSeconds > 1.0)  // Wait 1 second
+                {
+                    lock (_assetStateManager.Lock)
+                    {
+                        _assetStateManager.RefreshCompletedTime = DateTime.Now;
+                        _assetStateManager.IsRefreshing = false;
+                        _assetStateManager.IsMonitoringRefresh = false;
+                    }
+
+                    // Update SessionState
+                    SessionState.SetString(SESSION_KEY_REFRESH_COMPLETED_TIME, DateTime.Now.ToString("o"));
+
+                    EditorApplication.update -= MonitorRefreshCompletion;
+                    NyamuLogger.LogDebug("[Nyamu][Server] Refresh completed (no compilation)");
+                }
             }
         }
 
-        static string HandleRefreshAssetsRequest(HttpListenerRequest request)
+        static string HandleAssetsRefreshRequest(HttpListenerRequest request)
         {
-            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleRefreshAssetsRequest");
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleAssetsRefreshRequest");
 
             // Parse force parameter from query string
             bool force = request.Url.Query.Contains("force=true");
 
             // Use new tool architecture
-            var toolRequest = new RefreshAssetsRequest { force = force };
-            var response = _refreshAssetsTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            var toolRequest = new AssetsRefreshRequest { force = force };
+            var response = _assetsRefreshTool.ExecuteAsync(toolRequest, _executionContext).Result;
+
+            return JsonUtility.ToJson(response);
+        }
+
+        static string HandleAssetsRefreshStatusRequest(HttpListenerRequest request)
+        {
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleAssetsRefreshStatusRequest");
+
+            bool isRefreshing, isWaitingForCompilation, unityIsUpdating;
+            DateTime refreshRequest, refreshCompleted;
+
+            lock (_assetStateManager.Lock)
+            {
+                isRefreshing = _assetStateManager.IsRefreshing;
+                isWaitingForCompilation = _assetStateManager.IsWaitingForCompilation;
+                unityIsUpdating = _assetStateManager.UnityIsUpdating;
+                refreshRequest = _assetStateManager.RefreshRequestTime;
+                refreshCompleted = _assetStateManager.RefreshCompletedTime;
+            }
+
+            bool isCompiling = _compilationStateManager.IsCompiling;
+
+            // Determine status
+            string status;
+            if (!isRefreshing && refreshCompleted > refreshRequest)
+                status = "completed";
+            else if (unityIsUpdating)
+                status = "refreshing";
+            else if (isCompiling || isWaitingForCompilation)
+                status = "compiling";
+            else if (isRefreshing)
+                status = "waiting";  // Between refresh and compilation detection
+            else
+                status = "idle";
+
+            // Always get last compilation status (regardless of when it occurred)
+            bool hadCompilation = false;
+            CompileError[] compilationErrors;
+            DateTime lastCompileTime;
+
+            lock (_compilationStateManager.Lock)
+            {
+                // Always get current compilation errors and time
+                compilationErrors = _compilationStateManager.GetErrorsSnapshot();
+                lastCompileTime = _compilationStateManager.LastCompileTime;
+            }
+
+            // Determine if compilation occurred during THIS refresh
+            if (refreshRequest > DateTime.MinValue &&
+                refreshCompleted > refreshRequest &&
+                lastCompileTime > refreshRequest)
+            {
+                hadCompilation = true;
+            }
+
+            var response = new AssetsRefreshStatusResponse
+            {
+                isRefreshing = isRefreshing,
+                isCompiling = isCompiling,
+                isWaitingForCompilation = isWaitingForCompilation,
+                unityIsUpdating = unityIsUpdating,
+                status = status,
+                refreshRequestTime = refreshRequest.ToString("o"),
+                refreshCompletedTime = refreshCompleted > DateTime.MinValue ? refreshCompleted.ToString("o") : null,
+
+                // Add compilation report (always includes last compilation state)
+                hadCompilation = hadCompilation,
+                compilationErrors = compilationErrors,
+                lastCompilationTime = lastCompileTime > DateTime.MinValue ? lastCompileTime.ToString("o") : null
+            };
 
             return JsonUtility.ToJson(response);
         }

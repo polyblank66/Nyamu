@@ -38,7 +38,7 @@ Prompt: Check script compilation with Nyamu MCP tool
 * `tests_cancel` – Cancels running Unity test execution. Supports cancellation of EditMode tests by GUID or current test run.
 
 ### Asset Management
-* `refresh_assets` – Forces Unity to refresh the asset database. This is critical after file operations to ensure Unity detects file system changes (new, deleted, or moved files).
+* `assets_refresh` – Forces Unity to refresh the asset database and returns compilation error information. Shows the last compilation status even if no new compilation occurred during the refresh. This is critical after file operations to ensure Unity detects file system changes (new, deleted, or moved files). Use this single command to both refresh assets and check compilation status.
 
 ### Editor Status
 * `editor_status` – Returns the current Unity Editor status, including compilation state, test execution state, and play mode state, for real-time monitoring.

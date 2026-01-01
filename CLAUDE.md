@@ -9,24 +9,26 @@ Check out Design.md for the project design and goal definitions.
 ## Nyamu MCP Workflow Guidelines
 
 ### File Operation Workflows
-**CRITICAL**: Always call `refresh_assets` before `compilation_trigger` for structural changes:
+**CRITICAL**: Always call `assets_refresh` after file operations - it returns compilation error information:
 
-- **Creating files**: Write → `refresh_assets(force=false)` → Wait for MCP → `compilation_trigger`
-- **Deleting files**: Delete → `refresh_assets(force=true)` → Wait for MCP → `compilation_trigger`
+- **Creating files**: Write → `assets_refresh(force=false)` → Wait for MCP (response includes compilation errors)
+- **Deleting files**: Delete → `assets_refresh(force=true)` → Wait for MCP (response includes compilation errors)
 - **Editing existing files**: Edit → `compilation_trigger` (no refresh needed)
 
 ### Compilation Tools
 - `compilation_trigger` - Trigger C# script compilation (params: timeout, default 30s)
 - `compilation_status` - Check compilation status without triggering (no params)
-- `refresh_assets` - Force Unity asset database refresh (params: force, default false)
+- `assets_refresh` - Force Unity asset database refresh (params: force, default false)
+  - Returns compilation error information, showing last compilation status even if no new compilation occurred
   - Use force=true when deleting files to prevent CS2001 errors
   - Use force=false when creating new files
+  - **Single command** to refresh assets AND check compilation - no need to call compilation_status separately
 
 ### Error Handling
 - **Error -32603 "HTTP request failed"**: Expected during Unity recompilation/refresh
   - Wait 3-5 seconds and retry
   - This is normal behavior - Unity HTTP server is restarting
-- Always wait for MCP responsiveness after `refresh_assets` before calling other tools
+- Always wait for MCP responsiveness after `assets_refresh` before calling other tools
 
 ### Testing Tools
 Available test execution tools:

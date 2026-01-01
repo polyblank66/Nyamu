@@ -396,8 +396,8 @@ class MCPServer {
                         required: ["test_filter_regex"]
                     }
                 },
-                refresh_assets: {
-                    description: "Force Unity to refresh the asset database. CRITICAL for file operations - Unity may not detect file system changes without this. Regular refresh works for new files, but force=true is required for deletions to prevent CS2001 'Source file could not be found' errors. Workflow: 1) Make file changes, 2) Call refresh_assets (force=true for deletions), 3) Wait for MCP responsiveness, 4) Call compile_and_wait. LLM HINTS: Always call this after creating/deleting/moving files in Unity project. Unity HTTP server will restart during refresh - expect temporary -32603 errors that resolve automatically.",
+                assets_refresh: {
+                    description: "Force Unity to refresh the asset database and wait for completion (including compilation and domain reload if triggered). Returns compilation error information, showing the last compilation status even if no new compilation occurred during this refresh. CRITICAL for file operations - Unity may not detect file system changes without this. Regular refresh works for new files, but force=true is required for deletions to prevent CS2001 errors. This tool waits for the complete refresh chain: asset refresh → compilation (if C# files changed) → domain reload (if compilation occurred). Response includes: compilation errors (if any), error count, and last compilation timestamp. LLM HINTS: Always call this after creating/deleting/moving files. Use this single command to both refresh assets AND check compilation status - no need to call compilation_status separately.",
                     inputSchema: {
                         type: "object",
                         properties: {
@@ -405,6 +405,11 @@ class MCPServer {
                                 type: "boolean",
                                 description: "Use ImportAssetOptions.ForceUpdate for stronger refresh. Set to true when deleting files to prevent Unity CS2001 errors. False is sufficient for new file creation. LLM HINT: Use force=true when deleting files, force=false when creating new files.",
                                 default: false
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "Timeout in seconds (default: 60). Maximum time to wait for refresh completion including compilation and domain reload. LLM HINT: Use longer timeouts (90-120s) for large projects with many files.",
+                                default: 60
                             }
                         },
                         required: []
@@ -713,8 +718,8 @@ class MCPServer {
                     return await this.callTestsRunAll(id, args.test_mode || 'EditMode', args.timeout || 60, progressToken);
                 case 'tests_run_regex':
                     return await this.callTestsRunRegex(id, args.test_filter_regex, args.test_mode || 'EditMode', args.timeout || 60, progressToken);
-                case 'refresh_assets':
-                    return await this.callRefreshAssets(id, args.force || false);
+                case 'assets_refresh':
+                    return await this.callAssetsRefresh(id, args);
                 case 'editor_status':
                     return await this.callEditorStatus(id);
                 case 'compilation_status':
@@ -1226,31 +1231,133 @@ class MCPServer {
         }
     }
 
-    async callRefreshAssets(id, force = false) {
+    async callAssetsRefresh(id, args) {
         try {
-            // Ensure response formatter is ready
+            const force = args.force || false;
+            const timeout = args.timeout || 60; // Default 60 seconds
+
             await this.ensureResponseFormatter();
 
-            // Call Unity refresh endpoint with force parameter
-            const refreshResponse = await this.makeHttpRequest(`/refresh-assets?force=${force}`);
+            // 1. Trigger refresh
+            await this.makeHttpRequest(`/assets-refresh?force=${force}`);
 
-            const responseText = refreshResponse.message || 'Asset database refresh completed.';
-            const formattedText = this.responseFormatter.formatResponse(responseText);
+            const startTime = Date.now();
+            const timeoutMs = timeout * 1000;
 
-            return {
-                jsonrpc: '2.0',
-                id,
-                result: {
-                    content: [{
-                        type: 'text',
-                        text: formattedText
-                    }]
+            // 2. Wait for refresh to start (quick check)
+            const startTimeout = 5000;
+            while (Date.now() - startTime < startTimeout) {
+                try {
+                    const status = await this.makeHttpRequest('/assets-refresh-status');
+                    if (status.isRefreshing || status.unityIsUpdating) {
+                        break; // Started
+                    }
+                    // Check if already completed (fast refresh)
+                    if (status.status === 'completed') {
+                        const hadCompilation = status.hadCompilation || false;
+                        const compilationErrors = status.compilationErrors || [];
+                        return this.formatAssetsRefreshResponse(id, hadCompilation, compilationErrors, status.lastCompilationTime);
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (err) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
                 }
-            };
+            }
+
+            // 3. Poll for completion
+            let lastStatus = '';
+            while (Date.now() - startTime < timeoutMs) {
+                try {
+                    const status = await this.makeHttpRequest('/assets-refresh-status');
+
+                    // Check for completion
+                    if (status.status === 'completed') {
+                        // Determine if compilation occurred
+                        const hadCompilation = status.hadCompilation || false;
+                        const compilationErrors = status.compilationErrors || [];
+                        return this.formatAssetsRefreshResponse(
+                            id,
+                            hadCompilation,
+                            compilationErrors,
+                            status.lastCompilationTime
+                        );
+                    }
+
+                    if (status.status === 'idle' && !status.isRefreshing) {
+                        // Refresh not active and not marked completed - assume done
+                        return this.formatAssetsRefreshResponse(id, false, [], null);
+                    }
+
+                    // Log status changes
+                    if (status.status !== lastStatus) {
+                        lastStatus = status.status;
+                        if (logger) {
+                            logger.logInfo(`Refresh status: ${status.status}`);
+                        }
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                } catch (pollError) {
+                    // Handle server restart during domain reload
+                    if (logger) {
+                        logger.logInfo(`Poll error (expected during domain reload): ${pollError.message}`);
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+
+            throw new Error(`Asset refresh timeout after ${timeout} seconds`);
 
         } catch (error) {
             throw new Error(`Failed to refresh assets: ${error.message}`);
         }
+    }
+
+    formatAssetsRefreshResponse(id, hadCompilation, compilationErrors = [], lastCompilationTime = null) {
+        let message = '';
+
+        // Main refresh status message
+        if (hadCompilation) {
+            message = 'Asset database refresh completed (including compilation and domain reload).\n';
+        } else {
+            message = 'Asset database refresh completed (no compilation triggered).\n';
+        }
+
+        // ALWAYS add compilation status section (if we have compilation info)
+        const errorCount = compilationErrors.length;
+
+        if (lastCompilationTime) {
+            if (!hadCompilation) {
+                message += 'Last compilation status: ';
+            }
+
+            if (errorCount > 0) {
+                // Show compilation errors
+                message += `Compilation FAILED with ${errorCount} error${errorCount > 1 ? 's' : ''}:\n`;
+                compilationErrors.forEach(err => {
+                    message += `${err.file}:${err.line} - ${err.message}\n`;
+                });
+            } else {
+                // No errors
+                message += 'Compilation completed successfully with no errors.\n';
+            }
+
+            message += `Last compilation: ${lastCompilationTime}`;
+        }
+
+        const formattedText = this.responseFormatter.formatResponse(message);
+
+        return {
+            jsonrpc: '2.0',
+            id,
+            result: {
+                content: [{
+                    type: 'text',
+                    text: formattedText
+                }]
+            }
+        };
     }
 
     async callEditorStatus(id) {

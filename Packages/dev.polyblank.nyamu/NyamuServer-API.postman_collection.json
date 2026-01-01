@@ -746,14 +746,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/refresh-assets?force=false",
+              "raw": "http://localhost:{{nyamu-port}}/assets-refresh?force=false",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "refresh-assets"
+                "assets-refresh"
               ],
               "query": [
                 {
@@ -772,14 +772,14 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/refresh-assets?force=false",
+                  "raw": "http://localhost:{{nyamu-port}}/assets-refresh?force=false",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "refresh-assets"
+                    "assets-refresh"
                   ],
                   "query": [
                     {

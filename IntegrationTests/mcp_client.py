@@ -237,14 +237,14 @@ class MCPClient:
             }
         })
 
-    async def refresh_assets(self, force: bool = False) -> Dict[str, Any]:
+    async def assets_refresh(self, force: bool = False) -> Dict[str, Any]:
         """Refresh Unity asset database
 
         Args:
             force: Use ImportAssetOptions.ForceUpdate for stronger refresh (recommended for file deletions)
         """
         return await self._send_request("tools/call", {
-            "name": "refresh_assets",
+            "name": "assets_refresh",
             "arguments": {"force": force}
         })
 

@@ -23,7 +23,7 @@ async def test_syntax_error_in_test_script(mcp_client, unity_helper, temp_files)
     temp_files(error_script_path)
 
     # Refresh with force to ensure Unity detects the error
-    await unity_helper.refresh_assets_if_available(force=True)
+    await unity_helper.assets_refresh_if_available(force=True)
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -47,7 +47,7 @@ async def test_missing_using_error(mcp_client, unity_helper, unity_state_manager
 
     # Modify with missing using error
     unity_helper.modify_file_with_error(test_script_path, "missing_using")
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -68,7 +68,7 @@ async def test_undefined_variable_error(mcp_client, unity_helper, unity_state_ma
 
     # Modify with undefined variable error
     unity_helper.modify_file_with_error(test_script_path, "undefined_var")
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -88,7 +88,7 @@ async def test_new_script_with_syntax_error(mcp_client, unity_helper, unity_stat
     # Create new script with syntax error
     new_script_path = unity_helper.create_temp_script_in_assets("ErrorScript", "syntax")
     temp_files(new_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -109,7 +109,7 @@ async def test_new_script_with_missing_using(mcp_client, unity_helper, unity_sta
     # Create new script with missing using error
     new_script_path = unity_helper.create_temp_script_in_assets("MissingUsingScript", "missing_using")
     temp_files(new_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -132,7 +132,7 @@ async def test_multiple_errors_in_different_scripts(mcp_client, unity_helper, un
 
     temp_files(script1_path)
     temp_files(script2_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -154,7 +154,7 @@ async def test_fix_compilation_error(mcp_client, unity_helper, unity_state_manag
     # Create script with error
     error_script_path = unity_helper.create_temp_script_in_assets("FixableScript", "syntax")
     temp_files(error_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # First compilation should have errors
     response1 = await mcp_client.compilation_trigger(timeout=30)
@@ -163,7 +163,7 @@ async def test_fix_compilation_error(mcp_client, unity_helper, unity_state_manag
 
     # Fix the script by creating a correct version
     unity_helper.create_temp_script_in_assets("FixableScript", None)  # No error
-    await unity_helper.refresh_assets_if_available(force=True)
+    await unity_helper.assets_refresh_if_available(force=True)
 
     # Give Unity a moment to process the file change
     import asyncio
@@ -183,7 +183,7 @@ async def test_compilation_error_details(mcp_client, unity_helper, unity_state_m
     # Create script with known error using fixtures
     error_script_path = unity_helper.create_temp_script_in_assets("DetailedErrorScript", "syntax")
     temp_files(error_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation and check error details
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -208,7 +208,7 @@ async def test_empty_script_compilation(mcp_client, unity_helper, unity_state_ma
         f.write("// Empty script - should compile fine")
 
     temp_files(empty_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)

@@ -20,7 +20,7 @@ async def test_force_refresh_vs_regular_refresh(mcp_client, unity_helper, unity_
     temp_files(test_script_path)
 
     # Regular refresh after file creation
-    await unity_helper.refresh_assets_if_available(force=False)
+    await unity_helper.assets_refresh_if_available(force=False)
 
     # First compilation should have errors
     response1 = await mcp_client.compilation_trigger(timeout=30)
@@ -35,7 +35,7 @@ async def test_force_refresh_vs_regular_refresh(mcp_client, unity_helper, unity_
         os.remove(meta_file)
 
     # Try regular refresh first (should potentially still have issues)
-    await unity_helper.refresh_assets_if_available(force=False)
+    await unity_helper.assets_refresh_if_available(force=False)
 
     # Try compilation - might still fail with CS2001
     response2 = await mcp_client.compilation_trigger(timeout=30)
@@ -46,7 +46,7 @@ async def test_force_refresh_vs_regular_refresh(mcp_client, unity_helper, unity_
         print("Regular refresh didn't clear deleted file reference, trying force refresh...")
 
         # Force refresh should fix the issue
-        await unity_helper.refresh_assets_if_available(force=True)
+        await unity_helper.assets_refresh_if_available(force=True)
 
         # Now compilation should succeed
         response3 = await mcp_client.compilation_trigger(timeout=30)
@@ -60,18 +60,18 @@ async def test_force_refresh_vs_regular_refresh(mcp_client, unity_helper, unity_
 
 @pytest.mark.mcp
 @pytest.mark.asyncio
-async def test_refresh_assets_tool_parameters(mcp_client, unity_state_manager):
-    """Test that the refresh_assets tool accepts force parameter correctly"""
+async def test_assets_refresh_tool_parameters(mcp_client, unity_state_manager):
+    """Test that the assets_refresh tool accepts force parameter correctly"""
 
     # Test regular refresh
-    response1 = await mcp_client.refresh_assets(force=False)
+    response1 = await mcp_client.assets_refresh(force=False)
     assert response1["jsonrpc"] == "2.0"
     assert "result" in response1
     content_text1 = response1["result"]["content"][0]["text"]
     assert "refresh" in content_text1.lower()
 
     # Test force refresh
-    response2 = await mcp_client.refresh_assets(force=True)
+    response2 = await mcp_client.assets_refresh(force=True)
     assert response2["jsonrpc"] == "2.0"
     assert "result" in response2
     content_text2 = response2["result"]["content"][0]["text"]
@@ -81,7 +81,7 @@ async def test_refresh_assets_tool_parameters(mcp_client, unity_state_manager):
 @pytest.mark.mcp
 @pytest.mark.asyncio
 async def test_mcp_tools_list_includes_force_parameter():
-    """Test that tools/list includes the force parameter in refresh_assets"""
+    """Test that tools/list includes the force parameter in assets_refresh"""
 
     client = MCPClient()
     await client.start()
@@ -92,14 +92,14 @@ async def test_mcp_tools_list_includes_force_parameter():
         assert response["jsonrpc"] == "2.0"
         tools = response["result"]["tools"]
 
-        # Find refresh_assets tool
+        # Find assets_refresh tool
         refresh_tool = None
         for tool in tools:
-            if tool["name"] == "refresh_assets":
+            if tool["name"] == "assets_refresh":
                 refresh_tool = tool
                 break
 
-        assert refresh_tool is not None, "refresh_assets tool not found"
+        assert refresh_tool is not None, "assets_refresh tool not found"
 
         # Check that force parameter is documented
         input_schema = refresh_tool["inputSchema"]

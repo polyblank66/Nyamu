@@ -38,7 +38,7 @@ public class DependencyError
         with open(dependency_script_path, 'w') as f:
             f.write(dependency_content)
 
-        await unity_helper.refresh_assets_if_available()
+        await unity_helper.assets_refresh_if_available()
 
         # Trigger compilation
         response = await client.compilation_trigger(timeout=30)
@@ -86,7 +86,7 @@ namespace TestModule
     with open(namespace_script_path, 'w') as f:
         f.write(namespace_content)
 
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -128,7 +128,7 @@ public class CircularTest
         with open(circular_script_path, 'w') as f:
             f.write(circular_content)
 
-        await unity_helper.refresh_assets_if_available()
+        await unity_helper.assets_refresh_if_available()
 
         # Trigger compilation
         response = await client.compilation_trigger(timeout=30)
@@ -174,7 +174,7 @@ public class CollisionTest  // Same name as first script
         f.write(collision_content)
 
     temp_files(script2_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -200,7 +200,7 @@ async def test_asmdef_mixed_errors_and_valid_files(mcp_client, unity_helper, uni
     invalid_script_path = unity_helper.create_temp_script_in_test_module("InvalidInModule", "syntax")
     temp_files(invalid_script_path)
 
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -253,7 +253,7 @@ public class LargeFileError
     with open(large_script_path, 'w') as f:
         f.write(large_content)
 
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -278,7 +278,7 @@ async def test_asmdef_compilation_isolation(mcp_client, unity_helper, unity_stat
     assets_valid_path = unity_helper.create_temp_script_in_assets("AssetsIsolationValid", None)
     temp_files(assets_valid_path)
 
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)

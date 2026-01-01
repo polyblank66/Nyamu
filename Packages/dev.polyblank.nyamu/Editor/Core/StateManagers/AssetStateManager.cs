@@ -7,6 +7,9 @@ namespace Nyamu.Core.StateManagers
         bool _isRefreshing = false;
         bool _isMonitoringRefresh = false;
         bool _unityIsUpdating = false;
+        bool _isWaitingForCompilation = false;
+        System.DateTime _refreshRequestTime = System.DateTime.MinValue;
+        System.DateTime _refreshCompletedTime = System.DateTime.MinValue;
 
         public object Lock => _lock;
 
@@ -26,6 +29,24 @@ namespace Nyamu.Core.StateManagers
         {
             get { lock (_lock) return _unityIsUpdating; }
             set { lock (_lock) _unityIsUpdating = value; }
+        }
+
+        public bool IsWaitingForCompilation
+        {
+            get { lock (_lock) return _isWaitingForCompilation; }
+            set { lock (_lock) _isWaitingForCompilation = value; }
+        }
+
+        public System.DateTime RefreshRequestTime
+        {
+            get { lock (_lock) return _refreshRequestTime; }
+            set { lock (_lock) _refreshRequestTime = value; }
+        }
+
+        public System.DateTime RefreshCompletedTime
+        {
+            get { lock (_lock) return _refreshCompletedTime; }
+            set { lock (_lock) _refreshCompletedTime = value; }
         }
     }
 }

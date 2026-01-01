@@ -10,17 +10,17 @@ from mcp_client import MCPClient
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
-async def test_refresh_assets_concurrent_warning(unity_state_manager):
-    """Test that concurrent refresh_assets calls return warning message"""
+async def test_assets_refresh_concurrent_warning(unity_state_manager):
+    """Test that concurrent assets_refresh calls return warning message"""
     client = MCPClient()
     await client.start()
 
     try:
         # Start two refresh operations simultaneously
-        task1 = asyncio.create_task(client.refresh_assets(force=True))
+        task1 = asyncio.create_task(client.assets_refresh(force=True))
         # Small delay to ensure first request starts
         await asyncio.sleep(0.1)
-        task2 = asyncio.create_task(client.refresh_assets(force=True))
+        task2 = asyncio.create_task(client.assets_refresh(force=True))
 
         # Get both responses
         response1 = await task1
@@ -87,7 +87,7 @@ async def test_run_tests_warning_capability(unity_state_manager):
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
-async def test_refresh_assets_warning_message_format(unity_state_manager):
+async def test_assets_refresh_warning_message_format(unity_state_manager):
     """Test the exact format of refresh assets warning message"""
     client = MCPClient()
     await client.start()
@@ -96,7 +96,7 @@ async def test_refresh_assets_warning_message_format(unity_state_manager):
         # Trigger a potential warning by making rapid refresh calls
         tasks = []
         for i in range(3):
-            task = asyncio.create_task(client.refresh_assets(force=False))
+            task = asyncio.create_task(client.assets_refresh(force=False))
             tasks.append(task)
             await asyncio.sleep(0.05)  # Very small delay
 
@@ -146,7 +146,7 @@ async def test_warning_messages_with_retry_logic(unity_state_manager):
     try:
         # The retry logic should handle -32603 errors, but warning messages are different
         # They come as successful responses with warning status
-        response = await client.refresh_assets(force=True)
+        response = await client.assets_refresh(force=True)
 
         assert response["jsonrpc"] == "2.0"
         assert "result" in response

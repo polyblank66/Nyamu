@@ -8,5 +8,7 @@ namespace Nyamu.Tools.Editor
         public bool isCompiling;
         public bool isRunningTests;
         public bool isPlaying;
+        public bool isRefreshing;
+        public bool isWaitingForCompilation;
     }
 }

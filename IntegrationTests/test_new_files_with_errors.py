@@ -16,7 +16,7 @@ async def test_create_new_file_syntax_error(mcp_client, unity_helper, unity_stat
     # Create new script with syntax error
     new_script_path = unity_helper.create_temp_script_in_assets("NewSyntaxError", "syntax")
     temp_files(new_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -37,7 +37,7 @@ async def test_create_new_file_missing_using(mcp_client, unity_helper, unity_sta
     # Create new script with missing using error
     new_script_path = unity_helper.create_temp_script_in_assets("NewMissingUsing", "missing_using")
     temp_files(new_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -57,7 +57,7 @@ async def test_create_new_file_undefined_variable(mcp_client, unity_helper, unit
     # Create new script with undefined variable error
     new_script_path = unity_helper.create_temp_script_in_assets("NewUndefinedVar", "undefined_var")
     temp_files(new_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -82,7 +82,7 @@ async def test_create_multiple_new_files_with_errors(mcp_client, unity_helper, u
     temp_files(script1_path)
     temp_files(script2_path)
     temp_files(script3_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -104,7 +104,7 @@ async def test_create_valid_new_file(mcp_client, unity_helper, unity_state_manag
     # Create new valid script
     new_script_path = unity_helper.create_temp_script_in_assets("ValidNewScript")  # No error
     temp_files(new_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -124,7 +124,7 @@ async def test_create_and_delete_file_with_error(mcp_client, unity_helper, unity
     # Create new script with error
     new_script_path = unity_helper.create_temp_script_in_assets("TempErrorScript", "syntax")
     temp_files(new_script_path)
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # First compilation should have errors
     response1 = await mcp_client.compilation_trigger(timeout=30)
@@ -138,7 +138,7 @@ async def test_create_and_delete_file_with_error(mcp_client, unity_helper, unity
         os.remove(meta_file)
 
     # Use force refresh after file deletion to ensure Unity properly detects the removal
-    await unity_helper.refresh_assets_if_available(force=True)
+    await unity_helper.assets_refresh_if_available(force=True)
 
     # Give Unity a moment to process the deletion
     import asyncio
@@ -167,7 +167,7 @@ async def test_create_file_in_subdirectory_with_error(mcp_client, unity_helper, 
     # Also register the subdirectory for cleanup
     temp_files(subdir_path)
 
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)
@@ -208,7 +208,7 @@ public class ComplexErrorScript : MonoBehaviour
     with open(complex_script_path, 'w') as f:
         f.write(complex_content)
 
-    await unity_helper.refresh_assets_if_available()
+    await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
     response = await mcp_client.compilation_trigger(timeout=30)

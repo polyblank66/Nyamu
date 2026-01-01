@@ -57,7 +57,7 @@ public class TestWithCompilationError
         # Register for cleanup
         temp_files(error_script_path)
 
-        # Important: DO NOT call refresh_assets - let Unity detect the error naturally
+        # Important: DO NOT call assets_refresh - let Unity detect the error naturally
         # This allows us to test if IErrorCallbacks triggers during test execution
 
         # Record start time for measuring early detection
@@ -286,7 +286,7 @@ public class ErrorStateResetTest
             os.remove(error_script_path)
 
         # Refresh assets to remove the error
-        await client.refresh_assets(force=True)
+        await client.assets_refresh(force=True)
 
         # Wait a moment for Unity to process
         await asyncio.sleep(2)

@@ -12,7 +12,7 @@
 Unity's compilation system caches file references and doesn't immediately update when files are deleted externally. AssetDatabase.Refresh() should detect deletions but may not be sufficient.
 
 **Current Status**:
-✅ New file creation works (refresh_assets fixes this)
+✅ New file creation works (assets_refresh fixes this)
 ❌ File deletion cleanup not properly detected by Unity
 ❌ Multiple test runs leave orphaned file references
 

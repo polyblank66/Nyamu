@@ -298,7 +298,7 @@ The test infrastructure uses advanced cleanup patterns to avoid Unity file track
 await unity_helper.cleanup_temp_files_with_refresh([file_paths])
 
 # For new file creation - regular refresh is sufficient
-await unity_helper.refresh_assets_if_available(force=False)
+await unity_helper.assets_refresh_if_available(force=False)
 
 # Smart cleanup selection (automatic)
 # Protocol tests: await manager.ensure_clean_state(cleanup_level="noop")
@@ -323,7 +323,7 @@ Triggers Unity script compilation and waits for completion.
 response = await mcp_client.compile_and_wait(timeout=30)
 ```
 
-**Important:** For structural changes (new/deleted files), call `refresh_assets` first (use `force=true` for deletions), wait for MCP responsiveness, then call this tool.
+**Important:** For structural changes (new/deleted files), call `assets_refresh` first (use `force=true` for deletions). The response from `assets_refresh` includes compilation error information, so you don't need to call this tool separately. This tool is primarily for compiling after editing existing file contents.
 
 ### 2. `run_tests`
 Executes Unity tests and waits for completion.
@@ -342,26 +342,30 @@ response = await mcp_client.run_tests(
 )
 ```
 
-### 3. `refresh_assets`
-Forces Unity to refresh the asset database. **Required before compilation when files are added/removed/moved.**
+### 3. `assets_refresh`
+Forces Unity to refresh the asset database and returns compilation error information. **Required for structural file changes (add/remove/move files).**
 
 **Parameters:**
 - `force` (optional, default: false): Use `ImportAssetOptions.ForceUpdate` for stronger refresh (recommended for file deletions)
 
+**Returns:** Compilation status including errors (if any), error count, and last compilation timestamp.
+
 **Usage:**
 ```python
-# For new file creation
-await mcp_client.refresh_assets(force=False)
+# For new file creation (response includes compilation errors)
+response = await mcp_client.assets_refresh(force=False)
+print(response["result"]["content"][0]["text"])  # Shows compilation status
 
-# For file deletions (recommended to prevent CS2001 errors)
-await mcp_client.refresh_assets(force=True)
+# For file deletions (response shows compilation status)
+response = await mcp_client.assets_refresh(force=True)
 ```
 
 **Workflow for structural changes:**
 1. Make file changes (add/remove/move files)
-2. Call `refresh_assets` (with `force=true` if deleting files)
-3. Wait for MCP to be responsive
-4. Call `compile_and_wait`
+2. Call `assets_refresh` (with `force=true` if deleting files)
+3. Check compilation status in response - no need to call `compile_and_wait` separately
+
+**Note:** The response shows the last compilation status even if no new compilation occurred during this refresh.
 
 ### 4. `tests_cancel`
 Cancels running Unity test execution using Unity's TestRunnerApi.CancelTestRun.
@@ -471,7 +475,7 @@ for attempt in range(5):
 - Check Unity Console for compilation errors
 - Ensure no pending compilation is running
 - Verify file permissions for test file creation
-- If seeing CS2001 errors, try running with force refresh: `await mcp_client.refresh_assets(force=True)`
+- If seeing CS2001 errors, try running with force refresh: `await mcp_client.assets_refresh(force=True)`
 
 ### Persistent -32603 Errors
 If -32603 errors persist beyond retry attempts:
@@ -482,7 +486,7 @@ If -32603 errors persist beyond retry attempts:
 
 ### CS2001 "Source file could not be found" Errors
 This indicates Unity's AssetDatabase is out of sync with the file system:
-- Use `refresh_assets(force=True)` after file deletions
+- Use `assets_refresh(force=True)` after file deletions
 - Check that temporary test files were properly cleaned up
 - Restart Unity Editor if the issue persists
 

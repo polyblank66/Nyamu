@@ -23,7 +23,7 @@
 
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
-| `/refresh-assets` | GET | Refresh asset database | `force` (optional) |
+| `/assets-refresh` | GET | Refresh asset database | `force` (optional) |
 
 ### Editor Status
 

@@ -44,7 +44,7 @@ class UnityStateManager:
             if lightweight:
                 # Lightweight cleanup for tests that don't modify project structure
                 print("Using lightweight Unity state cleanup...")
-                await self.refresh_assets(force=False)
+                await self.assets_refresh(force=False)
                 await self._wait_for_unity_settle(0.5)
                 await self.ensure_compilation_clean()
                 await self._wait_for_unity_settle(0.5)
@@ -53,14 +53,14 @@ class UnityStateManager:
             if skip_force_refresh:
                 # Moderate cleanup - avoids expensive force refresh
                 print("Using moderate Unity state cleanup...")
-                await self.refresh_assets(force=False)
+                await self.assets_refresh(force=False)
                 await self._wait_for_unity_settle(1.0)
-                await self.refresh_assets(force=False)
+                await self.assets_refresh(force=False)
 
                 compilation_clean = await self.ensure_compilation_clean()
                 if not compilation_clean:
                     print("Warning: Unity has compilation errors, trying force refresh...")
-                    await self.refresh_assets(force=True)
+                    await self.assets_refresh(force=True)
                     await self._wait_for_unity_settle(1.0)
                     await self.ensure_compilation_clean()
 
@@ -70,11 +70,11 @@ class UnityStateManager:
             # Full aggressive cleanup for structural changes (original behavior)
             print("Using full Unity state cleanup...")
             # Force asset refresh to clear any stale references
-            await self.refresh_assets(force=True)
+            await self.assets_refresh(force=True)
 
             # Double refresh with delay to ensure Unity processes everything
             await self._wait_for_unity_settle(1.0)
-            await self.refresh_assets(force=True)
+            await self.assets_refresh(force=True)
 
             # Verify compilation succeeds (no errors in codebase)
             compilation_clean = await self.ensure_compilation_clean()
@@ -82,7 +82,7 @@ class UnityStateManager:
             if not compilation_clean:
                 print("Warning: Unity has compilation errors that need to be cleared")
                 # Try one more refresh and compilation to clear cache
-                await self.refresh_assets(force=True)
+                await self.assets_refresh(force=True)
                 await self._wait_for_unity_settle(2.0)
                 await self.ensure_compilation_clean()
 
@@ -95,12 +95,12 @@ class UnityStateManager:
             print(f"Warning: Could not ensure Unity clean state: {e}")
             return False
 
-    async def refresh_assets(self, force=True, max_retries=3):
+    async def assets_refresh(self, force=True, max_retries=3):
         """Force Unity asset database refresh"""
         for attempt in range(max_retries):
             try:
                 response = await self.mcp_client._send_request("tools/call", {
-                    "name": "refresh_assets",
+                    "name": "assets_refresh",
                     "arguments": {"force": force}
                 })
                 if "result" in response:
@@ -148,7 +148,7 @@ class UnityHelper:
 
         Args:
             project_root: Unity project root directory
-            mcp_client: MCP client instance for calling refresh_assets
+            mcp_client: MCP client instance for calling assets_refresh
         """
         if project_root is None:
             # Default to parent directory of McpTests
@@ -425,14 +425,14 @@ public class {script_name}
                 print(f"Error removing {path}: {e}")
 
         # Use force refresh after file/directory deletions to ensure Unity detects changes
-        await self.refresh_assets_if_available(force=True)
+        await self.assets_refresh_if_available(force=True)
 
     def wait_for_unity_to_process_files(self):
         """Waits for Unity to process file changes (simple delay)"""
         import time
         time.sleep(2)  # Give Unity time to process files
 
-    async def refresh_assets_if_available(self, force: bool = False, max_retries: int = 10):
+    async def assets_refresh_if_available(self, force: bool = False, max_retries: int = 10):
         """Refresh Unity assets using MCP client if available
 
         Args:
@@ -442,8 +442,8 @@ public class {script_name}
         if self.mcp_client:
             for attempt in range(max_retries):
                 try:
-                    # Call refresh_assets with force flag
-                    result = await self.mcp_client.refresh_assets(force=force)
+                    # Call assets_refresh with force flag
+                    result = await self.mcp_client.assets_refresh(force=force)
 
                     # Check if refresh is already in progress
                     if 'result' in result:

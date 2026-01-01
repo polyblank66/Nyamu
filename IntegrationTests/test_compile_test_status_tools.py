@@ -178,7 +178,7 @@ async def test_compile_status_consistency_with_http_endpoint(mcp_client, unity_s
     mcp_data = json.loads(mcp_response["result"]["content"][0]["text"])
 
     # Get status via direct HTTP call
-    http_response = requests.get(f"{unity_base_url}/compilation-status")
+    http_response = requests.get(f"{unity_base_url}/scripts-compile-status")
     http_data = http_response.json()
 
     # Should match exactly
@@ -195,7 +195,7 @@ async def test_test_status_consistency_with_http_endpoint(mcp_client, unity_stat
     mcp_data = json.loads(mcp_response["result"]["content"][0]["text"])
 
     # Get status via direct HTTP call
-    http_response = requests.get(f"{unity_base_url}/tests-status")
+    http_response = requests.get(f"{unity_base_url}/tests-run-status")
     http_data = http_response.json()
 
     # Should match exactly

@@ -10,7 +10,7 @@ import json
 @pytest.mark.protocol
 def test_test_status_endpoint(unity_base_url):
     """Test tests-status HTTP endpoint directly"""
-    response = requests.get(f"{unity_base_url}/tests-status")
+    response = requests.get(f"{unity_base_url}/tests-run-status")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -29,7 +29,7 @@ def test_test_status_endpoint(unity_base_url):
 @pytest.mark.protocol
 def test_test_status_response_structure(unity_base_url):
     """Test that tests status response has correct structure"""
-    response = requests.get(f"{unity_base_url}/tests-status")
+    response = requests.get(f"{unity_base_url}/tests-run-status")
     data = response.json()
 
     # Check required fields
@@ -59,7 +59,7 @@ def test_test_status_with_results(unity_base_url):
     waited = 0
 
     while waited < max_wait:
-        response = requests.get(f"{unity_base_url}/tests-status")
+        response = requests.get(f"{unity_base_url}/tests-run-status")
         data = response.json()
 
         if data["status"] == "idle" and data["testResults"] is not None:
@@ -112,7 +112,7 @@ def test_test_status_multiple_requests(unity_base_url):
     responses = []
 
     for i in range(3):
-        response = requests.get(f"{unity_base_url}/tests-status")
+        response = requests.get(f"{unity_base_url}/tests-run-status")
         assert response.status_code == 200
         responses.append(response.json())
 

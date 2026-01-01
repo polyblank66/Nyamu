@@ -157,8 +157,8 @@ async def test_warning_messages_with_retry_logic(unity_state_manager):
         if "Asset refresh already in progress" in content_text:
             assert "Please wait for current refresh to complete" in content_text
         else:
-            # Normal success response - Unity says "Asset database refreshed."
-            assert "Asset database refreshed" in content_text or "refreshed" in content_text
+            # Normal success response - Unity says "Asset database refresh completed"
+            assert "Asset database refresh completed" in content_text or "refresh completed" in content_text
 
     finally:
         await client.stop()

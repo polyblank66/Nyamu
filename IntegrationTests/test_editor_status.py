@@ -206,7 +206,7 @@ async def test_editor_status_consistency_with_compile_status(mcp_client, unity_s
     """Test that editor_status isCompiling matches compile_status"""
     # Get both statuses
     editor_status = await mcp_client.editor_status()
-    compile_status_response = requests.get(f"{unity_base_url}/compilation-status")
+    compile_status_response = requests.get(f"{unity_base_url}/scripts-compile-status")
 
     editor_data = json.loads(editor_status["result"]["content"][0]["text"])
     compile_data = compile_status_response.json()
@@ -222,7 +222,7 @@ async def test_editor_status_consistency_with_test_status(mcp_client, unity_stat
     """Test that editor_status isRunningTests matches tests_status"""
     # Get both statuses
     editor_status = await mcp_client.editor_status()
-    test_status_response = requests.get(f"{unity_base_url}/tests-status")
+    test_status_response = requests.get(f"{unity_base_url}/tests-run-status")
 
     editor_data = json.loads(editor_status["result"]["content"][0]["text"])
     test_data = test_status_response.json()

@@ -11,7 +11,7 @@ import json
 @pytest.mark.protocol
 def test_compile_status_endpoint(unity_base_url):
     """Test compilation-status HTTP endpoint directly"""
-    response = requests.get(f"{unity_base_url}/compilation-status")
+    response = requests.get(f"{unity_base_url}/scripts-compile-status")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -33,7 +33,7 @@ def test_compile_status_endpoint(unity_base_url):
 @pytest.mark.protocol
 def test_compile_status_response_structure(unity_base_url):
     """Test that compile status response has correct structure"""
-    response = requests.get(f"{unity_base_url}/compilation-status")
+    response = requests.get(f"{unity_base_url}/scripts-compile-status")
     data = response.json()
 
     # Check all required fields are present
@@ -77,7 +77,7 @@ def test_compile_status_idle_state(unity_base_url):
         time.sleep(0.5)
 
     # Should be idle after compilation
-    response = requests.get(f"{unity_base_url}/compilation-status")
+    response = requests.get(f"{unity_base_url}/scripts-compile-status")
     data = response.json()
     assert data["status"] == "idle"
     assert data["isCompiling"] is False
@@ -87,12 +87,12 @@ def test_compile_status_idle_state(unity_base_url):
 @pytest.mark.protocol
 def test_compile_status_headers(unity_base_url):
     """Test that compile status endpoint returns proper headers"""
-    response = requests.get(f"{unity_base_url}/compilation-status")
+    http_response = requests.get(f"{unity_base_url}/scripts-compile-status")
 
     # Check CORS headers
-    assert response.headers.get("access-control-allow-origin") == "*"
-    assert response.headers.get("access-control-allow-methods") is not None
-    assert response.headers.get("access-control-allow-headers") is not None
+    assert http_response.headers.get("access-control-allow-origin") == "*"
+    assert http_response.headers.get("access-control-allow-methods") is not None
+    assert http_response.headers.get("access-control-allow-headers") is not None
 
 
 @pytest.mark.compilation
@@ -102,7 +102,7 @@ def test_compile_status_multiple_requests(unity_base_url):
     responses = []
 
     for i in range(3):
-        response = requests.get(f"{unity_base_url}/compilation-status")
+        response = requests.get(f"{unity_base_url}/scripts-compile-status")
         assert response.status_code == 200
         responses.append(response.json())
 

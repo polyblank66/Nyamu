@@ -72,7 +72,11 @@ namespace Nyamu
         {
             try
             {
-                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var profectRootDirectory = Directory.GetParent(Application.dataPath);
+                if (profectRootDirectory == null)
+                    return null;
+
+                var projectRoot = profectRootDirectory.FullName;
 
                 // Search PackageCache first (production)
                 var packageCacheRoot = Path.Combine(projectRoot, "Library", "PackageCache");
@@ -85,6 +89,16 @@ namespace Nyamu
                         if (File.Exists(cachedPath))
                             return cachedPath;
                     }
+                }
+
+                // Check for local package from dev environment
+                // TODO: Get the path from Package Manager and manifest.json
+                var devEnvPath = Directory.GetParent(projectRoot)?.FullName;
+                if (devEnvPath != null)
+                {
+                    var localPackagePath = Path.Combine(devEnvPath, "Nyamu.UnityPackage", "Node", "mcp-server.js");
+                    if (File.Exists(localPackagePath))
+                        return localPackagePath;
                 }
 
                 // Check embedded package last (dev mode)

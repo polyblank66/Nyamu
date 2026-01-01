@@ -286,6 +286,17 @@ class MCPClient:
             }
         })
 
+    async def editor_exit_play_mode(self) -> Dict[str, Any]:
+        """Exit Unity PlayMode
+
+        Returns:
+            MCP response with exit play mode status
+        """
+        return await self._send_request("tools/call", {
+            "name": "editor_exit_play_mode",
+            "arguments": {}
+        })
+
     async def compile_shader(self, shader_name: str, timeout: int = 30) -> Dict[str, Any]:
         """Compile a single shader with fuzzy name matching
 

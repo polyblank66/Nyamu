@@ -746,6 +746,8 @@ class MCPServer {
                     return await this.callEditorLogGrep(id, args.pattern, args.case_sensitive || false, args.context_lines || 0, args.line_limit || 1000, args.log_type || 'all');
                 case 'execute_menu_item':
                     return await this.callExecuteMenuItem(id, args.menu_item_path);
+                case 'editor_exit_play_mode':
+                    return await this.callEditorExitPlayMode(id);
                 default:
                     return {
                         jsonrpc: '2.0',
@@ -1791,6 +1793,22 @@ class MCPServer {
             };
         } catch (error) {
             throw new Error(`Failed to execute menu item: ${error.message}`);
+        }
+    }
+
+    async callEditorExitPlayMode(id) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const response = await this.makeHttpRequest(`/editor-exit-play-mode`);
+            const formattedText = this.responseFormatter.formatJsonResponse(response);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: formattedText }] }
+            };
+        } catch (error) {
+            throw new Error(`Failed to exit play mode: ${error.message}`);
         }
     }
 

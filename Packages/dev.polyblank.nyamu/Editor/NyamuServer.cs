@@ -39,6 +39,7 @@ using Nyamu.Tools.Shaders;
 using Nyamu.Tools.Editor;
 using Nyamu.Tools.Settings;
 using Nyamu.Tools.Assets;
+using Nyamu.Tools.Editor.PlayMode;
 using Nyamu.TestExecution;
 
 namespace Nyamu
@@ -72,6 +73,7 @@ namespace Nyamu
             public const string CompileShadersRegex = "/compile-shaders-regex";
             public const string ShaderCompilationStatus = "/shader-compilation-status";
             public const string ExecuteMenuItem = "/execute-menu-item";
+            public const string EditorExitPlayMode = "/editor-exit-play-mode";
         }
     }
 
@@ -128,6 +130,7 @@ namespace Nyamu
         static CompilationTriggerTool _compilationTriggerTool;
         static AssetsRefreshTool _assetsRefreshTool;
         static ExecuteMenuItemTool _executeMenuItemTool;
+        static EditorExitPlayModeTool _editorExitPlayModeTool;
 
         // Step 4 Group B: test tools
         static TestsRunSingleTool _testsRunSingleTool;
@@ -283,6 +286,7 @@ namespace Nyamu
             _compilationTriggerTool = new CompilationTriggerTool();
             _assetsRefreshTool = new AssetsRefreshTool();
             _executeMenuItemTool = new ExecuteMenuItemTool();
+            _editorExitPlayModeTool = new EditorExitPlayModeTool();
 
             // Create tools (Step 4 Group B: test tools)
             _testsRunSingleTool = new TestsRunSingleTool();
@@ -446,6 +450,7 @@ namespace Nyamu
                 Constants.Endpoints.CompileShadersRegex => HandleCompileShadersRegexRequest(request),
                 Constants.Endpoints.ShaderCompilationStatus => HandleShaderCompilationStatusRequest(request),
                 Constants.Endpoints.ExecuteMenuItem => HandleExecuteMenuItemRequest(request),
+                Constants.Endpoints.EditorExitPlayMode => HandleEditorExitPlayModeRequest(request),
                 _ => HandleNotFoundRequest(response)
             };
         }
@@ -817,10 +822,23 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
+        static string HandleEditorExitPlayModeRequest(HttpListenerRequest request)
+        {
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleEditorExitPlayModeRequest");
+
+            if (request.HttpMethod != "GET")
+                return "{\"status\":\"error\",\"message\":\"Method not allowed. Use GET.\"}";
+
+            // Use new tool architecture
+            var toolRequest = new EditorExitPlayModeRequest();
+            var response = _editorExitPlayModeTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
+        }
+
         static string HandleNotFoundRequest(HttpListenerResponse response)
         {
-            response.StatusCode = (int)HttpStatusCode.NotFound;
-            return "{\"status\":\"error\", \"message\":\"Not Found\"}";
+            response.StatusCode = 404;
+            return "{\"status\":\"error\",\"message\":\"Endpoint not found\"}";
         }
 
         static void SendResponse(HttpListenerResponse response, string content)

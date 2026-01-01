@@ -428,6 +428,18 @@ response = await mcp_client.test_status()
 
 **Returns:** Test execution state, last test time, test results, and test run ID.
 
+### 8. `editor_exit_play_mode`
+Exit Unity PlayMode programmatically.
+
+**Parameters:** None
+
+**Usage:**
+```python
+response = await mcp_client.editor_exit_play_mode()
+```
+
+**Returns:** Success status and confirmation message indicating PlayMode has been exited.
+
 ## Understanding MCP Error -32603
 
 When using YAMU MCP tools, you may encounter **MCP Error -32603** with message "Tool execution failed: HTTP request failed". **This is expected behavior**, not a bug.

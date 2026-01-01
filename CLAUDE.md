@@ -85,11 +85,12 @@ Log types: all (default), error, warning, info
 
 # Directory Structure
 
-- Editable project source files are located in the `Assets/` directory and its
+- Unity project files are located in the `Nyamu.UnityTestProject/` directory.
+- Editable project source files are located in the `Nyamu.UnityTestProject/Assets/` directory and its
   subdirectories.
-- Read-only package source files are located in `Library/PackageCache/`. **Do not
+- Read-only package source files are located in `Nyamu.UnityTestProject/Library/PackageCache/`. **Do not
   modify** files in this directory.
-- MCP integration tests are located in the `IntegrationTests/` directory. These Python tests
+- MCP integration tests are located in the `IntegrationTests/` directory (at project root). These Python tests
   verify MCP server functionality including compilation, test execution, and response
   formatting. Run tests with `cd IntegrationTests && python -m pytest`.
 
@@ -119,7 +120,7 @@ Log types: all (default), error, warning, info
   provide clear, step-by-step instructions.
 - Write all Git commit messages in English.
 
-# Other instructions 
+# Other instructions
 
-- `mcp-server.js` log is located at `\.nyamu\mcp-server.log`
+- `mcp-server.js` log is located at `Nyamu.UnityTestProject\.nyamu\mcp-server.log`
 - When modifing `mcp-server.js` mcp tool reconnection is required.

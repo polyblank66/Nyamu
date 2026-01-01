@@ -16,8 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from mcp_client import MCPClient
 from unity_helper import UnityHelper, UnityStateManager
 
-# Settings file location - resolves to project_root/.nyamu/NyamuSettings.json
-SETTINGS_FILE = Path(__file__).parent.parent / ".nyamu" / "NyamuSettings.json"
+# Settings file location - resolves to project_root/Nyamu.UnityTestProject/.nyamu/NyamuSettings.json
+SETTINGS_FILE = Path(__file__).parent.parent / "Nyamu.UnityTestProject" / ".nyamu" / "NyamuSettings.json"
 
 
 @pytest_asyncio.fixture(scope="function")

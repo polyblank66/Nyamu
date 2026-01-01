@@ -1,0 +1,129 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Nyamu.Core.Interfaces;
+using Nyamu.ShaderCompilation;
+
+namespace Nyamu.Tools.Shaders
+{
+    // Tool for compiling all shaders in the project
+    public class CompileAllShadersTool : INyamuTool<CompileAllShadersRequest, CompileAllShadersResponse>
+    {
+        public string Name => "compile_all_shaders";
+
+        public Task<CompileAllShadersResponse> ExecuteAsync(
+            CompileAllShadersRequest request,
+            IExecutionContext context)
+        {
+            NyamuLogger.LogDebug($"[Nyamu][CompileAllShaders] async={request.async}, timeout={request.timeout}");
+
+            var state = context.ShaderState;
+
+            // Check if shader compilation is already in progress
+            lock (state.Lock)
+            {
+                if (state.IsCompiling)
+                {
+                    return Task.FromResult(new CompileAllShadersResponse
+                    {
+                        status = "warning",
+                        totalShaders = 0,
+                        successfulCompilations = 0,
+                        failedCompilations = 0,
+                        totalCompilationTime = 0,
+                        results = new ShaderCompileResult[0]
+                    });
+                }
+
+                state.IsCompiling = true;
+
+                // Clear previous results
+                state.LastSingleShaderResult = null;
+                state.LastAllShadersResult = null;
+                state.LastRegexShadersResult = null;
+            }
+
+            // Check if async mode is requested
+            if (request.async)
+            {
+                // Async mode: queue compilation and return immediately
+                context.UnityExecutor.Enqueue(() =>
+                {
+                    var result = ShaderCompilationService.CompileAllShaders();
+
+                    lock (state.ResultLock)
+                    {
+                        state.LastSingleShaderResult = null;
+                        state.LastAllShadersResult = result;
+                        state.LastRegexShadersResult = null;
+                        state.LastCompilationType = "all";
+                        state.LastCompilationTime = DateTime.Now;
+                    }
+
+                    lock (state.Lock)
+                    {
+                        state.IsCompiling = false;
+                    }
+                });
+
+                return Task.FromResult(new CompileAllShadersResponse
+                {
+                    status = "ok",
+                    totalShaders = 0,
+                    successfulCompilations = 0,
+                    failedCompilations = 0,
+                    totalCompilationTime = 0,
+                    results = new ShaderCompileResult[0]
+                });
+            }
+
+            // Blocking mode: wait for compilation to complete
+            CompileAllShadersResponse response = null;
+
+            context.UnityExecutor.Enqueue(() =>
+            {
+                response = ShaderCompilationService.CompileAllShaders();
+
+                lock (state.ResultLock)
+                {
+                    state.LastSingleShaderResult = null;
+                    state.LastAllShadersResult = response;
+                    state.LastRegexShadersResult = null;
+                    state.LastCompilationType = "all";
+                    state.LastCompilationTime = DateTime.Now;
+                }
+
+                lock (state.Lock)
+                {
+                    state.IsCompiling = false;
+                }
+            });
+
+            // Wait for compilation to complete with timeout
+            var timeout = request.timeout > 0 ? request.timeout : 120;
+            var endTime = DateTime.Now.AddSeconds(timeout);
+
+            while (response == null && DateTime.Now < endTime)
+                Thread.Sleep(100);
+
+            if (response != null)
+                return Task.FromResult(response);
+
+            // Timeout occurred
+            lock (state.Lock)
+            {
+                state.IsCompiling = false;
+            }
+
+            return Task.FromResult(new CompileAllShadersResponse
+            {
+                status = "error",
+                totalShaders = 0,
+                successfulCompilations = 0,
+                failedCompilations = 0,
+                totalCompilationTime = 0,
+                results = new ShaderCompileResult[0]
+            });
+        }
+    }
+}

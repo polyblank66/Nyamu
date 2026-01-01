@@ -1,0 +1,15 @@
+{
+  "author": "Ivan Polyblank",
+  "dependencies": { "com.unity.test-framework": "1.4.6" },
+  "description": "Minimal MCP server for Unity designed to give coding agents a tool to check script compilation",
+  "displayName": "Nyamu",
+  "keywords": [
+    "unity"
+  ],
+  "license": "Unlicense",
+  "name": "dev.polyblank.nyamu",
+  "repository": "github:polyblank66/Nyamu",
+  "unity": "2021.3",
+  "unityRelease": "45f2",
+  "version": "0.1.0"
+}

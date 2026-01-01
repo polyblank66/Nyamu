@@ -17,7 +17,7 @@ async def test_compile_status_tool_exists(mcp_client, unity_state_manager):
     response = await mcp_client.list_tools()
     tools = response["result"]["tools"]
 
-    compile_status_tool = next((tool for tool in tools if tool["name"] == "compilation_status"), None)
+    compile_status_tool = next((tool for tool in tools if tool["name"] == "scripts_compile_status"), None)
     assert compile_status_tool is not None
 
     # Check tool structure
@@ -25,7 +25,7 @@ async def test_compile_status_tool_exists(mcp_client, unity_state_manager):
     assert "description" in compile_status_tool
     assert "inputSchema" in compile_status_tool
 
-    assert compile_status_tool["name"] == "compilation_status"
+    assert compile_status_tool["name"] == "scripts_compile_status"
     assert isinstance(compile_status_tool["description"], str)
     assert len(compile_status_tool["description"]) > 0
     assert "without triggering compilation" in compile_status_tool["description"]
@@ -47,7 +47,7 @@ async def test_test_status_tool_exists(mcp_client, unity_state_manager):
     response = await mcp_client.list_tools()
     tools = response["result"]["tools"]
 
-    test_status_tool = next((tool for tool in tools if tool["name"] == "tests_status"), None)
+    test_status_tool = next((tool for tool in tools if tool["name"] == "tests_run_status"), None)
     assert test_status_tool is not None
 
     # Check tool structure
@@ -55,7 +55,7 @@ async def test_test_status_tool_exists(mcp_client, unity_state_manager):
     assert "description" in test_status_tool
     assert "inputSchema" in test_status_tool
 
-    assert test_status_tool["name"] == "tests_status"
+    assert test_status_tool["name"] == "tests_run_status"
     assert isinstance(test_status_tool["description"], str)
     assert len(test_status_tool["description"]) > 0
     assert "without running tests" in test_status_tool["description"]
@@ -73,7 +73,7 @@ async def test_test_status_tool_exists(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_status_call_success(mcp_client, unity_state_manager):
     """Test successful compile_status tool call"""
-    response = await mcp_client.compilation_status()
+    response = await mcp_client.scripts_compile_status()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -99,7 +99,7 @@ async def test_compile_status_call_success(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_test_status_call_success(mcp_client, unity_state_manager):
     """Test successful test_status tool call"""
-    response = await mcp_client.tests_status()
+    response = await mcp_client.tests_run_status()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -125,7 +125,7 @@ async def test_test_status_call_success(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_status_response_structure(mcp_client, unity_state_manager):
     """Test that compile_status response has correct structure"""
-    response = await mcp_client.compilation_status()
+    response = await mcp_client.scripts_compile_status()
 
     status_text = response["result"]["content"][0]["text"]
     status_data = json.loads(status_text)
@@ -148,7 +148,7 @@ async def test_compile_status_response_structure(mcp_client, unity_state_manager
 @pytest.mark.asyncio
 async def test_test_status_response_structure(mcp_client, unity_state_manager):
     """Test that test_status response has correct structure"""
-    response = await mcp_client.tests_status()
+    response = await mcp_client.tests_run_status()
 
     status_text = response["result"]["content"][0]["text"]
     status_data = json.loads(status_text)
@@ -174,7 +174,7 @@ async def test_test_status_response_structure(mcp_client, unity_state_manager):
 async def test_compile_status_consistency_with_http_endpoint(mcp_client, unity_state_manager, unity_base_url):
     """Test that compile_status MCP tool matches HTTP endpoint"""
     # Get status via MCP tool
-    mcp_response = await mcp_client.compilation_status()
+    mcp_response = await mcp_client.scripts_compile_status()
     mcp_data = json.loads(mcp_response["result"]["content"][0]["text"])
 
     # Get status via direct HTTP call
@@ -191,7 +191,7 @@ async def test_compile_status_consistency_with_http_endpoint(mcp_client, unity_s
 async def test_test_status_consistency_with_http_endpoint(mcp_client, unity_state_manager, unity_base_url):
     """Test that tests_status MCP tool matches HTTP endpoint"""
     # Get status via MCP tool
-    mcp_response = await mcp_client.tests_status()
+    mcp_response = await mcp_client.tests_run_status()
     mcp_data = json.loads(mcp_response["result"]["content"][0]["text"])
 
     # Get status via direct HTTP call
@@ -207,7 +207,7 @@ async def test_test_status_consistency_with_http_endpoint(mcp_client, unity_stat
 @pytest.mark.asyncio
 async def test_compile_status_idle_state(mcp_client, unity_state_manager):
     """Test compile_status when Unity is idle"""
-    response = await mcp_client.compilation_status()
+    response = await mcp_client.scripts_compile_status()
     status_data = json.loads(response["result"]["content"][0]["text"])
 
     # When idle, should not be compiling
@@ -220,7 +220,7 @@ async def test_compile_status_idle_state(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_test_status_idle_state(mcp_client, unity_state_manager):
     """Test test_status when Unity is idle"""
-    response = await mcp_client.tests_status()
+    response = await mcp_client.tests_run_status()
     status_data = json.loads(response["result"]["content"][0]["text"])
 
     # When idle, should not be running tests
@@ -234,7 +234,7 @@ async def test_test_status_idle_state(mcp_client, unity_state_manager):
 async def test_compile_status_vs_editor_status_consistency(mcp_client, unity_state_manager):
     """Test that compile_status isCompiling matches editor_status"""
     # Get both statuses
-    compile_response = await mcp_client.compilation_status()
+    compile_response = await mcp_client.scripts_compile_status()
     editor_response = await mcp_client.editor_status()
 
     compile_data = json.loads(compile_response["result"]["content"][0]["text"])
@@ -250,7 +250,7 @@ async def test_compile_status_vs_editor_status_consistency(mcp_client, unity_sta
 async def test_test_status_vs_editor_status_consistency(mcp_client, unity_state_manager):
     """Test that test_status isRunning matches editor_status"""
     # Get both statuses
-    test_response = await mcp_client.tests_status()
+    test_response = await mcp_client.tests_run_status()
     editor_response = await mcp_client.editor_status()
 
     test_data = json.loads(test_response["result"]["content"][0]["text"])

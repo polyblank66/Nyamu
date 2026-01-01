@@ -24,27 +24,27 @@ Prompt: Check script compilation with Nyamu MCP tool
 * `assets_refresh` – Forces Unity to refresh the asset database and returns compilation error information. Shows the last compilation status even if no new compilation occurred during the refresh. This is critical after file operations to ensure Unity detects file system changes (new, deleted, or moved files). Use this single command to both refresh assets and check compilation status.
 
 ### Script Compilation
-* `compilation_trigger` – Triggers Unity Editor compilation, waits for completion, and returns compilation results, including any errors.
-* `compilation_status` – Returns the current compilation status without triggering a compilation. Includes compilation state, last compile time, and any errors.
+* `scripts_compile` – Triggers Unity Editor compilation, waits for completion, and returns compilation results, including any errors.
+* `scripts_compile_status` – Returns the current compilation status without triggering a compilation. Includes compilation state, last compile time, and any errors.
 
 ### Shader Compilation
-* `compile_shader` – Compiles a single shader by name with fuzzy matching support. Searches for shaders by partial name, handles case-insensitive matching, and returns detailed compilation results with error reporting.
-* `compile_all_shaders` – Compiles all shaders in the Unity project and returns a comprehensive summary with statistics (total, successful, failed), individual shader results, and detailed error information for failed shaders.
-* `compile_shaders_regex` – Compiles shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. Useful for compiling a subset of shaders based on path patterns.
-* `shader_compilation_status` – Returns the current shader compilation status without triggering compilation. Includes compilation state, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command.
+* `shaders_compile_single` – Compiles a single shader by name with fuzzy matching support. Searches for shaders by partial name, handles case-insensitive matching, and returns detailed compilation results with error reporting.
+* `shaders_compile_all` – Compiles all shaders in the Unity project and returns a comprehensive summary with statistics (total, successful, failed), individual shader results, and detailed error information for failed shaders.
+* `shaders_compile_regex` – Compiles shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. Useful for compiling a subset of shaders based on path patterns.
+* `shaders_compile_status` – Returns the current shader compilation status without triggering compilation. Includes compilation state, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command.
 
 ### Testing
 * `tests_run_regex` – Executes Unity Test Runner tests (EditMode and PlayMode) with regex-based filtering. Supports flexible pattern matching for test selection.
 * `tests_run_all` – Runs all Unity tests in the specified mode (EditMode or PlayMode).
 * `tests_run_single` – Runs a single specific Unity test by its full name.
-* `tests_status` – Returns the current test execution status without running tests. Includes execution state, last test time, test results, and test run ID.
-* `tests_cancel` – Cancels running Unity test execution. Supports cancellation of EditMode tests by GUID or current test run.
+* `tests_run_status` – Returns the current test execution status without running tests. Includes execution state, last test time, test results, and test run ID.
+* `tests_run_cancel` – Cancels running Unity test execution. Supports cancellation of EditMode tests by GUID or current test run.
 
 ### Editor Status
 * `editor_status` – Returns the current Unity Editor status, including compilation state, test execution state, and play mode state, for real-time monitoring.
 
 ### Menu Item Execution
-* `execute_menu_item` – Executes any Unity Editor menu item by its path. Useful for automating Unity Editor operations programmatically.
+* `menu_items_execute` – Executes any Unity Editor menu item by its path. Useful for automating Unity Editor operations programmatically.
 
 ### Unity Editor Logs
 * `editor_log_path` – Returns the platform-specific path to the Unity Editor log file along with existence status. Useful for verifying log file location before reading.

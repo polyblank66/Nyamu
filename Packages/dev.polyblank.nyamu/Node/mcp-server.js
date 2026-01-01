@@ -161,7 +161,7 @@ class ConfigManager {
 
         try {
             // Try to fetch settings from Unity
-            const response = await this.makeHttpRequest('/mcp-settings');
+            const response = await this.makeHttpRequest('/internal-mcp-settings');
             this.config = response;
             this.lastFetchTime = now;
             return this.config;
@@ -312,8 +312,8 @@ class MCPServer {
         this.activeProtocol = null; // 'content-length' | 'newline'
         this.capabilities = {
             tools: {
-                compilation_trigger: {
-                    description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. WHEN EDITING EXISTING FILES: Call compilation_trigger directly without refresh. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with NYAMU project open.",
+                scripts_compile: {
+                    description: "Request Unity Editor to compile C# scripts and wait for completion. Returns compilation status and any errors. IMPORTANT: For structural changes (new/deleted/moved files), call refresh_assets first (use force=true for deletions), wait for MCP responsiveness, then call this tool. Without refresh, Unity may not detect file changes. WHEN EDITING EXISTING FILES: Call scripts_compile directly without refresh. LLM HINTS: If you get Error -32603 with 'Unity HTTP server restarting', this is normal during compilation - wait 3-5 seconds and retry. If you get 'Unity Editor HTTP server unavailable', verify Unity Editor is running with NYAMU project open.",
                     inputSchema: {
                         type: "object",
                         properties: {
@@ -423,7 +423,7 @@ class MCPServer {
                         required: []
                     }
                 },
-                compilation_status: {
+                scripts_compile_status: {
                     description: "Get current compilation status without triggering compilation. Returns compilation state, last compile time, and any compilation errors.",
                     inputSchema: {
                         type: "object",
@@ -431,7 +431,7 @@ class MCPServer {
                         required: []
                     }
                 },
-                tests_status: {
+                tests_run_status: {
                     description: "Get current test execution status without running tests. Returns test execution state, last test time, test results, and test run ID.",
                     inputSchema: {
                         type: "object",
@@ -439,7 +439,7 @@ class MCPServer {
                         required: []
                     }
                 },
-                tests_cancel: {
+                tests_run_cancel: {
                     description: "Cancel running Unity test execution. Uses Unity's TestRunnerApi.CancelTestRun(guid). Currently only supports EditMode tests. If no guid is provided, cancels the current test run. LLM HINTS: Only EditMode tests can be cancelled. PlayMode test cancellation is not supported by Unity's API.",
                     inputSchema: {
                         type: "object",
@@ -453,7 +453,7 @@ class MCPServer {
                         required: []
                     }
                 },
-                compile_shader: {
+                shaders_compile_single: {
                     description: "Compile a single shader with fuzzy name matching. Shows all matches but auto-compiles best match. Returns compilation errors/warnings and time. LLM HINTS: Fuzzy search supported - exact names not required.",
                     inputSchema: {
                         type: "object",
@@ -471,8 +471,8 @@ class MCPServer {
                         required: ["shader_name"]
                     }
                 },
-                compile_all_shaders: {
-                    description: "Compile all shaders in Unity project. Returns per-shader results with errors/warnings. WARNING: Can take 15+ minutes or much longer, especially for URP projects. Strongly consider using compile_shaders_regex instead. LLM HINTS: Avoid this tool unless absolutely necessary. Use compile_shader or compile_shaders_regex for targeted compilation.",
+                shaders_compile_all: {
+                    description: "Compile all shaders in Unity project. Returns per-shader results with errors/warnings. WARNING: Can take 15+ minutes or much longer, especially for URP projects. Strongly consider using shaders_compile_regex instead. LLM HINTS: Avoid this tool unless absolutely necessary. Use shaders_compile_single or shaders_compile_regex for targeted compilation.",
                     inputSchema: {
                         type: "object",
                         properties: {
@@ -485,7 +485,7 @@ class MCPServer {
                         required: []
                     }
                 },
-                compile_shaders_regex: {
+                shaders_compile_regex: {
                     description: "Compile shaders matching a regex pattern applied to shader file paths. Returns per-shader results with errors/warnings. Supports MCP progress notifications when progressToken is provided in request _meta. LLM HINTS: Use this to compile a subset of shaders based on path patterns. Progress notifications sent roughly every 500ms during compilation.",
                     inputSchema: {
                         type: "object",
@@ -503,8 +503,8 @@ class MCPServer {
                         required: ["pattern"]
                     }
                 },
-                shader_compilation_status: {
-                    description: "Get current shader compilation status without triggering compilation. Returns whether shaders are compiling, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command. LLM HINTS: Always check this before calling compile_shader/compile_all_shaders/compile_shaders_regex to avoid redundant compilations.",
+                shaders_compile_status: {
+                    description: "Get current shader compilation status without triggering compilation. Returns whether shaders are compiling, last compilation type (single/all/regex), last compilation time, and complete results from the previous shader compilation command. LLM HINTS: Always check this before calling shaders_compile_single/shaders_compile_all/shaders_compile_regex to avoid redundant compilations.",
                     inputSchema: {
                         type: "object",
                         properties: {},
@@ -593,7 +593,7 @@ class MCPServer {
                         required: ["pattern"]
                     }
                 },
-                execute_menu_item: {
+                menu_items_execute: {
                     description: "Execute Unity Editor menu item by path. Triggers any Unity menu command programmatically. LLM HINTS: Use full menu path like 'Assets/Create/C# Script' or 'GameObject/Create Empty'. Returns success/failure status. Useful for automating Unity Editor operations.",
                     inputSchema: {
                         type: "object",
@@ -719,7 +719,7 @@ class MCPServer {
 
         try {
             switch (name) {
-                case 'compilation_trigger':
+                case 'scripts_compile':
                     return await this.callCompileAndWait(id, args.timeout || 30, progressToken);
                 case 'tests_run_single':
                     return await this.callTestsRunSingle(id, args.test_name, args.test_mode || 'EditMode', args.timeout || 60, progressToken);
@@ -731,19 +731,19 @@ class MCPServer {
                     return await this.callAssetsRefresh(id, args);
                 case 'editor_status':
                     return await this.callEditorStatus(id);
-                case 'compilation_status':
+                case 'scripts_compile_status':
                     return await this.callCompileStatus(id);
-                case 'tests_status':
+                case 'tests_run_status':
                     return await this.callTestStatus(id);
-                case 'tests_cancel':
+                case 'tests_run_cancel':
                     return await this.callTestsCancel(id, args.test_run_guid || '');
-                case 'compile_shader':
+                case 'shaders_compile_single':
                     return await this.callCompileShader(id, args.shader_name, args.timeout || 30);
-                case 'compile_all_shaders':
+                case 'shaders_compile_all':
                     return await this.callCompileAllShaders(id, args.timeout || 120, progressToken);
-                case 'compile_shaders_regex':
+                case 'shaders_compile_regex':
                     return await this.callCompileShadersRegex(id, args.pattern, args.timeout || 120, progressToken);
-                case 'shader_compilation_status':
+                case 'shaders_compile_status':
                     return await this.callShaderCompilationStatus(id);
                 case 'editor_log_path':
                     return await this.callEditorLogPath(id);
@@ -753,7 +753,7 @@ class MCPServer {
                     return await this.callEditorLogTail(id, args.line_count || 100, args.log_type || 'all');
                 case 'editor_log_grep':
                     return await this.callEditorLogGrep(id, args.pattern, args.case_sensitive || false, args.context_lines || 0, args.line_limit || 1000, args.log_type || 'all');
-                case 'execute_menu_item':
+                case 'menu_items_execute':
                     return await this.callExecuteMenuItem(id, args.menu_item_path);
                 case 'editor_exit_play_mode':
                     return await this.callEditorExitPlayMode(id);
@@ -799,7 +799,7 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Start compilation
-            const compileResponse = await this.makeHttpRequest('/compilation-trigger');
+            const compileResponse = await this.makeHttpRequest('/scripts-compile');
 
             const startTime = Date.now();
             const timeoutMs = timeoutSeconds * 1000;
@@ -810,7 +810,7 @@ class MCPServer {
 
             while (Date.now() - startTime < startCheckTimeout) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/compilation-status');
+                    const statusResponse = await this.makeHttpRequest('/scripts-compile-status');
 
                     if (statusResponse.isCompiling) {
                         compilationStarted = true;
@@ -827,7 +827,7 @@ class MCPServer {
 
             // If compilation never started, check if it already completed (very fast compilation)
             if (!compilationStarted) {
-                const statusResponse = await this.makeHttpRequest('/compilation-status');
+                const statusResponse = await this.makeHttpRequest('/scripts-compile-status');
                 if (statusResponse.status === 'idle') {
                     // Compilation completed before we could detect it started
                     const errorText = statusResponse.errors && statusResponse.errors.length > 0
@@ -855,7 +855,7 @@ class MCPServer {
             // Wait for compilation to complete
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/compilation-status');
+                    const statusResponse = await this.makeHttpRequest('/scripts-compile-status');
 
                     if (statusResponse.status === 'idle') {
 
@@ -918,7 +918,7 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Get initial status to capture current test run ID (if any)
-            const initialStatus = await this.makeHttpRequest('/tests-status');
+            const initialStatus = await this.makeHttpRequest('/tests-run-status');
             const initialTestRunId = initialStatus.testRunId;
 
             // Start single test execution
@@ -935,7 +935,7 @@ class MCPServer {
 
             while (Date.now() - startTime < startCheckTimeout) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/tests-status');
+                    const statusResponse = await this.makeHttpRequest('/tests-run-status');
 
                     // Check for early error detection
                     if (statusResponse.hasError && statusResponse.errorMessage) {
@@ -964,7 +964,7 @@ class MCPServer {
             let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/tests-status');
+                    const statusResponse = await this.makeHttpRequest('/tests-run-status');
 
                     // Check for errors during test execution
                     if (statusResponse.hasError && statusResponse.errorMessage) {
@@ -1030,7 +1030,7 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Get initial status to capture current test run ID (if any)
-            const initialStatus = await this.makeHttpRequest('/tests-status');
+            const initialStatus = await this.makeHttpRequest('/tests-run-status');
             const initialTestRunId = initialStatus.testRunId;
 
             // Start all tests execution
@@ -1047,7 +1047,7 @@ class MCPServer {
 
             while (Date.now() - startTime < startCheckTimeout) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/tests-status');
+                    const statusResponse = await this.makeHttpRequest('/tests-run-status');
 
                     // Check for early error detection
                     if (statusResponse.hasError && statusResponse.errorMessage) {
@@ -1076,7 +1076,7 @@ class MCPServer {
             let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/tests-status');
+                    const statusResponse = await this.makeHttpRequest('/tests-run-status');
 
                     // Check for errors during test execution
                     if (statusResponse.hasError && statusResponse.errorMessage) {
@@ -1139,7 +1139,7 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Get initial status to capture current test run ID (if any)
-            const initialStatus = await this.makeHttpRequest('/tests-status');
+            const initialStatus = await this.makeHttpRequest('/tests-run-status');
             const initialTestRunId = initialStatus.testRunId;
 
             // Start regex-filtered test execution
@@ -1156,7 +1156,7 @@ class MCPServer {
 
             while (Date.now() - startTime < startCheckTimeout) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/tests-status');
+                    const statusResponse = await this.makeHttpRequest('/tests-run-status');
 
                     // Check for early error detection
                     if (statusResponse.hasError && statusResponse.errorMessage) {
@@ -1185,7 +1185,7 @@ class MCPServer {
             let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const statusResponse = await this.makeHttpRequest('/tests-status');
+                    const statusResponse = await this.makeHttpRequest('/tests-run-status');
 
                     // Check for errors during test execution
                     if (statusResponse.hasError && statusResponse.errorMessage) {
@@ -1403,7 +1403,7 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Call Unity compilation-status endpoint
-            const statusResponse = await this.makeHttpRequest('/compilation-status');
+            const statusResponse = await this.makeHttpRequest('/scripts-compile-status');
 
             const formattedText = this.responseFormatter.formatJsonResponse(statusResponse);
 
@@ -1429,7 +1429,7 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Call Unity tests-status endpoint
-            const statusResponse = await this.makeHttpRequest('/tests-status');
+            const statusResponse = await this.makeHttpRequest('/tests-run-status');
 
             const formattedText = this.responseFormatter.formatJsonResponse(statusResponse);
 
@@ -1455,7 +1455,7 @@ class MCPServer {
             await this.ensureResponseFormatter();
 
             // Build the URL with optional guid parameter
-            let url = '/tests-cancel';
+            let url = '/tests-run-cancel';
             if (testRunGuid) {
                 url += `?guid=${encodeURIComponent(testRunGuid)}`;
             }
@@ -1487,7 +1487,7 @@ class MCPServer {
 
             const timeoutMs = timeoutSeconds * 1000;
             const requestBody = JSON.stringify({ shaderName: shaderName });
-            const compileResponse = await this.makeHttpPostRequest('/compile-shader', requestBody, timeoutMs);
+            const compileResponse = await this.makeHttpPostRequest('/shaders-compile-single', requestBody, timeoutMs);
 
             const formattedText = this.formatShaderCompileResponse(compileResponse);
             const finalText = this.responseFormatter.formatResponse(formattedText);
@@ -1520,13 +1520,13 @@ class MCPServer {
 
             // 1. Start compilation asynchronously
             const startBody = JSON.stringify({ async: true });
-            await this.makeHttpPostRequest('/compile-all-shaders', startBody);
+            await this.makeHttpPostRequest('/shaders-compile-all', startBody);
 
             // 2. Poll for progress
             let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const status = await this.makeHttpRequest('/shader-compilation-status');
+                    const status = await this.makeHttpRequest('/shaders-compile-status');
 
                     // Check if compilation complete
                     if (!status.isCompiling && status.lastCompilationType === 'all' && status.allShadersResult) {
@@ -1593,7 +1593,7 @@ class MCPServer {
 
             const timeoutMs = timeoutSeconds * 1000;
             const requestBody = JSON.stringify({ pattern });
-            const response = await this.makeHttpPostRequest('/compile-shaders-regex', requestBody, timeoutMs);
+            const response = await this.makeHttpPostRequest('/shaders-compile-regex', requestBody, timeoutMs);
 
             const formattedText = this.formatCompileShadersRegexResponse(response);
             const finalText = this.responseFormatter.formatResponse(formattedText);
@@ -1616,13 +1616,13 @@ class MCPServer {
 
             // 1. Start compilation asynchronously
             const startBody = JSON.stringify({ pattern, async: true });
-            await this.makeHttpPostRequest('/compile-shaders-regex', startBody);
+            await this.makeHttpPostRequest('/shaders-compile-regex', startBody);
 
             // 2. Poll for progress
             let lastProgress = -1;
             while (Date.now() - startTime < timeoutMs) {
                 try {
-                    const status = await this.makeHttpRequest('/shader-compilation-status');
+                    const status = await this.makeHttpRequest('/shaders-compile-status');
 
                     // Check if compilation complete
                     if (!status.isCompiling && status.lastCompilationType === 'regex' && status.regexShadersResult) {
@@ -1676,7 +1676,7 @@ class MCPServer {
         try {
             await this.ensureResponseFormatter();
 
-            const statusResponse = await this.makeHttpRequest('/shader-compilation-status');
+            const statusResponse = await this.makeHttpRequest('/shaders-compile-status');
 
             const formattedText = this.responseFormatter.formatJsonResponse(statusResponse);
 
@@ -1793,7 +1793,7 @@ class MCPServer {
         try {
             await this.ensureResponseFormatter();
 
-            const response = await this.makeHttpRequest(`/execute-menu-item?menuItemPath=${encodeURIComponent(menuItemPath)}`);
+            const response = await this.makeHttpRequest(`/menu-items-execute?menuItemPath=${encodeURIComponent(menuItemPath)}`);
             const formattedText = this.responseFormatter.formatJsonResponse(response);
 
             return {
@@ -2241,7 +2241,7 @@ class MCPServer {
 
     async checkUnityServerHealth() {
         try {
-            const response = await this.makeHttpRequest('/compilation-status');
+            const response = await this.makeHttpRequest('/scripts-compile-status');
             return { available: true, response };
         } catch (error) {
             return { available: false, error };

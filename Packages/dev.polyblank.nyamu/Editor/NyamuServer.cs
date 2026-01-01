@@ -57,22 +57,22 @@ namespace Nyamu
 
         public static class Endpoints
         {
-            public const string CompileAndWait = "/compilation-trigger";
-            public const string CompileStatus = "/compilation-status";
+            public const string CompileAndWait = "/scripts-compile";
+            public const string CompileStatus = "/scripts-compile-status";
             public const string TestsRunSingle = "/tests-run-single";
             public const string TestsRunAll = "/tests-run-all";
             public const string TestsRunRegex = "/tests-run-regex";
-            public const string TestsStatus = "/tests-status";
+            public const string TestsStatus = "/tests-run-status";
             public const string AssetsRefresh = "/assets-refresh";
             public const string AssetsRefreshStatus = "/assets-refresh-status";
             public const string EditorStatus = "/editor-status";
-            public const string McpSettings = "/mcp-settings";
-            public const string TestsCancel = "/tests-cancel";
-            public const string CompileShader = "/compile-shader";
-            public const string CompileAllShaders = "/compile-all-shaders";
-            public const string CompileShadersRegex = "/compile-shaders-regex";
-            public const string ShaderCompilationStatus = "/shader-compilation-status";
-            public const string ExecuteMenuItem = "/execute-menu-item";
+            public const string McpSettings = "/internal-mcp-settings";
+            public const string TestsCancel = "/tests-run-cancel";
+            public const string CompileShader = "/shaders-compile-single";
+            public const string CompileAllShaders = "/shaders-compile-all";
+            public const string CompileShadersRegex = "/shaders-compile-regex";
+            public const string ShaderCompilationStatus = "/shaders-compile-status";
+            public const string ExecuteMenuItem = "/menu-items-execute";
             public const string EditorExitPlayMode = "/editor-exit-play-mode";
         }
     }

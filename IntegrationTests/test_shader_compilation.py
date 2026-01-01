@@ -22,7 +22,7 @@ from mcp_client import MCPClient
 @pytest.mark.asyncio
 async def test_compile_shader_exact_match(mcp_client, unity_state_manager):
     """Test successful compilation with exact shader name match"""
-    response = await mcp_client.compile_shader("Custom/TestShader", timeout=30)
+    response = await mcp_client.shaders_compile_single("Custom/TestShader", timeout=30)
 
     # Validate JSON-RPC structure
     assert response["jsonrpc"] == "2.0"
@@ -49,7 +49,7 @@ async def test_compile_shader_exact_match(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_shader_with_errors(mcp_client, unity_state_manager):
     """Test error reporting for shader with compilation errors"""
-    response = await mcp_client.compile_shader("BrokenShader", timeout=30)
+    response = await mcp_client.shaders_compile_single("BrokenShader", timeout=30)
 
     # Validate response structure
     assert response["jsonrpc"] == "2.0"
@@ -79,7 +79,7 @@ async def test_compile_shader_with_errors(mcp_client, unity_state_manager):
 async def test_compile_shader_fuzzy_match(mcp_client, unity_state_manager):
     """Test fuzzy matching with partial/lowercase shader name"""
     # Use lowercase, no path prefix to test fuzzy matching
-    response = await mcp_client.compile_shader("testshader", timeout=30)
+    response = await mcp_client.shaders_compile_single("testshader", timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -95,7 +95,7 @@ async def test_compile_shader_fuzzy_match(mcp_client, unity_state_manager):
 async def test_compile_shader_multiple_matches(mcp_client, unity_state_manager):
     """Test display of multiple fuzzy matches"""
     # Use generic term that might match multiple shaders
-    response = await mcp_client.compile_shader("shader", timeout=30)
+    response = await mcp_client.shaders_compile_single("shader", timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -123,7 +123,7 @@ async def test_compile_shader_case_insensitive(mcp_client, unity_state_manager):
     test_cases = ["TESTSHADER", "testshader", "TestShader"]
 
     for shader_name in test_cases:
-        response = await mcp_client.compile_shader(shader_name, timeout=30)
+        response = await mcp_client.shaders_compile_single(shader_name, timeout=30)
 
         assert response["jsonrpc"] == "2.0"
         content_text = response["result"]["content"][0]["text"]
@@ -137,14 +137,14 @@ async def test_compile_shader_case_insensitive(mcp_client, unity_state_manager):
 async def test_compile_shader_partial_path(mcp_client, unity_state_manager):
     """Test fuzzy matching works with partial paths"""
     # Test with just the path
-    response1 = await mcp_client.compile_shader("Custom/", timeout=30)
+    response1 = await mcp_client.shaders_compile_single("Custom/", timeout=30)
     content_text1 = response1["result"]["content"][0]["text"]
 
     # Should find shaders in Custom/ directory
     assert "Custom/" in content_text1
 
     # Test with just the shader name (no path)
-    response2 = await mcp_client.compile_shader("TestShader", timeout=30)
+    response2 = await mcp_client.shaders_compile_single("TestShader", timeout=30)
     content_text2 = response2["result"]["content"][0]["text"]
 
     # Should find TestShader
@@ -160,7 +160,7 @@ async def test_compile_shader_partial_path(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_all_shaders_basic(mcp_client, unity_state_manager):
     """Test basic compile all shaders functionality"""
-    response = await mcp_client.compile_all_shaders(timeout=120)
+    response = await mcp_client.shaders_compile_all(timeout=120)
 
     # Validate JSON-RPC structure
     assert response["jsonrpc"] == "2.0"
@@ -187,7 +187,7 @@ async def test_compile_all_shaders_basic(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_all_shaders_includes_errors(mcp_client, unity_state_manager):
     """Verify failed shaders with error details are reported"""
-    response = await mcp_client.compile_all_shaders(timeout=120)
+    response = await mcp_client.shaders_compile_all(timeout=120)
 
     content_text = response["result"]["content"][0]["text"]
 
@@ -218,7 +218,7 @@ async def test_compile_all_shaders_includes_errors(mcp_client, unity_state_manag
 @pytest.mark.asyncio
 async def test_compile_shader_response_structure(mcp_client, unity_state_manager):
     """Validate complete JSON-RPC response structure for compile_shader"""
-    response = await mcp_client.compile_shader("Custom/TestShader", timeout=30)
+    response = await mcp_client.shaders_compile_single("Custom/TestShader", timeout=30)
 
     # Validate JSON-RPC structure
     assert response["jsonrpc"] == "2.0"
@@ -245,7 +245,7 @@ async def test_compile_shader_response_structure(mcp_client, unity_state_manager
 @pytest.mark.asyncio
 async def test_compile_all_shaders_response_structure(mcp_client, unity_state_manager):
     """Validate complete JSON-RPC response structure for compile_all_shaders"""
-    response = await mcp_client.compile_all_shaders(timeout=120)
+    response = await mcp_client.shaders_compile_all(timeout=120)
 
     # Validate JSON-RPC structure
     assert response["jsonrpc"] == "2.0"
@@ -274,8 +274,8 @@ async def test_shader_tools_in_tools_list(mcp_client, unity_state_manager):
     assert isinstance(tools, list)
 
     # Find shader tools
-    compile_shader_tool = next((t for t in tools if t["name"] == "compile_shader"), None)
-    compile_all_shaders_tool = next((t for t in tools if t["name"] == "compile_all_shaders"), None)
+    compile_shader_tool = next((t for t in tools if t["name"] == "shaders_compile_single"), None)
+    compile_all_shaders_tool = next((t for t in tools if t["name"] == "shaders_compile_all"), None)
 
     # Verify both tools exist
     assert compile_shader_tool is not None, "compile_shader tool not found in tools list"
@@ -304,7 +304,7 @@ async def test_compile_shader_direct_tool_call(unity_state_manager):
 
     try:
         response = await client._send_request("tools/call", {
-            "name": "compile_shader",
+            "name": "shaders_compile_single",
             "arguments": {
                 "shader_name": "Custom/TestShader",
                 "timeout": 30
@@ -332,7 +332,7 @@ async def test_compile_all_shaders_direct_tool_call(unity_state_manager):
 
     try:
         response = await client._send_request("tools/call", {
-            "name": "compile_all_shaders",
+            "name": "shaders_compile_all",
             "arguments": {
                 "timeout": 120
             }
@@ -358,7 +358,7 @@ async def test_compile_all_shaders_direct_tool_call(unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_shader_not_found(mcp_client, unity_state_manager):
     """Test behavior when shader doesn't exist"""
-    response = await mcp_client.compile_shader("NonExistentShader123XYZ", timeout=30)
+    response = await mcp_client.shaders_compile_single("NonExistentShader123XYZ", timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -385,7 +385,7 @@ async def test_compile_shader_not_found(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_shader_with_custom_timeout(mcp_client, unity_state_manager):
     """Test compile_shader with custom timeout parameter"""
-    response = await mcp_client.compile_shader("Custom/TestShader", timeout=45)
+    response = await mcp_client.shaders_compile_single("Custom/TestShader", timeout=45)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -398,7 +398,7 @@ async def test_compile_shader_with_custom_timeout(mcp_client, unity_state_manage
 @pytest.mark.asyncio
 async def test_compile_all_shaders_statistics(mcp_client, unity_state_manager):
     """Validate statistics accuracy for compile_all_shaders"""
-    response = await mcp_client.compile_all_shaders(timeout=120)
+    response = await mcp_client.shaders_compile_all(timeout=120)
 
     content_text = response["result"]["content"][0]["text"]
 
@@ -426,7 +426,7 @@ async def test_compile_all_shaders_statistics(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_all_shaders_with_timeout(mcp_client, unity_state_manager):
     """Test compile_all_shaders with custom timeout"""
-    response = await mcp_client.compile_all_shaders(timeout=180)
+    response = await mcp_client.shaders_compile_all(timeout=180)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -439,7 +439,7 @@ async def test_compile_all_shaders_with_timeout(mcp_client, unity_state_manager)
 @pytest.mark.asyncio
 async def test_compile_all_shaders_default_timeout(mcp_client, unity_state_manager):
     """Test compile_all_shaders with default timeout (120s)"""
-    response = await mcp_client.compile_all_shaders()  # No timeout parameter
+    response = await mcp_client.shaders_compile_all()  # No timeout parameter
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]

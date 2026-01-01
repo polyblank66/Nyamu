@@ -169,13 +169,13 @@ class MCPClient:
         """Get list of available tools"""
         return await self._send_request("tools/list")
 
-    async def compilation_trigger(self, timeout: int = 30) -> Dict[str, Any]:
+    async def scripts_compile(self, timeout: int = 30) -> Dict[str, Any]:
         """Start compilation and wait for completion
 
         Automatically retries on Unity HTTP server restart (-32603 errors).
         """
         return await self._send_unity_request_with_retry("tools/call", {
-            "name": "compilation_trigger",
+            "name": "scripts_compile",
             "arguments": {"timeout": timeout}
         })
 
@@ -255,21 +255,21 @@ class MCPClient:
             "arguments": {}
         })
 
-    async def compilation_status(self) -> Dict[str, Any]:
+    async def scripts_compile_status(self) -> Dict[str, Any]:
         """Get compilation status without triggering compilation"""
         return await self._send_request("tools/call", {
-            "name": "compilation_status",
+            "name": "scripts_compile_status",
             "arguments": {}
         })
 
-    async def tests_status(self) -> Dict[str, Any]:
+    async def tests_run_status(self) -> Dict[str, Any]:
         """Get test execution status without running tests"""
         return await self._send_request("tools/call", {
-            "name": "tests_status",
+            "name": "tests_run_status",
             "arguments": {}
         })
 
-    async def tests_cancel(self, test_run_guid: str = "") -> Dict[str, Any]:
+    async def tests_run_cancel(self, test_run_guid: str = "") -> Dict[str, Any]:
         """Cancel running Unity test execution
 
         Args:
@@ -280,7 +280,7 @@ class MCPClient:
             Currently only supports EditMode tests as per Unity's TestRunnerApi limitations.
         """
         return await self._send_request("tools/call", {
-            "name": "tests_cancel",
+            "name": "tests_run_cancel",
             "arguments": {
                 "test_run_guid": test_run_guid
             }
@@ -297,7 +297,7 @@ class MCPClient:
             "arguments": {}
         })
 
-    async def compile_shader(self, shader_name: str, timeout: int = 30) -> Dict[str, Any]:
+    async def shaders_compile_single(self, shader_name: str, timeout: int = 30) -> Dict[str, Any]:
         """Compile a single shader with fuzzy name matching
 
         Args:
@@ -308,14 +308,14 @@ class MCPClient:
             MCP response with shader compilation results
         """
         return await self._send_request("tools/call", {
-            "name": "compile_shader",
+            "name": "shaders_compile_single",
             "arguments": {
                 "shader_name": shader_name,
                 "timeout": timeout
             }
         })
 
-    async def compile_all_shaders(self, timeout: int = 120) -> Dict[str, Any]:
+    async def shaders_compile_all(self, timeout: int = 120) -> Dict[str, Any]:
         """Compile all shaders in Unity project
 
         Args:
@@ -325,13 +325,13 @@ class MCPClient:
             MCP response with all shaders compilation results
         """
         return await self._send_request("tools/call", {
-            "name": "compile_all_shaders",
+            "name": "shaders_compile_all",
             "arguments": {
                 "timeout": timeout
             }
         })
 
-    async def compile_shaders_regex(self, pattern: str, timeout: int = 120) -> Dict[str, Any]:
+    async def shaders_compile_regex(self, pattern: str, timeout: int = 120) -> Dict[str, Any]:
         """Compile shaders matching a regex pattern
 
         Args:
@@ -342,21 +342,21 @@ class MCPClient:
             MCP response with regex-matched shaders compilation results
         """
         return await self._send_request("tools/call", {
-            "name": "compile_shaders_regex",
+            "name": "shaders_compile_regex",
             "arguments": {
                 "pattern": pattern,
                 "timeout": timeout
             }
         })
 
-    async def shader_compilation_status(self) -> Dict[str, Any]:
+    async def shaders_compile_status(self) -> Dict[str, Any]:
         """Get current shader compilation status
 
         Returns:
             MCP response with shader compilation status and last results
         """
         return await self._send_request("tools/call", {
-            "name": "shader_compilation_status",
+            "name": "shaders_compile_status",
             "arguments": {}
         })
 
@@ -375,18 +375,18 @@ def run_sync_mcp_command(method: str, params: Dict[str, Any] = None) -> Dict[str
                 return await client.initialize()
             elif method == "tools/list":
                 return await client.list_tools()
-            elif method == "compilation_trigger":
+            elif method == "scripts_compile":
                 timeout = (params or {}).get("timeout", 30)
-                return await client.compilation_trigger(timeout=timeout)
+                return await client.scripts_compile(timeout=timeout)
             elif method == "tests_run_single":
                 return await client.tests_run_single(**params)
             elif method == "tests_run_all":
                 return await client.tests_run_all(**params)
             elif method == "tests_run_regex":
                 return await client.tests_run_regex(**params)
-            elif method == "tests_cancel":
+            elif method == "tests_run_cancel":
                 test_run_guid = (params or {}).get("test_run_guid", "")
-                return await client.tests_cancel(test_run_guid=test_run_guid)
+                return await client.tests_run_cancel(test_run_guid=test_run_guid)
             else:
                 return await client._send_request(method, params)
 

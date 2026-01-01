@@ -20,18 +20,18 @@ async def test_tools_list_success(mcp_client, unity_state_manager):
     result = response["result"]
     assert "tools" in result
     assert isinstance(result["tools"], list)
-    assert len(result["tools"]) >= 2  # Should have at least compilation_trigger and run_tests
+    assert len(result["tools"]) >= 2  # Should have at least scripts_compile and run_tests
 
 
 @pytest.mark.mcp
 @pytest.mark.protocol
 @pytest.mark.asyncio
-async def test_tools_list_contains_compilation_trigger(mcp_client, unity_state_manager):
-    """Test that tools list contains compilation_trigger"""
+async def test_tools_list_contains_scripts_compile(mcp_client, unity_state_manager):
+    """Test that tools list contains scripts_compile"""
     response = await mcp_client.list_tools()
     tools = response["result"]["tools"]
 
-    compile_tool = next((tool for tool in tools if tool["name"] == "compilation_trigger"), None)
+    compile_tool = next((tool for tool in tools if tool["name"] == "scripts_compile"), None)
     assert compile_tool is not None
 
     # Check tool structure
@@ -39,7 +39,7 @@ async def test_tools_list_contains_compilation_trigger(mcp_client, unity_state_m
     assert "description" in compile_tool
     assert "inputSchema" in compile_tool
 
-    assert compile_tool["name"] == "compilation_trigger"
+    assert compile_tool["name"] == "scripts_compile"
     assert isinstance(compile_tool["description"], str)
     assert len(compile_tool["description"]) > 0
 

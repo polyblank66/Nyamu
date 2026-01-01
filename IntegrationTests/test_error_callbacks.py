@@ -166,7 +166,7 @@ async def test_test_status_error_fields(mcp_client, unity_state_manager):
     """Test that tests-status endpoint includes error information fields"""
 
     # Get current test status
-    response = await mcp_client.tests_status()
+    response = await mcp_client.tests_run_status()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -244,7 +244,7 @@ async def test_error_state_reset_between_runs(unity_helper, unity_state_manager,
         assert "Passed: 1" in response["result"]["content"][0]["text"]
 
         # Check status has no errors
-        status_response = await client.tests_status()
+        status_response = await client.tests_run_status()
         import json
         status_data = json.loads(status_response["result"]["content"][0]["text"])
         assert status_data["hasError"] is False
@@ -300,7 +300,7 @@ public class ErrorStateResetTest
         assert "Passed: 1" in response["result"]["content"][0]["text"]
 
         # Verify error state was reset
-        status_response = await client.tests_status()
+        status_response = await client.tests_run_status()
         status_data = json.loads(status_response["result"]["content"][0]["text"])
         assert status_data["hasError"] is False, "Error state should be reset after successful test"
 

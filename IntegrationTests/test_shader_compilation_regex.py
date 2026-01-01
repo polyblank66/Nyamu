@@ -22,7 +22,7 @@ from mcp_client import MCPClient
 async def test_compile_shaders_regex_basic(mcp_client, unity_state_manager):
     """Test basic regex shader compilation with simple pattern"""
     # Match all shaders in TestShaders directory
-    response = await mcp_client.compile_shaders_regex(".*TestShader.*", timeout=120)
+    response = await mcp_client.shaders_compile_regex(".*TestShader.*", timeout=120)
 
     # Validate JSON-RPC structure
     assert response["jsonrpc"] == "2.0"
@@ -46,7 +46,7 @@ async def test_compile_shaders_regex_basic(mcp_client, unity_state_manager):
 async def test_compile_shaders_regex_custom_path(mcp_client, unity_state_manager):
     """Test regex matching specific shader paths"""
     # Match shaders in Custom/ directory
-    response = await mcp_client.compile_shaders_regex("Assets/.*Custom/.*", timeout=120)
+    response = await mcp_client.shaders_compile_regex("Assets/.*Custom/.*", timeout=120)
 
     content_text = response["result"]["content"][0]["text"]
 
@@ -58,7 +58,7 @@ async def test_compile_shaders_regex_custom_path(mcp_client, unity_state_manager
 @pytest.mark.asyncio
 async def test_compile_shaders_regex_no_matches(mcp_client, unity_state_manager):
     """Test regex with no matching shaders"""
-    response = await mcp_client.compile_shaders_regex("NonExistentPattern12345XYZ", timeout=120)
+    response = await mcp_client.shaders_compile_regex("NonExistentPattern12345XYZ", timeout=120)
 
     content_text = response["result"]["content"][0]["text"]
 
@@ -71,7 +71,7 @@ async def test_compile_shaders_regex_no_matches(mcp_client, unity_state_manager)
 async def test_compile_shaders_regex_with_errors(mcp_client, unity_state_manager):
     """Test regex compilation including shaders with errors"""
     # Match BrokenShader
-    response = await mcp_client.compile_shaders_regex(".*BrokenShader.*", timeout=120)
+    response = await mcp_client.shaders_compile_regex(".*BrokenShader.*", timeout=120)
 
     content_text = response["result"]["content"][0]["text"]
 
@@ -91,7 +91,7 @@ async def test_compile_shaders_regex_with_errors(mcp_client, unity_state_manager
 @pytest.mark.asyncio
 async def test_compile_shaders_regex_response_structure(mcp_client, unity_state_manager):
     """Validate JSON-RPC response structure for compile_shaders_regex"""
-    response = await mcp_client.compile_shaders_regex(".*TestShader.*", timeout=120)
+    response = await mcp_client.shaders_compile_regex(".*TestShader.*", timeout=120)
 
     # Validate JSON-RPC structure
     assert response["jsonrpc"] == "2.0"
@@ -118,7 +118,7 @@ async def test_compile_shaders_regex_response_structure(mcp_client, unity_state_
 async def test_compile_shaders_regex_invalid_pattern(mcp_client, unity_state_manager):
     """Test behavior with invalid regex pattern"""
     # Invalid regex pattern (unmatched bracket)
-    response = await mcp_client.compile_shaders_regex("[invalid(regex", timeout=120)
+    response = await mcp_client.shaders_compile_regex("[invalid(regex", timeout=120)
 
     content_text = response["result"]["content"][0]["text"]
 
@@ -136,10 +136,10 @@ async def test_compile_shaders_regex_invalid_pattern(mcp_client, unity_state_man
 async def test_shader_compilation_status_after_single(mcp_client, unity_state_manager):
     """Test status after single shader compilation"""
     # First compile a shader
-    await mcp_client.compile_shader("Custom/TestShader", timeout=30)
+    await mcp_client.shaders_compile_single("Custom/TestShader", timeout=30)
 
     # Check status
-    response = await mcp_client.shader_compilation_status()
+    response = await mcp_client.shaders_compile_status()
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -154,10 +154,10 @@ async def test_shader_compilation_status_after_single(mcp_client, unity_state_ma
 async def test_shader_compilation_status_after_all(mcp_client, unity_state_manager):
     """Test status after compile all shaders"""
     # First compile all shaders
-    await mcp_client.compile_all_shaders(timeout=120)
+    await mcp_client.shaders_compile_all(timeout=120)
 
     # Check status
-    response = await mcp_client.shader_compilation_status()
+    response = await mcp_client.shaders_compile_status()
 
     content_text = response["result"]["content"][0]["text"]
 
@@ -170,10 +170,10 @@ async def test_shader_compilation_status_after_all(mcp_client, unity_state_manag
 async def test_shader_compilation_status_after_regex(mcp_client, unity_state_manager):
     """Test status after regex shader compilation"""
     # First compile shaders by regex
-    await mcp_client.compile_shaders_regex(".*TestShader.*", timeout=120)
+    await mcp_client.shaders_compile_regex(".*TestShader.*", timeout=120)
 
     # Check status
-    response = await mcp_client.shader_compilation_status()
+    response = await mcp_client.shaders_compile_status()
 
     content_text = response["result"]["content"][0]["text"]
 
@@ -186,7 +186,7 @@ async def test_shader_compilation_status_after_regex(mcp_client, unity_state_man
 @pytest.mark.asyncio
 async def test_shader_compilation_status_response_structure(mcp_client, unity_state_manager):
     """Validate JSON-RPC response structure for shader_compilation_status"""
-    response = await mcp_client.shader_compilation_status()
+    response = await mcp_client.shaders_compile_status()
 
     # Validate JSON-RPC structure
     assert response["jsonrpc"] == "2.0"
@@ -212,13 +212,13 @@ async def test_shader_compilation_status_response_structure(mcp_client, unity_st
 async def test_shader_compilation_status_while_compiling(mcp_client, unity_state_manager):
     """Test status check while compilation is in progress"""
     # Start long compilation in background (don't await)
-    compile_task = mcp_client.compile_all_shaders(timeout=120)
+    compile_task = mcp_client.shaders_compile_all(timeout=120)
 
     # Quickly check status (may catch it while compiling)
     import asyncio
     await asyncio.sleep(0.5)  # Give compilation a moment to start
 
-    status_response = await mcp_client.shader_compilation_status()
+    status_response = await mcp_client.shaders_compile_status()
     content_text = status_response["result"]["content"][0]["text"]
 
     # Should show compilation state (either compiling or idle if it finished fast)
@@ -240,8 +240,8 @@ async def test_shader_tools_in_tools_list(mcp_client, unity_state_manager):
     assert isinstance(tools, list)
 
     # Find new shader tools
-    compile_shaders_regex_tool = next((t for t in tools if t["name"] == "compile_shaders_regex"), None)
-    shader_status_tool = next((t for t in tools if t["name"] == "shader_compilation_status"), None)
+    compile_shaders_regex_tool = next((t for t in tools if t["name"] == "shaders_compile_regex"), None)
+    shader_status_tool = next((t for t in tools if t["name"] == "shaders_compile_status"), None)
 
     # Verify both tools exist
     assert compile_shaders_regex_tool is not None, "compile_shaders_regex tool not found in tools list"
@@ -269,7 +269,7 @@ async def test_compile_shaders_regex_direct_tool_call(unity_state_manager):
 
     try:
         response = await client._send_request("tools/call", {
-            "name": "compile_shaders_regex",
+            "name": "shaders_compile_regex",
             "arguments": {
                 "pattern": ".*TestShader.*",
                 "timeout": 120
@@ -297,7 +297,7 @@ async def test_shader_compilation_status_direct_tool_call(unity_state_manager):
 
     try:
         response = await client._send_request("tools/call", {
-            "name": "shader_compilation_status",
+            "name": "shaders_compile_status",
             "arguments": {}
         })
 
@@ -321,23 +321,23 @@ async def test_shader_compilation_status_direct_tool_call(unity_state_manager):
 async def test_status_cleared_on_new_compilation(mcp_client, unity_state_manager):
     """Test that previous results are cleared when starting new compilation"""
     # Compile single shader
-    await mcp_client.compile_shader("Custom/TestShader", timeout=30)
+    await mcp_client.shaders_compile_single("Custom/TestShader", timeout=30)
 
-    status1 = await mcp_client.shader_compilation_status()
+    status1 = await mcp_client.shaders_compile_status()
     content1 = status1["result"]["content"][0]["text"]
     assert "single" in content1.lower()
 
     # Compile all shaders
-    await mcp_client.compile_all_shaders(timeout=120)
+    await mcp_client.shaders_compile_all(timeout=120)
 
-    status2 = await mcp_client.shader_compilation_status()
+    status2 = await mcp_client.shaders_compile_status()
     content2 = status2["result"]["content"][0]["text"]
     assert "all" in content2.lower()
 
     # Compile regex
-    await mcp_client.compile_shaders_regex(".*Test.*", timeout=120)
+    await mcp_client.shaders_compile_regex(".*Test.*", timeout=120)
 
-    status3 = await mcp_client.shader_compilation_status()
+    status3 = await mcp_client.shaders_compile_status()
     content3 = status3["result"]["content"][0]["text"]
     assert "regex" in content3.lower()
 
@@ -346,7 +346,7 @@ async def test_status_cleared_on_new_compilation(mcp_client, unity_state_manager
 @pytest.mark.asyncio
 async def test_regex_statistics_accuracy(mcp_client, unity_state_manager):
     """Validate statistics accuracy for compile_shaders_regex"""
-    response = await mcp_client.compile_shaders_regex(".*TestShader.*", timeout=120)
+    response = await mcp_client.shaders_compile_regex(".*TestShader.*", timeout=120)
 
     content_text = response["result"]["content"][0]["text"]
 

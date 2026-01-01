@@ -12,7 +12,7 @@ from mcp_client import MCPClient
 async def test_cancel_tests_no_running_test(mcp_client, unity_state_manager):
     """Test cancelling tests when no test is running"""
     # Protocol test - no need for full state cleanup
-    response = await mcp_client.tests_cancel()
+    response = await mcp_client.tests_run_cancel()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -29,7 +29,7 @@ async def test_cancel_tests_no_running_test(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_cancel_tests_invalid_guid(mcp_client, unity_state_manager):
     """Test cancelling tests with invalid GUID"""
-    response = await mcp_client.tests_cancel(test_run_guid="invalid-guid-12345")
+    response = await mcp_client.tests_run_cancel(test_run_guid="invalid-guid-12345")
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -66,12 +66,12 @@ async def test_cancel_running_editmode_test(unity_state_manager):
         await asyncio.sleep(2)
 
         # Verify test is running
-        status_response = await client2.tests_status()
+        status_response = await client2.tests_run_status()
         status_text = status_response["result"]["content"][0]["text"]
 
         # If test is running, try to cancel it
         if "running" in status_text.lower():
-            cancel_response = await client2.tests_cancel()
+            cancel_response = await client2.tests_run_cancel()
 
             assert cancel_response["jsonrpc"] == "2.0"
             assert "result" in cancel_response
@@ -106,7 +106,7 @@ async def test_cancel_running_editmode_test(unity_state_manager):
 async def test_cancel_tests_with_specific_guid(mcp_client, unity_state_manager):
     """Test cancelling tests using a specific GUID"""
     # First get current test status to see if there's a test run ID
-    status_response = await mcp_client.tests_status()
+    status_response = await mcp_client.tests_run_status()
     status_text = status_response["result"]["content"][0]["text"]
 
     # Parse the JSON to get test run ID if available
@@ -117,7 +117,7 @@ async def test_cancel_tests_with_specific_guid(mcp_client, unity_state_manager):
 
         if test_run_id:
             # Try to cancel using this specific GUID
-            cancel_response = await mcp_client.tests_cancel(test_run_guid=test_run_id)
+            cancel_response = await mcp_client.tests_run_cancel(test_run_guid=test_run_id)
 
             assert cancel_response["jsonrpc"] == "2.0"
             assert "result" in cancel_response
@@ -145,10 +145,10 @@ async def test_cancel_tests_tool_registration(mcp_client, unity_state_manager):
     tool_names = [tool["name"] for tool in tools]
 
     # Verify tests_cancel tool is available
-    assert "tests_cancel" in tool_names
+    assert "tests_run_cancel" in tool_names
 
     # Find the tests_cancel tool and verify its properties
-    tests_cancel_tool = next(tool for tool in tools if tool["name"] == "tests_cancel")
+    tests_cancel_tool = next(tool for tool in tools if tool["name"] == "tests_run_cancel")
 
     assert "description" in tests_cancel_tool
     assert "EditMode" in tests_cancel_tool["description"]  # Should mention EditMode limitation
@@ -182,7 +182,7 @@ async def test_cancel_tests_during_long_test_execution():
 
         # Try to cancel (may succeed or report no test running)
         try:
-            cancel_response = await client.tests_cancel()
+            cancel_response = await client.tests_run_cancel()
 
             assert cancel_response["jsonrpc"] == "2.0"
             cancel_text = cancel_response["result"]["content"][0]["text"]
@@ -214,7 +214,7 @@ async def test_cancel_tests_during_long_test_execution():
 @pytest.mark.asyncio
 async def test_cancel_tests_response_format(mcp_client, unity_state_manager):
     """Test that cancel_tests response has correct format"""
-    response = await mcp_client.tests_cancel()
+    response = await mcp_client.tests_run_cancel()
 
     # Verify MCP response structure
     assert response["jsonrpc"] == "2.0"
@@ -248,7 +248,7 @@ async def test_cancel_tests_direct_tool_call(unity_state_manager):
     try:
         # Use direct tool call method
         response = await client._send_request("tools/call", {
-            "name": "tests_cancel",
+            "name": "tests_run_cancel",
             "arguments": {
                 "test_run_guid": ""
             }

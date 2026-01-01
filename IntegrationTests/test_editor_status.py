@@ -165,7 +165,7 @@ async def test_editor_status_during_compilation(unity_state_manager):
     try:
         # Start compilation with client1
         compile_task = asyncio.create_task(
-            client1.compilation_trigger(timeout=30)
+            client1.scripts_compile(timeout=30)
         )
 
         # Wait briefly for compilation to potentially start

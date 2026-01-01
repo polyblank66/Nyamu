@@ -18,7 +18,7 @@ Delete file → assets_refresh(force=true) → Check compilation errors in respo
 
 **Editing existing files:**
 ```
-Edit file → compilation_trigger (no refresh needed)
+Edit file → scripts_compile (no refresh needed)
 ```
 
 ### Key Points
@@ -43,7 +43,7 @@ Edit file → compilation_trigger (no refresh needed)
 - Unity needs to be notified about new files in the asset database
 - Regular refresh (force=false) is sufficient for new file creation
 - Without refresh, Unity won't detect the new file and compilation will fail
-- **Response includes compilation errors** - no need to call compilation_trigger separately
+- **Response includes compilation errors** - no need to call scripts_compile separately
 
 **Example scenario:**
 ```
@@ -92,7 +92,7 @@ Last compilation: 2024-01-15T10:35:00.000Z
 
 ```
 1. Edit the .cs file contents
-2. Call: compilation_trigger(timeout=30)  ← No refresh needed
+2. Call: scripts_compile(timeout=30)  ← No refresh needed
 ```
 
 **Why no refresh:**
@@ -103,7 +103,7 @@ Last compilation: 2024-01-15T10:35:00.000Z
 **Example scenario:**
 ```
 Modifying Assets/Scripts/PlayerController.cs (fixing a bug)
-→ compilation_trigger(timeout=30)  ← Direct compilation
+→ scripts_compile(timeout=30)  ← Direct compilation
 → Check for compilation errors
 ```
 
@@ -139,15 +139,15 @@ Modifying Assets/Scripts/PlayerController.cs (fixing a bug)
 ```
 
 **When it happens:**
-- During `compilation_trigger` - Unity is compiling
+- During `scripts_compile` - Unity is compiling
 - During `assets_refresh` - Unity is refreshing asset database
 - During `tests_run_*` - Unity Test Runner is initializing
 
 **Example retry pattern:**
 ```
-Attempt 1: compilation_trigger → Error -32603
+Attempt 1: scripts_compile → Error -32603
 Wait 3 seconds
-Attempt 2: compilation_trigger → Success
+Attempt 2: scripts_compile → Success
 ```
 
 ### Other Common Errors
@@ -191,7 +191,7 @@ Example patterns:
 **EditMode:**
 - Fast execution (~seconds)
 - Tests editor-only functionality
-- Can be cancelled with `tests_cancel`
+- Can be cancelled with `tests_run_cancel`
 - Use timeout: 30s
 
 **PlayMode:**
@@ -219,7 +219,7 @@ Regex pattern:
 
 ```
 Before running tests:
-→ tests_status()
+→ tests_run_status()
 → Check if tests are already running
 → Avoid starting duplicate test runs
 ```
@@ -229,10 +229,10 @@ Before running tests:
 ### Pattern 1: Fix Compilation Errors Iteratively
 
 ```
-1. compilation_status() - Check current state
+1. scripts_compile_status() - Check current state
 2. If errors exist, read error messages
 3. Edit files to fix errors
-4. compilation_trigger() - No refresh for edits
+4. scripts_compile() - No refresh for edits
 5. Repeat until compilation succeeds
 ```
 
@@ -241,22 +241,22 @@ Before running tests:
 ```
 1. Write new .cs files in Assets/
 2. assets_refresh(force=false) - response shows compilation errors
-3. Fix any compilation errors (edit + compilation_trigger)
+3. Fix any compilation errors (edit + scripts_compile)
 4. Write test files in Assets/Tests/
 5. assets_refresh(force=false) - response shows compilation errors
 6. tests_run_regex(test_filter_regex=".*NewFeature.*", test_mode="EditMode")
 7. Fix issues and iterate
 ```
 
-**Note:** `assets_refresh` returns compilation information, so steps 2 and 5 provide compilation status without needing separate `compilation_trigger` calls.
+**Note:** `assets_refresh` returns compilation information, so steps 2 and 5 provide compilation status without needing separate `scripts_compile` calls.
 
 ### Pattern 3: Refactor with Safety
 
 ```
-1. compilation_status() - Ensure clean state
+1. scripts_compile_status() - Ensure clean state
 2. tests_run_all() - Run tests before changes
 3. Edit files (no refresh needed)
-4. compilation_trigger()
+4. scripts_compile()
 5. tests_run_all() - Verify nothing broke
 6. If tests fail, iterate on fixes
 ```
@@ -276,14 +276,14 @@ Before running tests:
 
 ### Single Shader
 ```
-compile_shader(shader_name="Standard", timeout=30)
+shaders_compile_single(shader_name="Standard", timeout=30)
 ```
 - Fuzzy matching supported
 - Shows all matches, auto-compiles best match
 
 ### Pattern-Based Compilation
 ```
-compile_shaders_regex(pattern="Assets/Shaders/Custom/.*", timeout=120)
+shaders_compile_singles_regex(pattern="Assets/Shaders/Custom/.*", timeout=120)
 ```
 - Compile subset of shaders
 - Faster than compile_all_shaders
@@ -317,7 +317,7 @@ All long-running MCP operations provide real-time progress updates:
 
 ### Compilation Progress
 ```
-compilation_trigger sends progress notifications including:
+scripts_compile sends progress notifications including:
 - Assembly count (completed/total)
 - Current assembly name
 - Elapsed time in seconds
@@ -344,7 +344,7 @@ Progress: "Running MyProject.Tests.PlayerTests.TestRun (2/6)"
 
 ### Shader Compilation Progress
 ```
-compile_shader, compile_all_shaders, compile_shaders_regex send progress including:
+shaders_compile_single, compile_all_shaders, shaders_compile_singles_regex send progress including:
 - Shader count (completed/total)
 - Current shader name
 ```

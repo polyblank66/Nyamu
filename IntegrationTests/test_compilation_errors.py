@@ -26,7 +26,7 @@ async def test_syntax_error_in_test_script(mcp_client, unity_helper, temp_files)
     await unity_helper.assets_refresh_if_available(force=True)
 
     # Trigger compilation
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -50,7 +50,7 @@ async def test_missing_using_error(mcp_client, unity_helper, unity_state_manager
     await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -71,7 +71,7 @@ async def test_undefined_variable_error(mcp_client, unity_helper, unity_state_ma
     await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -91,7 +91,7 @@ async def test_new_script_with_syntax_error(mcp_client, unity_helper, unity_stat
     await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -112,7 +112,7 @@ async def test_new_script_with_missing_using(mcp_client, unity_helper, unity_sta
     await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -135,7 +135,7 @@ async def test_multiple_errors_in_different_scripts(mcp_client, unity_helper, un
     await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]
@@ -157,7 +157,7 @@ async def test_fix_compilation_error(mcp_client, unity_helper, unity_state_manag
     await unity_helper.assets_refresh_if_available()
 
     # First compilation should have errors
-    response1 = await mcp_client.compilation_trigger(timeout=30)
+    response1 = await mcp_client.scripts_compile(timeout=30)
     content_text1 = response1["result"]["content"][0]["text"]
     assert "Compilation completed with errors:" in content_text1
 
@@ -170,7 +170,7 @@ async def test_fix_compilation_error(mcp_client, unity_helper, unity_state_manag
     await asyncio.sleep(1)
 
     # Second compilation should be successful
-    response2 = await mcp_client.compilation_trigger(timeout=30)
+    response2 = await mcp_client.scripts_compile(timeout=30)
     content_text2 = response2["result"]["content"][0]["text"]
     assert "Compilation completed successfully with no errors." in content_text2
 
@@ -186,7 +186,7 @@ async def test_compilation_error_details(mcp_client, unity_helper, unity_state_m
     await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation and check error details
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
     content_text = response["result"]["content"][0]["text"]
 
     # Should contain file path and line information
@@ -211,7 +211,7 @@ async def test_empty_script_compilation(mcp_client, unity_helper, unity_state_ma
     await unity_helper.assets_refresh_if_available()
 
     # Trigger compilation
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     content_text = response["result"]["content"][0]["text"]

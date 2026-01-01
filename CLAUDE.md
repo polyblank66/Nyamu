@@ -13,11 +13,11 @@ Check out Design.md for the project design and goal definitions.
 
 - **Creating files**: Write → `assets_refresh(force=false)` → Wait for MCP (response includes compilation errors)
 - **Deleting files**: Delete → `assets_refresh(force=true)` → Wait for MCP (response includes compilation errors)
-- **Editing existing files**: Edit → `compilation_trigger` (no refresh needed)
+- **Editing existing files**: Edit → `scripts_compile` (no refresh needed)
 
 ### Compilation Tools
-- `compilation_trigger` - Trigger C# script compilation (params: timeout, default 30s)
-- `compilation_status` - Check compilation status without triggering (no params)
+- `scripts_compile` - Trigger C# script compilation (params: timeout, default 30s)
+- `scripts_compile_status` - Check compilation status without triggering (no params)
 - `assets_refresh` - Force Unity asset database refresh (params: force, default false)
   - Returns compilation error information, showing last compilation status even if no new compilation occurred
   - Use force=true when deleting files to prevent CS2001 errors
@@ -35,20 +35,20 @@ Available test execution tools:
 - `tests_run_all` - Run all tests (params: test_mode, timeout)
 - `tests_run_single` - Run specific test (params: test_name required, test_mode, timeout)
 - `tests_run_regex` - Run tests matching regex (params: test_filter_regex required, test_mode, timeout)
-- `tests_status` - Check test execution status (no params)
-- `tests_cancel` - Cancel running tests (params: test_run_guid optional)
+- `tests_run_status` - Check test execution status (no params)
+- `tests_run_cancel` - Cancel running tests (params: test_run_guid optional)
 
 Test modes and timeouts:
 - EditMode: Fast, editor-only verification (default, use 30s timeout)
 - PlayMode: Full runtime simulation (use 60-120s timeout)
-- Only EditMode tests can be cancelled via `tests_cancel`
+- Only EditMode tests can be cancelled via `tests_run_cancel`
 
 ### Shader Compilation Tools
 Available shader compilation tools:
-- `compile_shader` - Compile single shader with fuzzy name matching (params: shader_name required, timeout)
-- `compile_all_shaders` - Compile all shaders (params: timeout, default 120s) - WARNING: Can take 15+ minutes
-- `compile_shaders_regex` - Compile shaders matching regex pattern (params: pattern required, timeout)
-- `shader_compilation_status` - Check shader compilation status (no params)
+- `shaders_compile_single` - Compile single shader with fuzzy name matching (params: shader_name required, timeout)
+- `shaders_compile_all` - Compile all shaders (params: timeout, default 120s) - WARNING: Can take 15+ minutes
+- `shaders_compile_regex` - Compile shaders matching regex pattern (params: pattern required, timeout)
+- `shaders_compile_status` - Check shader compilation status (no params)
 
 ### Editor Tools
 - `editor_status` - Get Unity Editor status including compilation, test execution, and play mode state (no params)
@@ -63,7 +63,7 @@ Available editor log tools:
 Log types: all (default), error, warning, info
 
 ### Status Checking
-- Use `compilation_status`, `tests_status`, `shader_compilation_status`, `editor_status` to check state without triggering operations
+- Use `scripts_compile_status`, `tests_run_status`, `shaders_compile_status`, `editor_status` to check state without triggering operations
 - Check status before long operations to avoid redundant work
 - Status tools include progress information when operations are in progress
 
@@ -107,13 +107,13 @@ Log types: all (default), error, warning, info
 # Workflow Instructions
 
 - Focus primarily on writing or modifying source code.
-- C# scripts can be compiled via MCP (`compilation_trigger`).
+- C# scripts can be compiled via MCP (`scripts_compile`).
   - Provides real-time progress updates with assembly count and elapsed time
-- Compilation status can be retrieved via MCP (`compilation_status`).
+- Compilation status can be retrieved via MCP (`scripts_compile_status`).
   - Includes progress information when compilation is in progress
 - Tests can be executed via MCP (`tests_run_all`, `tests_run_single`, `tests_run_regex`).
   - Provides real-time progress updates with test count
-- Shaders can be compiled via MCP (`compile_shader`, `compile_all_shaders`, `compile_shaders_regex`).
+- Shaders can be compiled via MCP (`shaders_compile_single`, `shaders_compile_all`, `shaders_compile_regex`).
   - Provides real-time progress updates with shader count
 - If an operation requires scene editing or interaction with the Unity Editor,
   provide clear, step-by-step instructions.

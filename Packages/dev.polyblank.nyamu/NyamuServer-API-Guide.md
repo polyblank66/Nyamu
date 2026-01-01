@@ -6,8 +6,8 @@
 
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
-| `/compilation-trigger` | GET | Trigger compilation | `timeout` (optional) |
-| `/compilation-status` | GET | Get compilation status | None |
+| `/scripts-compile` | GET | Trigger compilation | `timeout` (optional) |
+| `/scripts-compile-status` | GET | Get compilation status | None |
 
 ### Testing Endpoints
 
@@ -16,8 +16,8 @@
 | `/tests-run-single` | GET/POST | Run a single specific test | `test_name`, `mode`, `timeout` |
 | `/tests-run-all` | GET/POST | Run all tests in specified mode | `mode`, `timeout` |
 | `/tests-run-regex` | GET/POST | Run tests matching regex pattern | `filter_regex`, `mode`, `timeout` |
-| `/tests-status` | GET | Get test execution status | None |
-| `/tests-cancel` | GET | Cancel running tests | `guid` (optional) |
+| `/tests-run-status` | GET | Get test execution status | None |
+| `/tests-run-cancel` | GET | Cancel running tests | `guid` (optional) |
 
 ### Asset Management
 
@@ -35,16 +35,16 @@
 
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
-| `/compile-shader` | GET | Compile single shader | `shader_name`, `timeout` |
-| `/compile-all-shaders` | GET/POST | Compile all shaders | `timeout` |
-| `/compile-shaders-regex` | GET/POST | Compile shaders by regex | `pattern`, `timeout` |
-| `/shader-compilation-status` | GET | Get shader compilation status | None |
+| `/shaders-compile-single` | GET | Compile single shader | `shader_name`, `timeout` |
+| `/shaders-compile-all` | GET/POST | Compile all shaders | `timeout` |
+| `/shaders-compile-regex` | GET/POST | Compile shaders by regex | `pattern`, `timeout` |
+| `/shaders-compile-status` | GET | Get shader compilation status | None |
 
 ### Menu Execution
 
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
-| `/execute-menu-item` | POST | Execute Unity menu item | `menu_item_path` |
+| `/menu-items-execute` | POST | Execute Unity menu item | `menu_item_path` |
 
 **Note:** Editor log tools (`editor_log_path`, `editor_log_head`, `editor_log_tail`, `editor_log_grep`) are provided at the MCP layer by mcp-server.js, not as HTTP endpoints. They read the Unity Editor log file directly from the file system.
 
@@ -199,11 +199,11 @@ GET /tests-run-regex?filter_regex=MyNamespace\..*&mode=EditMode
 - Expected behavior, wait 3-5 seconds and retry
 
 **Test Execution Issues:**
-- Check `/tests-status` for detailed error information
+- Check `/tests-run-status` for detailed error information
 - Verify test names and patterns are correct
 
 **Compilation Errors:**
-- Check `/compilation-status` for error details
+- Check `/scripts-compile-status` for error details
 - Fix compilation issues before running tests
 
 ## Progress Notifications
@@ -238,9 +238,9 @@ When using the MCP protocol:
 
 ### Status Endpoints Include Progress
 
-Status endpoints (`/compilation-status`, `/tests-status`, `/shader-compilation-status`) return progress information when operations are in progress:
+Status endpoints (`/scripts-compile-status`, `/tests-run-status`, `/shaders-compile-status`) return progress information when operations are in progress:
 
-**Example `/compilation-status` with progress:**
+**Example `/scripts-compile-status` with progress:**
 ```json
 {
   "status": "compiling",

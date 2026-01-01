@@ -14,7 +14,7 @@ from mcp_client import MCPClient
 async def test_error_fields_in_test_status(mcp_client):
     """Test that tests-status endpoint includes error fields"""
 
-    response = await mcp_client.tests_status()
+    response = await mcp_client.tests_run_status()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -108,7 +108,7 @@ async def test_error_infrastructure_ready():
 
     try:
         # Check that test status includes error fields
-        status_response = await client.tests_status()
+        status_response = await client.tests_run_status()
 
         import json
         status_data = json.loads(status_response["result"]["content"][0]["text"])

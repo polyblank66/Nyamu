@@ -12,7 +12,7 @@ from mcp_client import MCPClient
 @pytest.mark.asyncio
 async def test_compile_and_wait_basic(mcp_client, unity_state_manager):
     """Test basic compile_and_wait functionality"""
-    response = await mcp_client.compilation_trigger(timeout=30)
+    response = await mcp_client.scripts_compile(timeout=30)
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -32,7 +32,7 @@ async def test_compile_and_wait_basic(mcp_client, unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_and_wait_with_timeout(mcp_client, unity_state_manager):
     """Test compile_and_wait with custom timeout"""
-    response = await mcp_client.compilation_trigger(timeout=45)
+    response = await mcp_client.scripts_compile(timeout=45)
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -56,7 +56,7 @@ async def test_compile_and_wait_timeout(unity_state_manager):
     try:
         # Test that timeout parameter is accepted and compilation completes
         # Note: This won't actually timeout if compilation is fast
-        response = await client.compilation_trigger(timeout=30)
+        response = await client.scripts_compile(timeout=30)
 
         # Should get valid response (may complete before timeout)
         assert response["jsonrpc"] == "2.0"
@@ -73,7 +73,7 @@ async def test_compile_and_wait_timeout(unity_state_manager):
 @pytest.mark.asyncio
 async def test_compile_and_wait_default_parameters(mcp_client, unity_state_manager):
     """Test compile_and_wait with default parameters"""
-    response = await mcp_client.compilation_trigger()
+    response = await mcp_client.scripts_compile()
 
     assert response["jsonrpc"] == "2.0"
     assert "result" in response
@@ -89,7 +89,7 @@ async def test_compile_and_wait_direct_tool_call(unity_state_manager):
 
     try:
         response = await client._send_request("tools/call", {
-            "name": "compilation_trigger",
+            "name": "scripts_compile",
             "arguments": {
                 "timeout": 30
             }
@@ -114,7 +114,7 @@ async def test_compile_and_wait_invalid_parameters(unity_state_manager):
         # Test with negative timeout - should raise exception
         with pytest.raises(RuntimeError) as exc_info:
             await client._send_request("tools/call", {
-                "name": "compilation_trigger",
+                "name": "scripts_compile",
                 "arguments": {
                     "timeout": -1
                 }
@@ -139,8 +139,8 @@ async def test_multiple_concurrent_compiles(unity_state_manager):
     try:
         # Start multiple compilation requests
         tasks = [
-            client.compilation_trigger(timeout=30),
-            client.compilation_trigger(timeout=30)
+            client.scripts_compile(timeout=30),
+            client.scripts_compile(timeout=30)
         ]
 
         # Wait for both to complete

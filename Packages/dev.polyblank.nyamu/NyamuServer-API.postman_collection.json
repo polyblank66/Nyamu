@@ -802,6 +802,114 @@
               "body": "{\n    \"status\": \"ok\",\n    \"message\": \"Asset database refreshed.\"\n}"
             }
           ]
+        },
+        {
+          "name": "Assets Refresh Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/assets-refresh-status",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "assets-refresh-status"
+              ]
+            },
+            "description": "Gets current asset refresh status without triggering refresh.\n\n**Response Fields:**\n- `status`: \"refreshing\", \"compiling\", \"waiting_for_compilation\", \"completed\", or \"idle\"\n- `isRefreshing`: boolean - whether asset refresh is in progress\n- `isCompiling`: boolean - whether compilation is in progress\n- `isWaitingForCompilation`: boolean - waiting for compilation to complete\n- `unityIsUpdating`: boolean - Unity is updating (EditorApplication.isUpdating)\n- `refreshRequestTime`: ISO timestamp when refresh was requested\n- `refreshCompletedTime`: ISO timestamp when refresh completed\n- `hadCompilation`: boolean - whether compilation occurred during THIS refresh\n- `compilationErrors`: array of compilation errors from last compilation\n- `lastCompilationTime`: ISO timestamp of last compilation"
+          },
+          "response": [
+            {
+              "name": "Idle",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/assets-refresh-status",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "assets-refresh-status"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"isRefreshing\": false,\n    \"isCompiling\": false,\n    \"isWaitingForCompilation\": false,\n    \"unityIsUpdating\": false,\n    \"status\": \"idle\",\n    \"refreshRequestTime\": \"\",\n    \"refreshCompletedTime\": \"\",\n    \"hadCompilation\": false,\n    \"compilationErrors\": [],\n    \"lastCompilationTime\": \"2026-01-01T14:30:00.0000000+05:00\"\n}"
+            },
+            {
+              "name": "Refreshing",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/assets-refresh-status",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "assets-refresh-status"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"isRefreshing\": true,\n    \"isCompiling\": false,\n    \"isWaitingForCompilation\": false,\n    \"unityIsUpdating\": true,\n    \"status\": \"refreshing\",\n    \"refreshRequestTime\": \"2026-01-01T14:30:00.0000000+05:00\",\n    \"refreshCompletedTime\": \"\",\n    \"hadCompilation\": false,\n    \"compilationErrors\": [],\n    \"lastCompilationTime\": \"2026-01-01T14:25:00.0000000+05:00\"\n}"
+            },
+            {
+              "name": "Completed with Errors",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/assets-refresh-status",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "assets-refresh-status"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"isRefreshing\": false,\n    \"isCompiling\": false,\n    \"isWaitingForCompilation\": false,\n    \"unityIsUpdating\": false,\n    \"status\": \"completed\",\n    \"refreshRequestTime\": \"2026-01-01T14:30:00.0000000+05:00\",\n    \"refreshCompletedTime\": \"2026-01-01T14:30:05.1234567+05:00\",\n    \"hadCompilation\": true,\n    \"compilationErrors\": [\n        {\n            \"file\": \"Assets/MyScript.cs\",\n            \"line\": 15,\n            \"message\": \"Assets/MyScript.cs(15,18): error CS1002: ; expected\"\n        }\n    ],\n    \"lastCompilationTime\": \"2026-01-01T14:30:04.0000000+05:00\"\n}"
+            }
+          ]
         }
       ],
       "description": "Endpoints for managing Unity asset database."

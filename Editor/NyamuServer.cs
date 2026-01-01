@@ -57,23 +57,23 @@ namespace Nyamu
 
         public static class Endpoints
         {
-            public const string CompileAndWait = "/scripts-compile";
-            public const string CompileStatus = "/scripts-compile-status";
-            public const string TestsRunSingle = "/tests-run-single";
-            public const string TestsRunAll = "/tests-run-all";
-            public const string TestsRunRegex = "/tests-run-regex";
-            public const string TestsStatus = "/tests-run-status";
             public const string AssetsRefresh = "/assets-refresh";
             public const string AssetsRefreshStatus = "/assets-refresh-status";
-            public const string EditorStatus = "/editor-status";
-            public const string McpSettings = "/internal-mcp-settings";
-            public const string TestsCancel = "/tests-run-cancel";
-            public const string CompileShader = "/shaders-compile-single";
-            public const string CompileAllShaders = "/shaders-compile-all";
-            public const string CompileShadersRegex = "/shaders-compile-regex";
-            public const string ShaderCompilationStatus = "/shaders-compile-status";
-            public const string ExecuteMenuItem = "/menu-items-execute";
             public const string EditorExitPlayMode = "/editor-exit-play-mode";
+            public const string EditorStatus = "/editor-status";
+            public const string InternalMcpSettings = "/internal-mcp-settings";
+            public const string MenuItemsExecute = "/menu-items-execute";
+            public const string ScriptsCompile = "/scripts-compile";
+            public const string ScriptsCompileStatus = "/scripts-compile-status";
+            public const string ShadersCompileAll = "/shaders-compile-all";
+            public const string ShadersCompileRegex = "/shaders-compile-regex";
+            public const string ShadersCompileSingle = "/shaders-compile-single";
+            public const string ShadersCompileStatus = "/shaders-compile-status";
+            public const string TestsRunAll = "/tests-run-all";
+            public const string TestsRunCancel = "/tests-run-cancel";
+            public const string TestsRunRegex = "/tests-run-regex";
+            public const string TestsRunSingle = "/tests-run-single";
+            public const string TestsRunStatus = "/tests-run-status";
         }
     }
 
@@ -434,22 +434,22 @@ namespace Nyamu
         {
             return request.Url.AbsolutePath switch
             {
-                Constants.Endpoints.CompileAndWait => HandleCompileAndWaitRequest(),
-                Constants.Endpoints.CompileStatus => HandleCompileStatusRequest(),
+                Constants.Endpoints.ScriptsCompile => HandleCompileAndWaitRequest(),
+                Constants.Endpoints.ScriptsCompileStatus => HandleCompileStatusRequest(),
                 Constants.Endpoints.TestsRunSingle => HandleTestsRunSingleRequest(request),
                 Constants.Endpoints.TestsRunAll => HandleTestsRunAllRequest(request),
                 Constants.Endpoints.TestsRunRegex => HandleTestsRunRegexRequest(request),
-                Constants.Endpoints.TestsStatus => HandleTestsStatusRequest(),
+                Constants.Endpoints.TestsRunStatus => HandleTestsStatusRequest(),
                 Constants.Endpoints.AssetsRefresh => HandleAssetsRefreshRequest(request),
                 Constants.Endpoints.AssetsRefreshStatus => HandleAssetsRefreshStatusRequest(request),
                 Constants.Endpoints.EditorStatus => HandleEditorStatusRequest(),
-                Constants.Endpoints.McpSettings => HandleMcpSettingsRequest(),
-                Constants.Endpoints.TestsCancel => HandleTestsCancelRequest(request),
-                Constants.Endpoints.CompileShader => HandleCompileShaderRequest(request),
-                Constants.Endpoints.CompileAllShaders => HandleCompileAllShadersRequest(request),
-                Constants.Endpoints.CompileShadersRegex => HandleCompileShadersRegexRequest(request),
-                Constants.Endpoints.ShaderCompilationStatus => HandleShaderCompilationStatusRequest(request),
-                Constants.Endpoints.ExecuteMenuItem => HandleExecuteMenuItemRequest(request),
+                Constants.Endpoints.InternalMcpSettings => HandleMcpSettingsRequest(),
+                Constants.Endpoints.TestsRunCancel => HandleTestsCancelRequest(request),
+                Constants.Endpoints.ShadersCompileSingle => HandleCompileShaderRequest(request),
+                Constants.Endpoints.ShadersCompileAll => HandleCompileAllShadersRequest(request),
+                Constants.Endpoints.ShadersCompileRegex => HandleCompileShadersRegexRequest(request),
+                Constants.Endpoints.ShadersCompileStatus => HandleShaderCompilationStatusRequest(request),
+                Constants.Endpoints.MenuItemsExecute => HandleExecuteMenuItemRequest(request),
                 Constants.Endpoints.EditorExitPlayMode => HandleEditorExitPlayModeRequest(request),
                 _ => HandleNotFoundRequest(response)
             };

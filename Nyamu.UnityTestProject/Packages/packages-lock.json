@@ -70,9 +70,9 @@
       "url": "https://packages.unity.com"
     },
     "dev.polyblank.nyamu": {
-      "version": "file:dev.polyblank.nyamu",
+      "version": "file:../../Nyamu.UnityPackage",
       "depth": 0,
-      "source": "embedded",
+      "source": "local",
       "dependencies": {
         "com.unity.test-framework": "1.4.6"
       }

@@ -190,7 +190,13 @@ def pytest_runtest_makereport(item, call):
     if hasattr(item, '_request') and call.when == "teardown":
         # Test completed, log for debugging if needed
         if report.failed:
-            print(f"Test {item.nodeid} failed during teardown - Unity state may be compromised")
+            # Check if this is an anyio cancel scope error (known pytest-asyncio + anyio interaction issue)
+            # These errors don't affect test validity or Unity state
+            longrepr_str = str(report.longrepr) if report.longrepr else ""
+            is_anyio_teardown_error = "Attempted to exit cancel scope in a different task" in longrepr_str
+
+            if not is_anyio_teardown_error:
+                print(f"Test {item.nodeid} failed during teardown - Unity state may be compromised")
 
 
 # @pytest.fixture(autouse=True, scope="function")

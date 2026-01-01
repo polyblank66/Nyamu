@@ -613,6 +613,9 @@ class MCPServer {
     async handleRequest(request) {
         const { method, params, id } = request;
 
+        // If id is undefined/null, this is a notification - check if we should ignore it
+        const isNotification = id === undefined || id === null;
+
         switch (method) {
             case 'initialize':
                 const clientVersion = params?.protocolVersion;
@@ -657,6 +660,12 @@ class MCPServer {
                 return await this.handleToolCall(params, id);
 
             default:
+                // For notifications (no id), don't send error response per JSON-RPC spec
+                if (isNotification) {
+                    logger?.logInfo(`Ignoring unknown notification method: ${method}`);
+                    return null;
+                }
+
                 return {
                     jsonrpc: '2.0',
                     id,

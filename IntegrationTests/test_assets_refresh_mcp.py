@@ -23,7 +23,7 @@ async def mcp_session():
     # Compute path to nyamu.bat relative to test file
     test_file = Path(__file__)
     project_root = test_file.parent.parent  # IntegrationTests -> Nyamu
-    nyamu_bat_path = str(project_root / ".nyamu" / "nyamu.bat")
+    nyamu_bat_path = str(project_root / "Nyamu.UnityTestProject" / ".nyamu" / "nyamu.bat")
 
     # Connect to Nyamu MCP server via nyamu.bat
     server_params = StdioServerParameters(

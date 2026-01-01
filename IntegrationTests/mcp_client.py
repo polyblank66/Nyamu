@@ -20,7 +20,7 @@ class MCPClient:
         if mcp_server_path is None:
             # Default path to nyamu.bat relative to project root
             project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            mcp_server_path = os.path.join(project_root, ".nyamu", "nyamu.bat")
+            mcp_server_path = os.path.join(project_root, "Nyamu.UnityTestProject", ".nyamu", "nyamu.bat")
 
         self.mcp_server_path = mcp_server_path
         self.process = None

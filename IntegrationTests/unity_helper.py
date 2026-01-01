@@ -155,7 +155,7 @@ class UnityHelper:
             project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         self.project_root = project_root
-        self.assets_path = os.path.join(project_root, "Assets")
+        self.assets_path = os.path.join(project_root, "Nyamu.UnityTestProject", "Assets")
         self.test_module_path = os.path.join(self.assets_path, "TestModule")
         self.backed_up_files = {}
         self.mcp_client = mcp_client

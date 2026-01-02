@@ -11,19 +11,19 @@
       "name": "Compilation",
       "item": [
         {
-          "name": "Compilation Trigger",
+          "name": "Scripts Compile",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/compilation-trigger",
+              "raw": "http://localhost:{{nyamu-port}}/scripts-compile",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "compilation-trigger"
+                "scripts-compile"
               ]
             },
             "description": "Triggers Unity script compilation and waits for it to start."
@@ -35,14 +35,14 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/compilation-trigger",
+                  "raw": "http://localhost:{{nyamu-port}}/scripts-compile",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "compilation-trigger"
+                    "scripts-compile"
                   ]
                 }
               },
@@ -61,19 +61,19 @@
           ]
         },
         {
-          "name": "Compilation Status",
+          "name": "Scripts Compile Status",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/compilation-status",
+              "raw": "http://localhost:{{nyamu-port}}/scripts-compile-status",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "compilation-status"
+                "scripts-compile-status"
               ]
             },
             "description": "Gets current compilation status and errors from the last compilation."
@@ -85,14 +85,14 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/compilation-status",
+                  "raw": "http://localhost:{{nyamu-port}}/scripts-compile-status",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "compilation-status"
+                    "scripts-compile-status"
                   ]
                 }
               },
@@ -131,14 +131,14 @@
               "raw": "{\n    \"shaderName\": \"Standard\",\n    \"timeout\": 30\n}"
             },
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/compile-shader",
+              "raw": "http://localhost:{{nyamu-port}}/shaders-compile-single",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "compile-shader"
+                "shaders-compile-single"
               ]
             },
             "description": "Compiles a single shader with fuzzy name matching.\n\n**Request Body:**\n- `shaderName` (required): Shader name to search for (fuzzy matching)\n- `timeout` (optional): Timeout in seconds (default: 30)\n\n**Response:**\n- Shows all matches but auto-compiles best match\n- Returns compilation errors/warnings and time"
@@ -159,14 +159,14 @@
                   "raw": "{\n    \"shaderName\": \"Standard\",\n    \"timeout\": 30\n}"
                 },
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/compile-shader",
+                  "raw": "http://localhost:{{nyamu-port}}/shaders-compile-single",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "compile-shader"
+                    "shaders-compile-single"
                   ]
                 }
               },
@@ -199,14 +199,14 @@
               "raw": "{\n    \"async\": true,\n    \"timeout\": 120\n}"
             },
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/compile-all-shaders",
+              "raw": "http://localhost:{{nyamu-port}}/shaders-compile-all",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "compile-all-shaders"
+                "shaders-compile-all"
               ]
             },
             "description": "Compiles all shaders in the Unity project.\n\n**Request Body:**\n- `async` (optional): If true, return immediately after queuing compilation\n- `timeout` (optional): Timeout in seconds (default: 120)\n\n**WARNING:** Can take 15+ minutes for large projects. Use async mode and poll status.\n\n**Response:**\n- Per-shader results with errors/warnings\n- Total compilation statistics"
@@ -227,14 +227,14 @@
                   "raw": "{\n    \"async\": true\n}"
                 },
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/compile-all-shaders",
+                  "raw": "http://localhost:{{nyamu-port}}/shaders-compile-all",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "compile-all-shaders"
+                    "shaders-compile-all"
                   ]
                 }
               },
@@ -267,14 +267,14 @@
               "raw": "{\n    \"pattern\": \".*Standard.*\",\n    \"async\": true,\n    \"timeout\": 120\n}"
             },
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/compile-shaders-regex",
+              "raw": "http://localhost:{{nyamu-port}}/shaders-compile-regex",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "compile-shaders-regex"
+                "shaders-compile-regex"
               ]
             },
             "description": "Compiles shaders matching a regex pattern applied to shader file paths.\n\n**Request Body:**\n- `pattern` (required): Regex pattern to match against shader file paths\n- `async` (optional): If true, return immediately after queuing compilation\n- `timeout` (optional): Timeout in seconds (default: 120)\n\n**Response:**\n- Per-shader results with errors/warnings\n- Supports MCP progress notifications"
@@ -295,14 +295,14 @@
                   "raw": "{\n    \"pattern\": \".*Standard.*\",\n    \"async\": false,\n    \"timeout\": 120\n}"
                 },
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/compile-shaders-regex",
+                  "raw": "http://localhost:{{nyamu-port}}/shaders-compile-regex",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "compile-shaders-regex"
+                    "shaders-compile-regex"
                   ]
                 }
               },
@@ -326,14 +326,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/shader-compilation-status",
+              "raw": "http://localhost:{{nyamu-port}}/shaders-compile-status",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "shader-compilation-status"
+                "shaders-compile-status"
               ]
             },
             "description": "Gets current shader compilation status without triggering compilation.\n\n**Response Fields:**\n- `status`: \"compiling\" or \"idle\"\n- `isCompiling`: boolean - whether shaders are currently compiling\n- `lastCompilationType`: \"single\", \"all\", \"regex\", or \"none\"\n- `lastCompilationTime`: ISO timestamp\n- `singleShaderResult`: Result from last single shader compilation\n- `allShadersResult`: Result from last all shaders compilation\n- `regexShadersResult`: Result from last regex shaders compilation\n- `progress`: Current progress info (only when compiling)\n  - `pattern`: Regex pattern (for regex compilations)\n  - `totalShaders`: Total number of shaders\n  - `completedShaders`: Number completed so far\n  - `currentShader`: Currently compiling shader path"
@@ -345,14 +345,14 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/shader-compilation-status",
+                  "raw": "http://localhost:{{nyamu-port}}/shaders-compile-status",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "shader-compilation-status"
+                    "shaders-compile-status"
                   ]
                 }
               },
@@ -374,14 +374,14 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/shader-compilation-status",
+                  "raw": "http://localhost:{{nyamu-port}}/shaders-compile-status",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "shader-compilation-status"
+                    "shaders-compile-status"
                   ]
                 }
               },
@@ -633,14 +633,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/tests-status",
+              "raw": "http://localhost:{{nyamu-port}}/tests-run-status",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "tests-status"
+                "tests-run-status"
               ]
             },
             "description": "Gets the current test execution status and results from the last test run.\n\n**Response Fields:**\n- `status`: \"running\" or \"idle\"\n- `isRunning`: boolean - whether tests are currently executing\n- `lastTestTime`: ISO timestamp of last test completion\n- `testResults`: object with test statistics and individual results\n  - `totalTests`, `passedTests`, `failedTests`, `skippedTests`\n  - `duration`: total execution time in seconds\n  - `results`: array of individual test results\n- `testRunId`: unique GUID for the test run\n- `hasError`: boolean - whether test execution had errors\n- `errorMessage`: error description if hasError is true"
@@ -652,14 +652,14 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/tests-status",
+                  "raw": "http://localhost:{{nyamu-port}}/tests-run-status",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "tests-status"
+                    "tests-run-status"
                   ]
                 }
               },
@@ -683,14 +683,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:{{nyamu-port}}/tests-cancel?guid=",
+              "raw": "http://localhost:{{nyamu-port}}/tests-run-cancel?guid=",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
               "port": "{{nyamu-port}}",
               "path": [
-                "tests-cancel"
+                "tests-run-cancel"
               ],
               "query": [
                 {
@@ -709,14 +709,14 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "http://localhost:{{nyamu-port}}/tests-cancel",
+                  "raw": "http://localhost:{{nyamu-port}}/tests-run-cancel",
                   "protocol": "http",
                   "host": [
                     "localhost"
                   ],
                   "port": "{{nyamu-port}}",
                   "path": [
-                    "tests-cancel"
+                    "tests-run-cancel"
                   ]
                 }
               },

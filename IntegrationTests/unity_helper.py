@@ -59,8 +59,8 @@ class UnityLockManager:
                 self.acquired = False  # We didn't actually acquire the file lock
                 return self
 
-            # Acquire the file lock - use shared class-level file handle
-            UnityLockManager._lock_file = open(UnityLockManager._lock_file_path, 'w')
+            # Acquire the file lock - use instance-specific lock file path
+            UnityLockManager._lock_file = open(self.lock_file_path, 'w')
 
             try:
                 if os.name == 'nt':  # Windows

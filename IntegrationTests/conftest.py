@@ -79,8 +79,10 @@ def setup_worker_environment(worker_id, worker_port, worker_project_path):
         # Create/sync project copy for this worker
         from project_manager import ProjectManager
 
-        base_path = Path(__file__).parent.parent / "Nyamu.UnityTestProject"
-        manager = ProjectManager(base_path, worker_id)
+        dev_root_path = Path(__file__).parent.parent
+        unity_package_path = dev_root_path / "Nyamu.UnityPackage"
+        base_path = dev_root_path / "Nyamu.UnityTestProject"
+        manager = ProjectManager(unity_package_path, base_path, worker_id)
 
         # Create or sync project
         manager.create_or_sync_worker_project()

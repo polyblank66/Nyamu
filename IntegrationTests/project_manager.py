@@ -14,7 +14,7 @@ from typing import Optional
 class ProjectManager:
     """Manages Unity project copies for parallel worker instances."""
 
-    def __init__(self, base_project_path: Path, worker_id: str):
+    def __init__(self, unity_package_path: str, base_project_path: Path, worker_id: str):
         """
         Initialize project manager.
 
@@ -22,6 +22,7 @@ class ProjectManager:
             base_project_path: Path to main Unity project (Nyamu.UnityTestProject)
             worker_id: Worker ID from pytest-xdist (e.g., 'gw0', 'gw1', 'master')
         """
+        self.unity_package_path = unity_package_path;
         self.base_project_path = Path(base_project_path)
         self.worker_id = worker_id
         self.worker_project_path = self._compute_worker_path()
@@ -139,7 +140,7 @@ class ProjectManager:
 
         # Create nyamu.bat with worker-specific port
         # Reference shared mcp-server.js from Nyamu.UnityPackage/Node/
-        mcp_server_js = self.base_project_path / "Packages" / "dev.polyblank.nyamu" / "Node" / "mcp-server.js"
+        mcp_server_js = self.unity_package_path / "Node" / "mcp-server.js"
         worker_log = nyamu_dir / "mcp-server.log"
 
         bat_path = nyamu_dir / "nyamu.bat"

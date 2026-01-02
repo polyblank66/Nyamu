@@ -16,13 +16,17 @@ Check out Design.md for the project design and goal definitions.
 - **Editing existing files**: Edit → `scripts_compile` (no refresh needed)
 
 ### Compilation Tools
-- `scripts_compile` - Trigger C# script compilation (params: timeout, default 30s)
-- `scripts_compile_status` - Check compilation status without triggering (no params)
-- `assets_refresh` - Force Unity asset database refresh (params: force, default false)
+- `assets_refresh` - **PRIMARY COMPILATION CHECK TOOL** (params: force, default false)
+  - Main command to check compilation status after any file operations
   - Returns compilation error information, showing last compilation status even if no new compilation occurred
+  - Unified tool: asset refresh + compilation trigger + status check in one command
   - Use force=true when deleting files to prevent CS2001 errors
-  - Use force=false when creating new files
-  - **Single command** to refresh assets AND check compilation - no need to call compilation_status separately
+  - Use force=false when creating/editing files
+  - **No need to call scripts_compile_status separately** - this tool provides all compilation information
+- `scripts_compile` - Direct C# compilation trigger (params: timeout, default 30s)
+  - Use for editing existing files without structural changes (faster than assets_refresh)
+- `scripts_compile_status` - Check compilation status without triggering (no params)
+  - Use only when you need status check without any file operations
 
 ### Error Handling
 - **Error -32603 "HTTP request failed"**: Expected during Unity recompilation/refresh

@@ -22,8 +22,9 @@ Edit file → scripts_compile (no refresh needed)
 ```
 
 ### Key Points
-- **Always** use `assets_refresh` for structural changes (new/deleted/moved files)
-- **Never** use `assets_refresh` when only editing existing file contents
+- **`assets_refresh` is PRIMARY COMPILATION CHECK TOOL** - use it to check compilation after file operations
+- **Always** use `assets_refresh` for structural changes (new/deleted/moved files) - it returns compilation status
+- **Prefer** `scripts_compile` for editing existing files (faster, no refresh overhead)
 - **Error -32603** is expected during compilation/refresh - wait 3-5s and retry
 - **Use** `tests_run_regex` for flexible pattern-based test filtering
 - **Check status** before long operations to avoid redundant work
@@ -249,7 +250,7 @@ Before running tests:
 7. Fix issues and iterate
 ```
 
-**Note:** `assets_refresh` returns compilation information, so steps 2 and 5 provide compilation status without needing separate `scripts_compile` calls.
+**Note:** `assets_refresh` is the PRIMARY COMPILATION CHECK TOOL - it returns complete compilation information in its response, so steps 2 and 5 provide compilation status without needing separate `scripts_compile_status` calls.
 
 ### Pattern 3: Refactor with Safety
 
@@ -271,7 +272,7 @@ Before running tests:
 4. Verify no CS2001 errors in response
 ```
 
-**Note:** `assets_refresh(force=true)` returns compilation information showing whether deletion was successful (no CS2001 errors).
+**Note:** `assets_refresh(force=true)` is the PRIMARY COMPILATION CHECK TOOL - it returns complete compilation information showing whether deletion was successful (no CS2001 errors).
 
 ## Shader Compilation
 
@@ -538,17 +539,18 @@ Progress: "Compiling StandardSpecular.shader (11/50)"
 
 ## Best Practices Summary
 
-1. **Always refresh for structural changes** - new/deleted/moved files require assets_refresh
-2. **Never refresh for edits** - Editing existing files doesn't need refresh
-3. **Use force=true for deletions** - Prevents CS2001 errors
-4. **Expect -32603 errors** - Normal during compilation, wait and retry
-5. **Check status before operations** - Avoid redundant work
-6. **Prefer regex for test filtering** - More flexible than exact matches
-7. **Use appropriate timeouts** - EditMode: 30s, PlayMode: 60-120s, Large projects: 45-60s
-8. **Iterate on compilation errors** - Edit and compile until clean
-9. **Test after refactoring** - Ensure changes don't break functionality
-10. **Wait for MCP responsiveness** - After assets_refresh, wait before next operation
-11. **Use editor logs as fallback** - Logs work even when MCP server is unavailable
+1. **Use `assets_refresh` as PRIMARY COMPILATION CHECK** - Main tool to check compilation after file operations
+2. **Always refresh for structural changes** - new/deleted/moved files require assets_refresh (returns compilation status)
+3. **Prefer `scripts_compile` for edits** - Editing existing files works faster with scripts_compile (no refresh overhead)
+4. **Use force=true for deletions** - Prevents CS2001 errors
+5. **Expect -32603 errors** - Normal during compilation, wait and retry
+6. **Check status before operations** - Avoid redundant work
+7. **Prefer regex for test filtering** - More flexible than exact matches
+8. **Use appropriate timeouts** - EditMode: 30s, PlayMode: 60-120s, Large projects: 45-60s
+9. **Iterate on compilation errors** - Edit and compile until clean
+10. **Test after refactoring** - Ensure changes don't break functionality
+11. **Wait for MCP responsiveness** - After assets_refresh, wait before next operation
+12. **Use editor logs as fallback** - Logs work even when MCP server is unavailable
 
 ## Additional Resources
 

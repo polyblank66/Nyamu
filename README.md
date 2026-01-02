@@ -112,6 +112,13 @@ For detailed setup instructions for different AI agents, see [`nyamu-mcp-setup.m
 
 **Note 2**: The bat file automatically updates when you change Nyamu settings (like the server port), so you typically only need to configure this once.
 
+### 3. Add the following instructions to your Coding Agent Memory
+
+```
+# Agent Instructions
++ Prefer `assets_refresh` tool to check scripts compilaion
+```
+
 ## Configuration
 
 ### Response Character Limits

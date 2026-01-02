@@ -103,7 +103,7 @@ Replace `D:\\code\\YourProject` with your actual project path.
 Ask your AI agent to follow the setup instructions. For example, if you're using Gemini CLI:
 
 ```
-You're Gemini CLI. Follow nyamu-mcp-setup.md
+You're Claude Code Agent. Follow nyamu-mcp-setup.md
 ```
 
 The `"You're ---"` statement is important, as some AI agents do not know what they are unless explicitly told.

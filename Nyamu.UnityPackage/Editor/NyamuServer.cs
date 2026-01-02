@@ -1182,7 +1182,7 @@ namespace Nyamu
                 return;
 
             if (!_shouldStop)
-                NyamuLogger.LogError($"[Nyamu][Server] NyamuServer error: {ex.Message}");
+                NyamuLogger.LogException($"[Nyamu][Server] NyamuServer error: {ex.Message}", ex);
         }
     }
 }

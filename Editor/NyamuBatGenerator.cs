@@ -28,6 +28,14 @@ namespace Nyamu
         // Called when packages are registered (installed/updated/removed)
         static void OnPackagesRegistered(PackageRegistrationEventArgs args)
         {
+            // Debug: Log all packages passed to this event
+            var addedPackages = string.Join(", ", args.added.Select(p => $"{p.name}@{p.version}"));
+            var changedToPackages = string.Join(", ", args.changedTo.Select(p => $"{p.name}@{p.version}"));
+            var changedFromPackages = string.Join(", ", args.changedFrom.Select(p => $"{p.name}@{p.version}"));
+            var removedPackages = string.Join(", ", args.removed.Select(p => $"{p.name}@{p.version}"));
+
+            NyamuLogger.LogDebug($"[Nyamu][BatGenerator] OnPackagesRegistered - Added: [{addedPackages}], ChangedTo: [{changedToPackages}], ChangedFrom: [{changedFromPackages}], Removed: [{removedPackages}]");
+
             // Check if our package was updated
             var nyamuPackage = args.added.Concat(args.changedTo)
                 .FirstOrDefault(p => p.name == "dev.polyblank.nyamu");

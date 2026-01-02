@@ -66,6 +66,9 @@ def setup_worker_environment(worker_id, worker_port, worker_project_path):
     print(f"SESSION SETUP for worker: {worker_id} on port {worker_port}")
     print(f"{'='*60}")
 
+    # Set environment variable for worker project path so MCPClient can auto-detect it
+    os.environ["NYAMU_WORKER_PROJECT_PATH"] = str(worker_project_path)
+
     # Check if serial batch-mode is enabled
     serial_batch_mode = os.environ.get("NYAMU_SERIAL_BATCH_MODE", "false").lower() == "true"
 
@@ -236,9 +239,18 @@ async def temp_files(mcp_client, unity_helper):
     """Fixture for tracking temporary files with GUARANTEED cleanup using file lock"""
     from unity_helper import UnityLockManager, wait_for_unity_idle
     import shutil
+    import hashlib
 
     created_files = []
-    lock_manager = UnityLockManager()
+
+    # Create unique lock file name based on project path from environment variable
+    worker_project_path = os.environ.get("NYAMU_WORKER_PROJECT_PATH")
+    if worker_project_path:
+        path_hash = hashlib.md5(str(worker_project_path).encode()).hexdigest()[:8]
+        lock_name = f"unity_state_{path_hash}.lock"
+    else:
+        lock_name = "unity_state.lock"
+    lock_manager = UnityLockManager(lock_name=lock_name)
 
     def register_temp_file(file_path):
         created_files.append(file_path)

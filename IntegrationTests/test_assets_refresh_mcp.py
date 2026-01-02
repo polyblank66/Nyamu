@@ -20,10 +20,16 @@ from mcp.client.stdio import stdio_client
 @pytest_asyncio.fixture(scope="function")
 async def mcp_session():
     """MCP client using official library"""
-    # Compute path to nyamu.bat relative to test file
-    test_file = Path(__file__)
-    project_root = test_file.parent.parent  # IntegrationTests -> Nyamu
-    nyamu_bat_path = str(project_root / "Nyamu.UnityTestProject" / ".nyamu" / "nyamu.bat")
+    # Use worker-specific project path from environment variable (set by conftest)
+    import os
+    worker_project_path = os.environ.get("NYAMU_WORKER_PROJECT_PATH")
+    if worker_project_path:
+        nyamu_bat_path = str(Path(worker_project_path) / ".nyamu" / "nyamu.bat")
+    else:
+        # Fallback to default path for serial mode
+        test_file = Path(__file__)
+        project_root = test_file.parent.parent
+        nyamu_bat_path = str(project_root / "Nyamu.UnityTestProject" / ".nyamu" / "nyamu.bat")
 
     # Connect to Nyamu MCP server via nyamu.bat
     server_params = StdioServerParameters(

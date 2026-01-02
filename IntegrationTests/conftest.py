@@ -17,15 +17,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 from mcp_client import MCPClient
 from unity_helper import UnityHelper, UnityStateManager
 
-# Settings file location - resolves to project_root/Nyamu.UnityTestProject/.nyamu/NyamuSettings.json
-SETTINGS_FILE = Path(__file__).parent.parent / "Nyamu.UnityTestProject" / ".nyamu" / "NyamuSettings.json"
-
+@pytest.fixture(scope="session")
+def settings_file(worker_project_path):
+    """Get NyamuSettings.json path for this worker"""
+    return worker_project_path / ".nyamu" / "NyamuSettings.json"
 
 @pytest.fixture(scope="session")
 def worker_id(request):
     """Get worker ID (master for single, gw0/gw1/etc for parallel)"""
     return getattr(request.config, 'worker_id', 'master')
-
 
 @pytest.fixture(scope="session")
 def worker_port(worker_id):
@@ -33,7 +33,7 @@ def worker_port(worker_id):
     if worker_id == "master":
         # Read actual port from NyamuSettings.json
         try:
-            with open(SETTINGS_FILE, 'r') as f:
+            with open(settings_file(worker_id), 'r') as f:
                 settings = json.load(f)
             port = settings["MonoBehaviour"]["serverPort"]
             if not isinstance(port, int) or not (1 <= port <= 65535):
@@ -291,25 +291,25 @@ async def temp_files(mcp_client, unity_helper):
 
 
 @pytest.fixture(scope="session")
-def unity_port():
+def unity_port(settings_file):
     """Read Unity server port from NyamuSettings.json"""
     try:
-        with open(SETTINGS_FILE, 'r') as f:
+        with open(settings_file, 'r') as f:
             settings = json.load(f)
 
         port = settings["MonoBehaviour"]["serverPort"]
 
         if not isinstance(port, int) or not (1 <= port <= 65535):
-            pytest.skip(f"Invalid port value in {SETTINGS_FILE}: {port}")
+            pytest.skip(f"Invalid port value in {settings_file}: {port}")
 
         return port
 
     except FileNotFoundError:
-        pytest.skip(f"Settings file not found: {SETTINGS_FILE}")
+        pytest.skip(f"Settings file not found: {settings_file}")
     except KeyError as e:
-        pytest.skip(f"Missing required field in {SETTINGS_FILE}: {e}")
+        pytest.skip(f"Missing required field in {settings_file}: {e}")
     except json.JSONDecodeError as e:
-        pytest.skip(f"Invalid JSON in {SETTINGS_FILE}: {e}")
+        pytest.skip(f"Invalid JSON in {settings_file}: {e}")
 
 
 @pytest.fixture(scope="session")

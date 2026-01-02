@@ -173,7 +173,8 @@ Each AI agent session can now interact with its corresponding Unity Editor indep
 
 **Important**: Port conflicts will prevent `NyamuServer` from starting. Make sure each Unity Editor uses a unique port number.
 
-**Note**: The bat files automatically include the `--port` parameter from each project's settings, so you don't need to specify it manually in the MCP configuration.
+**Note 1**: The bat files automatically include the `--port` parameter from each project's settings, so you don't need to specify it manually in the MCP configuration.
+**Note 2**: Nyamu package have automatic port assignment logic, so you don't have to specify port manually, even when working with multiple projects. 
 
 ## Documentation
 

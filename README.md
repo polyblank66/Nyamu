@@ -2,7 +2,7 @@
 
 **Nyamu** is a minimal MCP server for Unity, designed to give coding agents a way to check script compilation. It is based on the **[Yamu](https://github.com/keijiro/Yamu)** PoC project by [Keijiro Takahashi](https://github.com/keijiro).
 
-Designed by a human, coded mostly by Claude Code.
+Designed by a Human 💖, coded mostly by Claude Code ✨
 
 ## Compatibility with Coding Agents and Tools
 

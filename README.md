@@ -110,7 +110,8 @@ The `"You're ---"` statement is important, as some AI agents do not know what th
 
 For detailed setup instructions for different AI agents, see [`nyamu-mcp-setup.md`].
 
-**Note**: The bat file automatically updates when you change Nyamu settings (like the server port), so you typically only need to configure this once.
+**Note 1**: Restart your AI agent client after adding mcp configuration.
+**Note 2**: The bat file automatically updates when you change Nyamu settings (like the server port), so you typically only need to configure this once.
 
 ## Configuration
 

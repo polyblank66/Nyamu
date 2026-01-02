@@ -8,6 +8,7 @@ import asyncio
 import os
 import sys
 import json
+import requests
 from pathlib import Path
 
 # Add current directory to Python path
@@ -20,10 +21,149 @@ from unity_helper import UnityHelper, UnityStateManager
 SETTINGS_FILE = Path(__file__).parent.parent / "Nyamu.UnityTestProject" / ".nyamu" / "NyamuSettings.json"
 
 
+@pytest.fixture(scope="session")
+def worker_id(request):
+    """Get worker ID (master for single, gw0/gw1/etc for parallel)"""
+    return getattr(request.config, 'worker_id', 'master')
+
+
+@pytest.fixture(scope="session")
+def worker_port(worker_id):
+    """Get Unity HTTP server port for this worker"""
+    if worker_id == "master":
+        # Read actual port from NyamuSettings.json
+        try:
+            with open(SETTINGS_FILE, 'r') as f:
+                settings = json.load(f)
+            port = settings["MonoBehaviour"]["serverPort"]
+            if not isinstance(port, int) or not (1 <= port <= 65535):
+                return 17542  # Fallback to default
+            return port
+        except (FileNotFoundError, KeyError, json.JSONDecodeError):
+            return 17542  # Fallback to default
+    else:
+        # Parallel mode: use deterministic port based on worker ID
+        worker_num = int(worker_id[2:])  # "gw0" -> 0
+        return 17542 + worker_num
+
+
+@pytest.fixture(scope="session")
+def worker_project_path(worker_id):
+    """Get Unity project path for this worker"""
+    base_path = Path(__file__).parent.parent / "Nyamu.UnityTestProject"
+
+    if worker_id == "master":
+        return base_path
+    else:
+        return base_path.parent / f"{base_path.name}.worker_{worker_id}"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_worker_environment(worker_id, worker_port, worker_project_path):
+    """Session-level setup: manages Unity instances for both serial and parallel modes"""
+
+    print(f"\n{'='*60}")
+    print(f"SESSION SETUP for worker: {worker_id} on port {worker_port}")
+    print(f"{'='*60}")
+
+    # Check if serial batch-mode is enabled
+    serial_batch_mode = os.environ.get("NYAMU_SERIAL_BATCH_MODE", "false").lower() == "true"
+
+    unity_manager = None
+
+    if worker_id != "master":
+        # === PARALLEL MODE ===
+        # Create/sync project copy for this worker
+        from project_manager import ProjectManager
+
+        base_path = Path(__file__).parent.parent / "Nyamu.UnityTestProject"
+        manager = ProjectManager(base_path, worker_id)
+
+        # Create or sync project
+        manager.create_or_sync_worker_project()
+
+        # Create .nyamu config with worker-specific port
+        manager.create_worker_nyamu_config(worker_port)
+
+        # Start Unity batch-mode instance
+        from unity_manager import UnityInstanceManager, find_unity_exe
+
+        try:
+            unity_exe = find_unity_exe()
+        except FileNotFoundError as e:
+            pytest.skip(str(e))
+
+        unity_manager = UnityInstanceManager(unity_exe, worker_project_path, worker_port)
+
+        try:
+            asyncio.run(unity_manager.start_unity(timeout=120))
+        except TimeoutError as e:
+            pytest.skip(f"Unity instance failed to start: {e}")
+
+        yield
+
+        print(f"\n{'='*60}")
+        print(f"SESSION TEARDOWN for worker: {worker_id}")
+        print(f"{'='*60}")
+
+        # Stop Unity instance
+        asyncio.run(unity_manager.stop_unity())
+
+        # Optional cleanup (disabled by default for faster reruns)
+        if os.environ.get("NYAMU_CLEANUP_WORKERS") == "true":
+            manager.cleanup_worker_project()
+
+    elif serial_batch_mode:
+        # === SERIAL MODE (BATCH-MODE UNITY) ===
+        # Launch single Unity batch-mode instance for serial execution
+        from unity_manager import UnityInstanceManager, find_unity_exe
+
+        try:
+            unity_exe = find_unity_exe()
+        except FileNotFoundError as e:
+            pytest.skip(str(e))
+
+        unity_manager = UnityInstanceManager(unity_exe, worker_project_path, worker_port)
+
+        try:
+            asyncio.run(unity_manager.start_unity(timeout=120))
+        except TimeoutError as e:
+            pytest.skip(f"Unity instance failed to start: {e}")
+
+        yield
+
+        print(f"\n{'='*60}")
+        print(f"SESSION TEARDOWN for worker: {worker_id} (batch-mode)")
+        print(f"{'='*60}")
+
+        # Stop Unity instance
+        asyncio.run(unity_manager.stop_unity())
+
+    else:
+        # === SERIAL MODE (MANUAL UNITY) ===
+        # Check that Unity is already running (developer opened manually)
+        try:
+            response = requests.get(f"http://localhost:{worker_port}/scripts-compile-status", timeout=5)
+            if response.status_code != 200:
+                pytest.skip("Unity HTTP server unavailable in serial mode. "
+                           "Either open Unity manually or set NYAMU_SERIAL_BATCH_MODE=true")
+        except requests.RequestException:
+            pytest.skip("Unity not running or HTTP server unavailable. "
+                       "Either open Unity manually or set NYAMU_SERIAL_BATCH_MODE=true")
+
+        yield
+
+        print(f"\n{'='*60}")
+        print(f"SESSION TEARDOWN for worker: {worker_id} (manual Unity)")
+        print(f"{'='*60}")
+
+
 @pytest_asyncio.fixture(scope="function")
-async def mcp_client():
-    """Fixture for MCP client used in all tests"""
-    client = MCPClient()
+async def mcp_client(worker_project_path):
+    """Fixture for MCP client - now uses worker-specific project path"""
+    mcp_server_path = worker_project_path / ".nyamu" / "nyamu.bat"
+
+    client = MCPClient(mcp_server_path=str(mcp_server_path))
     await client.start()
 
     yield client
@@ -78,9 +218,9 @@ async def unity_state_manager(mcp_client, request):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def unity_helper(mcp_client):
-    """Fixture for Unity Helper with automatic file restoration"""
-    helper = UnityHelper(mcp_client=mcp_client)
+async def unity_helper(mcp_client, worker_project_path):
+    """Fixture for Unity Helper - now uses worker-specific project path"""
+    helper = UnityHelper(project_root=str(worker_project_path.parent), mcp_client=mcp_client)
 
     yield helper
 
@@ -166,19 +306,6 @@ def unity_base_url(unity_port):
     return f"http://localhost:{unity_port}"
 
 
-@pytest.fixture(autouse=True)
-def check_unity_running(unity_base_url):
-    """Checks that Unity is running and available"""
-    # Check that Unity HTTP server is available
-    import requests
-    try:
-        response = requests.get(f"{unity_base_url}/scripts-compile-status", timeout=5)
-        if response.status_code != 200:
-            pytest.skip("Unity HTTP server unavailable")
-    except requests.exceptions.RequestException:
-        pytest.skip("Unity not running or HTTP server unavailable")
-
-
 def pytest_configure(config):
     """Pytest configuration"""
     config.addinivalue_line("markers", "slow: marks slow tests")
@@ -188,6 +315,10 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "essential: core functionality tests")
     config.addinivalue_line("markers", "protocol: pure MCP protocol tests")
     config.addinivalue_line("markers", "structural: tests that modify Unity project structure")
+
+    # Get worker ID from pytest-xdist
+    worker_id = getattr(config, 'workerinput', {}).get('workerid', 'master')
+    config.worker_id = worker_id
 
 
 def pytest_collection_modifyitems(config, items):

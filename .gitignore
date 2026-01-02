@@ -25,3 +25,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.pyc
+
+# Parallel test worker Unity project copies
+Nyamu.UnityTestProject.worker_*/

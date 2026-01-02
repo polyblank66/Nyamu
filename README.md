@@ -17,8 +17,6 @@ Prompt: Check script compilation with Nyamu MCP tool
 | Rider + Junie        | ❌      | 2025.3.0.4 + 253.549.29    | 0.1.0         | 2025-12-13 | Error in the settings for the nyamu tool         |
 | Codex                | ❌      | 0.72.0                     | 0.1.0         | 2025-12-13 | Tool is not visible via the `/mcp` command       |
 
-**For AI agents:** See [`AGENT-GUIDE.md`] for best practices, workflows, and troubleshooting.
-
 ## Features
 
 ### Asset Management
@@ -183,9 +181,9 @@ Each AI agent session can now interact with its corresponding Unity Editor indep
 - **[`nyamu-mcp-setup.md`]** - Setup instructions for different AI tools
 - **[`NyamuServer-API-Guide.md`]** - HTTP API reference documentation
 
-[`AGENT-GUIDE.md`]: Packages/dev.polyblank.nyamu/AGENT-GUIDE.md
-[`nyamu-mcp-setup.md`]: Packages/dev.polyblank.nyamu/nyamu-mcp-setup.md
-[`NyamuServer-API-Guide.md`]: Packages/dev.polyblank.nyamu/NyamuServer-API-Guide.md
+[`AGENT-GUIDE.md`]: Nyamu.UnityPackage/AGENT-GUIDE.md
+[`nyamu-mcp-setup.md`]: Nyamu.UnityPackage/nyamu-mcp-setup.md
+[`NyamuServer-API-Guide.md`]: Nyamu.UnityPackage/NyamuServer-API-Guide.md
 
 ## Similar Projects
 

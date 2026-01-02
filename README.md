@@ -132,51 +132,9 @@ The system automatically calculates the available space for response content by 
 
 ### Server Port Configuration
 
-Nyamu’s HTTP server port is configurable, allowing multiple Unity Editor instances to run simultaneously without conflicts.
+Nyamu automatically assigns unique ports to each Unity Editor instance, allowing multiple projects to run simultaneously without conflicts. The generated `.nyamu/nyamu.bat` file includes the correct port configuration automatically.
 
-**Configuration Location**: Unity → Project Settings → **Nyamu MCP Server**
-
-**Setting**:
-
-* **Server Port** – HTTP server port (default: 17932)
-
-#### Working with Multiple Unity Projects
-
-To work with multiple Unity Editor instances at the same time:
-
-1. **Configure unique ports** for each Unity project:
-
-    * Project A: Unity → Project Settings → Nyamu MCP Server → Server Port: `17932`
-    * Project B: Unity → Project Settings → Nyamu MCP Server → Server Port: `17933`
-
-2. Each project will automatically generate its own bat file with the correct port. Configure your AI agent with multiple MCP entries:
-
-   ```json
-   {
-     "mcpServers": {
-       "Nyamu-ProjectA": {
-         "command": "cmd.exe",
-         "args": ["/c", "D:\\code\\ProjectA\\.nyamu\\nyamu.bat"],
-         "timeout": 30000
-       },
-       "Nyamu-ProjectB": {
-         "command": "cmd.exe",
-         "args": ["/c", "D:\\code\\ProjectB\\.nyamu\\nyamu.bat"],
-         "timeout": 30000
-       }
-     }
-   }
-   ```
-
-3. **Launch all Unity Editors** — each instance will listen on its configured port.
-
-Each AI agent session can now interact with its corresponding Unity Editor independently, enabling parallel development across multiple Unity projects.
-
-**Important**: Port conflicts will prevent `NyamuServer` from starting. Make sure each Unity Editor uses a unique port number.
-
-**Note 1**: The bat files automatically include the `--port` parameter from each project's settings, so you don't need to specify it manually in the MCP configuration.
-
-**Note 2**: Nyamu package have automatic port assignment logic, so you don't have to specify port manually, even when working with multiple projects. 
+For special cases where manual port assignment is needed, you can configure it at: Unity → Project Settings → **Nyamu MCP Server** → **Server Port** (default: 17932). 
 
 ## Documentation
 

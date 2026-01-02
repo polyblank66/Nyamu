@@ -67,6 +67,16 @@ namespace Nyamu
 		}
 
 		[HideInCallstack]
+		public static void LogException(string message, Exception exception)
+		{
+			LogError(message);
+
+			// Use cached min log level to avoid accessing NyamuSettings from non-main threads
+			if (LogLevel.Exception >= _cachedMinLogLevel)
+				Debug.unityLogger.LogException(exception);
+		}
+
+		[HideInCallstack]
 		private static void LogInternal(string message, LogLevel logLevel)
 		{
 			// Use cached min log level to avoid accessing NyamuSettings from non-main threads

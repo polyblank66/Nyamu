@@ -28,6 +28,7 @@ Edit file → scripts_compile (no refresh needed)
 - **Use** `tests_run_regex` for flexible pattern-based test filtering
 - **Check status** before long operations to avoid redundant work
 - **Progress notifications** are sent for compilation, tests, and shader compilation
+- **Editor logs work independently** - read logs even when NyamuServer is unavailable
 
 ## Detailed Workflows
 
@@ -311,6 +312,144 @@ Progress notifications received:
 - Use for final validation only
 - Prefer targeted compilation
 
+## Unity Editor Logs
+
+### When to Use Logs
+
+Unity Editor logs are accessible **even when NyamuServer is unavailable** - the logs are standard Unity files that exist independently of the MCP server.
+
+**Use logs when:**
+- NyamuServer HTTP connection is down
+- Investigating compilation errors that happened earlier
+- Debugging Unity Editor startup issues
+- Searching for specific warnings or errors
+- Understanding Unity package loading sequence
+
+### Available Log Tools
+
+```
+editor_log_path() - Get platform-specific log file path
+editor_log_head(line_count=100, log_type="all") - Read first N lines
+editor_log_tail(line_count=100, log_type="all") - Read last N lines
+editor_log_grep(pattern="error", log_type="all", context_lines=0) - Search with regex
+```
+
+### Log Types Filter
+
+All log reading tools support filtering by type:
+- `"all"` - All log entries (default)
+- `"error"` - Only error messages
+- `"warning"` - Only warnings
+- `"info"` - Only info messages
+
+### Reading Recent Activity
+
+**Get latest logs:**
+```
+editor_log_tail(line_count=200, log_type="all")
+```
+
+**Get only recent errors:**
+```
+editor_log_tail(line_count=100, log_type="error")
+```
+
+**Use cases:**
+- Check what Unity is doing right now
+- See latest compilation errors
+- Find recent warnings
+- Debug current editor state
+
+### Searching for Specific Issues
+
+**Search for errors:**
+```
+editor_log_grep(pattern="NullReferenceException", log_type="error", context_lines=5)
+```
+
+**Search for shader issues:**
+```
+editor_log_grep(pattern="Shader.*failed", log_type="all", context_lines=3)
+```
+
+**Search for compilation errors:**
+```
+editor_log_grep(pattern="CS[0-9]+", log_type="error", line_limit=50)
+```
+
+**Parameters:**
+- `pattern` - JavaScript regex pattern (case-insensitive by default)
+- `case_sensitive` - Enable case-sensitive search (default: false)
+- `context_lines` - Show N lines before/after match (default: 0, max: 10)
+- `line_limit` - Max matching lines to return (default: 1000, max: 10000)
+- `log_type` - Filter by type: all/error/warning/info
+
+### Reading Startup Logs
+
+**Check Unity initialization:**
+```
+editor_log_head(line_count=500, log_type="all")
+```
+
+**Find startup errors:**
+```
+editor_log_head(line_count=1000, log_type="error")
+```
+
+**Use cases:**
+- Debug package loading issues
+- Find initialization errors
+- Verify Unity version and configuration
+- Check what packages are loaded
+
+### Finding Log File Location
+
+**Get log path:**
+```
+editor_log_path()
+```
+
+**Platform-specific paths:**
+- Windows: `%LOCALAPPDATA%/Unity/Editor/Editor.log`
+- Mac: `~/Library/Logs/Unity/Editor.log`
+- Linux: `~/.config/unity3d/Editor.log`
+
+### Best Practices for Log Reading
+
+1. **Start with tail** - Most recent activity is usually most relevant
+2. **Use log_type filter** - Narrow down to errors/warnings when debugging
+3. **Add context_lines** - See surrounding code for stack traces (2-5 lines)
+4. **Limit results** - Use line_limit to avoid overwhelming output
+5. **Combine filters** - Use pattern + log_type for precise results
+6. **Fallback to logs** - When MCP server is down, logs still work
+
+### Example: Debugging Compilation Failure
+
+```
+Step 1: Check recent errors
+→ editor_log_tail(line_count=100, log_type="error")
+
+Step 2: Search for specific error code
+→ editor_log_grep(pattern="CS0246", context_lines=3, log_type="error")
+
+Step 3: See full compilation context
+→ editor_log_grep(pattern="CompilerOutput", context_lines=10)
+```
+
+### Example: When NyamuServer is Down
+
+```
+Scenario: MCP server connection failed
+
+Instead of using:
+→ scripts_compile_status() ← Won't work, server is down
+
+Use logs instead:
+→ editor_log_tail(line_count=200, log_type="error")
+→ editor_log_grep(pattern="compilation|error", context_lines=5)
+→ Check for compilation errors manually
+```
+
 ## Progress Notifications
 
 All long-running MCP operations provide real-time progress updates:
@@ -392,6 +531,9 @@ Progress: "Compiling StandardSpecular.shader (11/50)"
 **Solution:**
 - Check Unity Editor is still running
 - Verify HTTP server port (default: 17932)
+- **Use editor logs** - logs work even when MCP server is down:
+  - `editor_log_tail(line_count=200, log_type="error")` - Check recent errors
+  - `editor_log_grep(pattern="NyamuServer|HTTP", context_lines=5)` - Search for server issues
 - Restart Unity Editor if needed
 
 ## Best Practices Summary
@@ -406,6 +548,7 @@ Progress: "Compiling StandardSpecular.shader (11/50)"
 8. **Iterate on compilation errors** - Edit and compile until clean
 9. **Test after refactoring** - Ensure changes don't break functionality
 10. **Wait for MCP responsiveness** - After assets_refresh, wait before next operation
+11. **Use editor logs as fallback** - Logs work even when MCP server is unavailable
 
 ## Additional Resources
 

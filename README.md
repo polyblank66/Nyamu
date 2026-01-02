@@ -6,7 +6,10 @@ Designed by a Human 💖, coded mostly by Claude Code ✨
 
 ## Compatibility with Coding Agents and Tools
 
-Prompt: Check script compilation with Nyamu MCP tool
+Test Prompt: 
+```
+Check script compilation with Nyamu MCP tool
+```
 
 | Tool                 | Result | Tool Version               | Nyamu Version | Test Date  | Notes                                            |
 |----------------------|--------|----------------------------|---------------|------------|--------------------------------------------------|

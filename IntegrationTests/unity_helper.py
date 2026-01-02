@@ -6,8 +6,135 @@ import os
 import shutil
 import tempfile
 import asyncio
+import time
+import json
+import threading
 from typing import List, Optional, Dict, Any
 from pathlib import Path
+
+# Platform-specific imports for file locking
+if os.name == 'nt':  # Windows
+    import msvcrt
+else:  # Unix/Linux/Mac
+    import fcntl
+
+
+class UnityLockManager:
+    """File-based lock for coordinating pytest-xdist workers accessing Unity"""
+
+    # Class-level tracking of lock ownership per process
+    _lock_holder = None
+    _lock_count = 0
+    _lock_file = None  # Shared file handle across all instances in the same process
+    _lock_file_path = None
+    _thread_lock = threading.Lock()  # Protects critical section within process
+
+    def __init__(self, lock_dir=None):
+        if lock_dir is None:
+            lock_dir = Path(tempfile.gettempdir()) / "nyamu_unity_locks"
+
+        self.lock_dir = Path(lock_dir)
+        self.lock_dir.mkdir(exist_ok=True)
+
+        # Set class-level lock path if not already set
+        if UnityLockManager._lock_file_path is None:
+            UnityLockManager._lock_file_path = self.lock_dir / "unity_state.lock"
+
+        self.acquired = False
+
+    def __enter__(self):
+        """Acquire exclusive lock on Unity state (reentrant within same process)"""
+        # Acquire thread lock to make the check-and-lock atomic
+        UnityLockManager._thread_lock.acquire()
+
+        try:
+            # Check if this process already holds the lock
+            if UnityLockManager._lock_count > 0:
+                # Reentrant lock - increment counter
+                UnityLockManager._lock_count += 1
+                self.acquired = False  # We didn't actually acquire the file lock
+                return self
+
+            # Acquire the file lock - use shared class-level file handle
+            UnityLockManager._lock_file = open(UnityLockManager._lock_file_path, 'w')
+
+            try:
+                if os.name == 'nt':  # Windows
+                    msvcrt.locking(UnityLockManager._lock_file.fileno(), msvcrt.LK_LOCK, 1)
+                else:  # Unix
+                    fcntl.flock(UnityLockManager._lock_file.fileno(), fcntl.LOCK_EX)
+            except OSError as e:
+                # errno 36 (EDEADLK) means we already have the lock in this process
+                # This can happen with async fixture teardowns - treat as reentrant
+                if e.errno == 36:
+                    UnityLockManager._lock_count += 1
+                    self.acquired = False
+                    return self
+                else:
+                    raise
+
+            UnityLockManager._lock_holder = self
+            UnityLockManager._lock_count = 1
+            self.acquired = True
+
+            return self
+        finally:
+            # Always release thread lock
+            UnityLockManager._thread_lock.release()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Release lock"""
+        # Acquire thread lock to make the decrement-and-unlock atomic
+        UnityLockManager._thread_lock.acquire()
+
+        try:
+            if not self.acquired:
+                # This is a reentrant call, just decrement counter
+                UnityLockManager._lock_count -= 1
+                return
+
+            # Release the actual file lock
+            UnityLockManager._lock_count -= 1
+            if UnityLockManager._lock_count == 0:
+                UnityLockManager._lock_holder = None
+                if UnityLockManager._lock_file:
+                    if os.name == 'nt':
+                        msvcrt.locking(UnityLockManager._lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+                    else:
+                        fcntl.flock(UnityLockManager._lock_file.fileno(), fcntl.LOCK_UN)
+                    UnityLockManager._lock_file.close()
+                    UnityLockManager._lock_file = None
+        finally:
+            # Always release thread lock
+            UnityLockManager._thread_lock.release()
+
+
+async def wait_for_unity_idle(mcp_client, timeout=30, poll_interval=0.2):
+    """Poll Unity status until idle (not compiling/testing/refreshing)"""
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        try:
+            response = await mcp_client.editor_status()
+
+            if "result" in response and "content" in response["result"]:
+                status_text = response["result"]["content"][0]["text"]
+                status_data = json.loads(status_text)
+
+                is_busy = (
+                    status_data.get("isCompiling", False) or
+                    status_data.get("isRunningTests", False)
+                )
+
+                if not is_busy:
+                    return True
+
+        except Exception as e:
+            print(f"Unity status check failed: {e}")
+
+        await asyncio.sleep(poll_interval)
+
+    raise TimeoutError(f"Unity did not become idle within {timeout}s")
 
 
 class UnityStateManager:
@@ -17,10 +144,11 @@ class UnityStateManager:
 
     def __init__(self, mcp_client):
         self.mcp_client = mcp_client
+        self.lock_manager = UnityLockManager()
 
     async def ensure_clean_state(self, cleanup_level="full", skip_force_refresh=False, lightweight=False):
         """
-        Ensures Unity is in a clean, working state suitable for tests
+        Ensures Unity is in a clean, working state suitable for tests - ALWAYS acquires lock for non-noop cleanup
 
         Args:
             cleanup_level: "noop", "minimal", or "full" cleanup level
@@ -34,62 +162,73 @@ class UnityStateManager:
                 print("Skipping Unity state cleanup - protocol test only")
                 return True
 
-            if cleanup_level == "minimal":
-                # Minimal cleanup - no asset refresh, no compilation check, just a tiny wait
-                print("Using minimal Unity state cleanup...")
-                await self._wait_for_unity_settle(0.1)
-                return True
+            # CRITICAL: Acquire lock for all Unity operations
+            with self.lock_manager:
+                # Wait for Unity to be idle before cleanup
+                await wait_for_unity_idle(self.mcp_client, timeout=30)
 
-            # Legacy lightweight mode (now equivalent to minimal)
-            if lightweight:
-                # Lightweight cleanup for tests that don't modify project structure
-                print("Using lightweight Unity state cleanup...")
-                await self.assets_refresh(force=False)
-                await self._wait_for_unity_settle(0.5)
-                await self.ensure_compilation_clean()
-                await self._wait_for_unity_settle(0.5)
-                return True
+                if cleanup_level == "minimal":
+                    # NEW: Minimal now checks for stale file references
+                    print("Using minimal Unity state cleanup...")
+                    try:
+                        status_response = await self.mcp_client.scripts_compile_status()
+                        status_text = status_response["result"]["content"][0]["text"]
 
-            if skip_force_refresh:
-                # Moderate cleanup - avoids expensive force refresh
-                print("Using moderate Unity state cleanup...")
-                await self.assets_refresh(force=False)
-                await self._wait_for_unity_settle(1.0)
-                await self.assets_refresh(force=False)
+                        if "cs2001" in status_text.lower() or ("source file" in status_text.lower() and "could not be found" in status_text.lower()):
+                            # Stale file references detected - upgrade to force refresh
+                            print("Stale file references detected - performing force refresh")
+                            await self.assets_refresh(force=True)
+                            await wait_for_unity_idle(self.mcp_client, timeout=30)
+                        else:
+                            # No errors - just brief wait
+                            await asyncio.sleep(0.1)
+                    except Exception as e:
+                        print(f"Minimal cleanup check failed: {e}")
+                        await asyncio.sleep(0.1)
+
+                    return True
+
+                # Legacy lightweight mode
+                if lightweight:
+                    print("Using lightweight Unity state cleanup...")
+                    await self.assets_refresh(force=False)
+                    await wait_for_unity_idle(self.mcp_client, timeout=30)
+                    await self.ensure_compilation_clean()
+                    await wait_for_unity_idle(self.mcp_client, timeout=30)
+                    return True
+
+                if skip_force_refresh:
+                    # Moderate cleanup - avoids expensive force refresh
+                    print("Using moderate Unity state cleanup...")
+                    await self.assets_refresh(force=False)
+                    await wait_for_unity_idle(self.mcp_client, timeout=30)
+
+                    compilation_clean = await self.ensure_compilation_clean()
+                    if not compilation_clean:
+                        print("Warning: Unity has compilation errors, trying force refresh...")
+                        await self.assets_refresh(force=True)
+                        await wait_for_unity_idle(self.mcp_client, timeout=30)
+                        await self.ensure_compilation_clean()
+
+                    await wait_for_unity_idle(self.mcp_client, timeout=30)
+                    return True
+
+                # Full aggressive cleanup for structural changes (optimized)
+                print("Using full Unity state cleanup...")
+                await self.assets_refresh(force=True)
+                await wait_for_unity_idle(self.mcp_client, timeout=30)
 
                 compilation_clean = await self.ensure_compilation_clean()
+                await wait_for_unity_idle(self.mcp_client, timeout=30)
+
                 if not compilation_clean:
-                    print("Warning: Unity has compilation errors, trying force refresh...")
+                    print("Warning: Unity has compilation errors that need to be cleared")
                     await self.assets_refresh(force=True)
-                    await self._wait_for_unity_settle(1.0)
+                    await wait_for_unity_idle(self.mcp_client, timeout=30)
                     await self.ensure_compilation_clean()
+                    await wait_for_unity_idle(self.mcp_client, timeout=30)
 
-                await self._wait_for_unity_settle(1.0)
                 return True
-
-            # Full aggressive cleanup for structural changes (original behavior)
-            print("Using full Unity state cleanup...")
-            # Force asset refresh to clear any stale references
-            await self.assets_refresh(force=True)
-
-            # Double refresh with delay to ensure Unity processes everything
-            await self._wait_for_unity_settle(1.0)
-            await self.assets_refresh(force=True)
-
-            # Verify compilation succeeds (no errors in codebase)
-            compilation_clean = await self.ensure_compilation_clean()
-
-            if not compilation_clean:
-                print("Warning: Unity has compilation errors that need to be cleared")
-                # Try one more refresh and compilation to clear cache
-                await self.assets_refresh(force=True)
-                await self._wait_for_unity_settle(2.0)
-                await self.ensure_compilation_clean()
-
-            # Give Unity extra time to fully settle and clear all caches
-            await self._wait_for_unity_settle(2.0)
-
-            return True
 
         except Exception as e:
             print(f"Warning: Could not ensure Unity clean state: {e}")
@@ -121,7 +260,7 @@ class UnityStateManager:
         Ensures Unity compilation succeeds with no errors
         """
         try:
-            response = await self.mcp_client.compilation_trigger(timeout=timeout)
+            response = await self.mcp_client.scripts_compile(timeout=timeout)
             if "result" in response and "content" in response["result"]:
                 content_text = response["result"]["content"][0]["text"]
                 # Check if compilation was successful
@@ -135,10 +274,49 @@ class UnityStateManager:
             print(f"Warning: Could not verify compilation state: {e}")
             return False
 
-    async def _wait_for_unity_settle(self, settle_time=2.0):
-        """Wait for Unity to process all pending operations"""
+    async def _wait_for_unity_settle(self, max_wait=2.0, poll=True):
+        """
+        Wait for Unity to process all pending operations
+
+        Args:
+            max_wait: Maximum time to wait in seconds
+            poll: If True, poll Unity status and return early when idle
+        """
         import asyncio
-        await asyncio.sleep(settle_time)
+        import time
+
+        if not poll:
+            # Legacy fixed wait
+            await asyncio.sleep(max_wait)
+            return
+
+        # Poll Unity status with short intervals
+        start = time.time()
+        while time.time() - start < max_wait:
+            try:
+                # Check if Unity is busy
+                response = await self.mcp_client._send_request("tools/call", {
+                    "name": "editor_status",
+                    "arguments": {}
+                })
+
+                if "result" in response and "content" in response["result"]:
+                    import json
+                    status_text = response["result"]["content"][0]["text"]
+                    status_data = json.loads(status_text)
+
+                    # If Unity is not compiling, return early
+                    if not status_data.get("isCompiling", False):
+                        return
+            except:
+                # If status check fails, just wait a bit
+                pass
+
+            # Short sleep before next poll
+            await asyncio.sleep(0.1)
+
+        # Reached max_wait, return anyway
+        return
 
 
 class UnityHelper:
@@ -431,6 +609,12 @@ public class {script_name}
         """Waits for Unity to process file changes (simple delay)"""
         import time
         time.sleep(2)  # Give Unity time to process files
+
+    async def wait_for_idle_and_refresh(self, force=False, timeout=30):
+        """Wait for Unity idle, then refresh, then wait again"""
+        await wait_for_unity_idle(self.mcp_client, timeout=timeout)
+        await self.assets_refresh_if_available(force=force)
+        await wait_for_unity_idle(self.mcp_client, timeout=timeout)
 
     async def assets_refresh_if_available(self, force: bool = False, max_retries: int = 10):
         """Refresh Unity assets using MCP client if available

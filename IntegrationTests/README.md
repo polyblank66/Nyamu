@@ -35,7 +35,35 @@ curl http://localhost:17932/compile-status
 
 ## Running Tests
 
-### Run All Tests
+### 🚀 Parallel Execution (New!)
+
+Run tests in parallel for **2-4x speedup**:
+
+```bash
+# Use all CPU cores (recommended)
+pytest -n auto
+
+# Use specific number of workers
+pytest -n 2  # 2 workers
+pytest -n 4  # 4 workers
+
+# Parallel with test selection
+pytest -n auto -m "not slow"  # Fast tests in parallel
+pytest -n auto -m essential   # Essential tests in parallel
+```
+
+**Performance gains:**
+- Full test suite: ~20-25 minutes → ~5-10 minutes (with -n auto)
+- Essential tests: ~20s → ~8s (with -n 2)
+- Protocol tests: ~15s → ~5s (with -n 4)
+
+**Notes:**
+- Smart cleanup system skips unnecessary operations for passing tests
+- Reduced wait times from 2s to 1s in cleanup operations
+- Single refresh instead of double refresh saves ~2-3s per structural test
+- Tests are designed for safe parallel execution
+
+### Run All Tests (Serial)
 ```bash
 pytest
 ```

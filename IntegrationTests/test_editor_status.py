@@ -114,7 +114,6 @@ def test_editor_status_headers(unity_base_url):
 
 
 @pytest.mark.mcp
-@pytest.mark.protocol
 def test_editor_status_idle_state(unity_base_url):
     """Test editor_status when Unity is idle"""
     response = requests.get(f"{unity_base_url}/editor-status")

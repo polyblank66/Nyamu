@@ -46,7 +46,7 @@ def _get_cleanup_level(request):
 
 @pytest_asyncio.fixture(scope="function")
 async def unity_state_manager(mcp_client, request):
-    """Fixture for Unity State Manager with three-tier cleanup selection"""
+    """Fixture for Unity State Manager with smart cleanup based on test results"""
     manager = UnityStateManager(mcp_client)
 
     # Determine cleanup level needed for this test
@@ -61,9 +61,20 @@ async def unity_state_manager(mcp_client, request):
 
     yield manager
 
-    # Smart post-test cleanup based on test type
-    print(f"Test {request.node.name} detected as {cleanup_level} - using {cleanup_level} cleanup")
-    await manager.ensure_clean_state(cleanup_level=cleanup_level)
+    # Smart post-test cleanup: only full cleanup if test failed or is structural
+    test_failed = request.node.rep_call.failed if hasattr(request.node, 'rep_call') else False
+
+    if test_failed:
+        print(f"Test {request.node.name} FAILED - using full cleanup to restore Unity state")
+        await manager.ensure_clean_state(cleanup_level="full")
+    elif cleanup_level == "full":
+        # Structural tests that passed: still need full cleanup
+        print(f"Test {request.node.name} PASSED (structural) - using full cleanup")
+        await manager.ensure_clean_state(cleanup_level="full")
+    else:
+        # Passing tests with minimal/noop cleanup
+        print(f"Test {request.node.name} PASSED - using {cleanup_level} cleanup")
+        await manager.ensure_clean_state(cleanup_level=cleanup_level)
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -81,9 +92,13 @@ async def unity_helper(mcp_client):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def temp_files(mcp_client):
-    """Fixture for tracking temporary files with robust cleanup"""
+async def temp_files(mcp_client, unity_helper):
+    """Fixture for tracking temporary files with GUARANTEED cleanup using file lock"""
+    from unity_helper import UnityLockManager, wait_for_unity_idle
+    import shutil
+
     created_files = []
+    lock_manager = UnityLockManager()
 
     def register_temp_file(file_path):
         created_files.append(file_path)
@@ -91,25 +106,36 @@ async def temp_files(mcp_client):
 
     yield register_temp_file
 
-    # Comprehensive temporary file cleanup
+    # CRITICAL: Acquire lock before cleanup to prevent race conditions
     if created_files:
-        try:
-            unity_helper = UnityHelper(mcp_client=mcp_client)
-            await unity_helper.cleanup_temp_files_with_refresh(created_files)
+        with lock_manager:
+            try:
+                # Wait for Unity to finish any pending operations
+                await wait_for_unity_idle(mcp_client, timeout=30)
 
-        except Exception as e:
-            print(f"Warning: Temporary file cleanup encountered issues: {e}")
-            # Try individual file cleanup as fallback
-            for file_path in created_files:
-                try:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        # Also remove .meta files
+                # Delete files
+                for file_path in created_files:
+                    try:
+                        if os.path.isdir(file_path):
+                            shutil.rmtree(file_path, ignore_errors=True)
+                        elif os.path.exists(file_path):
+                            os.remove(file_path)
+
+                        # Remove .meta file
                         meta_path = file_path + ".meta"
                         if os.path.exists(meta_path):
                             os.remove(meta_path)
-                except Exception as cleanup_error:
-                    print(f"Could not remove {file_path}: {cleanup_error}")
+                    except Exception as e:
+                        print(f"Could not remove {file_path}: {e}")
+
+                # CRITICAL: Force refresh after deletions
+                await unity_helper.assets_refresh_if_available(force=True)
+
+                # Wait for refresh to complete
+                await wait_for_unity_idle(mcp_client, timeout=30)
+
+            except Exception as e:
+                print(f"Temp file cleanup failed: {e}")
 
 
 @pytest.fixture(scope="session")
@@ -185,6 +211,9 @@ def pytest_runtest_makereport(item, call):
     """
     outcome = yield
     report = outcome.get_result()
+
+    # Store test result on the item for fixture access
+    setattr(item, f"rep_{report.when}", report)
 
     # Log test state transitions for debugging randomized test issues
     if hasattr(item, '_request') and call.when == "teardown":

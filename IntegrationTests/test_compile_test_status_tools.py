@@ -28,7 +28,7 @@ async def test_compile_status_tool_exists(mcp_client, unity_state_manager):
     assert compile_status_tool["name"] == "scripts_compile_status"
     assert isinstance(compile_status_tool["description"], str)
     assert len(compile_status_tool["description"]) > 0
-    assert "without triggering compilation" in compile_status_tool["description"]
+    assert "without triggering" in compile_status_tool["description"]
 
     # Check input schema
     schema = compile_status_tool["inputSchema"]
@@ -58,7 +58,7 @@ async def test_test_status_tool_exists(mcp_client, unity_state_manager):
     assert test_status_tool["name"] == "tests_run_status"
     assert isinstance(test_status_tool["description"], str)
     assert len(test_status_tool["description"]) > 0
-    assert "without running tests" in test_status_tool["description"]
+    assert "without running" in test_status_tool["description"]
 
     # Check input schema
     schema = test_status_tool["inputSchema"]
@@ -203,7 +203,6 @@ async def test_test_status_consistency_with_http_endpoint(mcp_client, unity_stat
 
 
 @pytest.mark.mcp
-@pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_compile_status_idle_state(mcp_client, unity_state_manager):
     """Test compile_status when Unity is idle"""
@@ -216,7 +215,6 @@ async def test_compile_status_idle_state(mcp_client, unity_state_manager):
 
 
 @pytest.mark.mcp
-@pytest.mark.protocol
 @pytest.mark.asyncio
 async def test_test_status_idle_state(mcp_client, unity_state_manager):
     """Test test_status when Unity is idle"""

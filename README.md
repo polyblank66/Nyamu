@@ -17,6 +17,7 @@ Check script compilation with Nyamu MCP tool
 | Zed                  | ✅      | 0.216.1                    | 0.1.0         | 2025-12-13 |                                                  |
 | Rider + AI Assistant | ✅      | 2025.3.0.4 + 253.28294.360 | 0.1.0         | 2025-12-13 |                                                  |
 | OpenCode             | ✅      | 1.0.223                    | 0.1.0         | 2026-01-01 |                                                  |
+| Windsurf             | ✅      | 1.13.5                     | 0.1.0         | 2026-01-02 |                                                  |
 | Rider + Junie        | ❌      | 2025.3.0.4 + 253.549.29    | 0.1.0         | 2025-12-13 | Error in the settings for the nyamu tool         |
 | Codex                | ❌      | 0.72.0                     | 0.1.0         | 2025-12-13 | Tool is not visible via the `/mcp` command       |
 

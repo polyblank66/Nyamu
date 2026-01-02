@@ -185,9 +185,9 @@ def _get_cleanup_level(request):
     return "minimal"
 
 @pytest_asyncio.fixture(scope="function")
-async def unity_state_manager(mcp_client, request):
+async def unity_state_manager(mcp_client, worker_project_path, request):
     """Fixture for Unity State Manager with smart cleanup based on test results"""
-    manager = UnityStateManager(mcp_client)
+    manager = UnityStateManager(mcp_client, project_path=worker_project_path)
 
     # Determine cleanup level needed for this test
     cleanup_level = _get_cleanup_level(request)
@@ -220,7 +220,7 @@ async def unity_state_manager(mcp_client, request):
 @pytest_asyncio.fixture(scope="function")
 async def unity_helper(mcp_client, worker_project_path):
     """Fixture for Unity Helper - now uses worker-specific project path"""
-    helper = UnityHelper(project_root=str(worker_project_path.parent), mcp_client=mcp_client)
+    helper = UnityHelper(project_root=str(worker_project_path), mcp_client=mcp_client)
 
     yield helper
 

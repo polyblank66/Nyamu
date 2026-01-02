@@ -29,16 +29,20 @@ class UnityLockManager:
     _lock_file_path = None
     _thread_lock = threading.Lock()  # Protects critical section within process
 
-    def __init__(self, lock_dir=None):
+    def __init__(self, lock_dir=None, lock_name="unity_state.lock"):
         if lock_dir is None:
             lock_dir = Path(tempfile.gettempdir()) / "nyamu_unity_locks"
 
         self.lock_dir = Path(lock_dir)
         self.lock_dir.mkdir(exist_ok=True)
 
-        # Set class-level lock path if not already set
+        # Create unique lock file path for this instance
+        # Use lock_name to differentiate between different Unity projects (for parallel execution)
+        self.lock_file_path = self.lock_dir / lock_name
+
+        # Set class-level lock path if not already set (for backward compatibility)
         if UnityLockManager._lock_file_path is None:
-            UnityLockManager._lock_file_path = self.lock_dir / "unity_state.lock"
+            UnityLockManager._lock_file_path = self.lock_file_path
 
         self.acquired = False
 
@@ -142,9 +146,19 @@ class UnityStateManager:
     Manages Unity Editor state to ensure test isolation and proper cleanup
     """
 
-    def __init__(self, mcp_client):
+    def __init__(self, mcp_client, project_path=None):
         self.mcp_client = mcp_client
-        self.lock_manager = UnityLockManager()
+
+        # Create unique lock file name based on project path for parallel execution
+        if project_path:
+            import hashlib
+            # Use hash of project path to create unique but short lock file name
+            path_hash = hashlib.md5(str(project_path).encode()).hexdigest()[:8]
+            lock_name = f"unity_state_{path_hash}.lock"
+        else:
+            lock_name = "unity_state.lock"
+
+        self.lock_manager = UnityLockManager(lock_name=lock_name)
 
     async def ensure_clean_state(self, cleanup_level="full", skip_force_refresh=False, lightweight=False):
         """
@@ -325,15 +339,24 @@ class UnityHelper:
         Initialize Unity Helper
 
         Args:
-            project_root: Unity project root directory
+            project_root: Unity project directory path (can be base dir or Unity project dir)
             mcp_client: MCP client instance for calling assets_refresh
         """
         if project_root is None:
             # Default to parent directory of McpTests
             project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-        self.project_root = project_root
-        self.assets_path = os.path.join(project_root, "Nyamu.UnityTestProject", "Assets")
+        # Check if project_root is already a Unity project directory (contains Assets folder)
+        # This supports both old behavior (parent dir) and new behavior (direct project path)
+        if os.path.exists(os.path.join(project_root, "Assets")):
+            # Already a Unity project directory
+            unity_project_path = project_root
+        else:
+            # Parent directory - append default project name for backward compatibility
+            unity_project_path = os.path.join(project_root, "Nyamu.UnityTestProject")
+
+        self.project_root = unity_project_path
+        self.assets_path = os.path.join(unity_project_path, "Assets")
         self.test_module_path = os.path.join(self.assets_path, "TestModule")
         self.backed_up_files = {}
         self.mcp_client = mcp_client

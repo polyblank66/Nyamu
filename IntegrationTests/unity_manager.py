@@ -114,9 +114,10 @@ def find_unity_exe(project_path: Optional[Path] = None) -> str:
     """
     Find Unity.exe path with automatic version detection.
 
-    Checks in order:
-    1. UNITY_EXE environment variable (highest priority - manual override)
-    2. Automatic detection based on project's Unity version:
+    Checks in order (highest to lowest priority):
+    1. pytest --unity-exe command-line argument (sets UNITY_EXE env var)
+    2. UNITY_EXE environment variable (manual override)
+    3. Automatic detection based on project's Unity version:
        - Reads version from ProjectSettings/ProjectVersion.txt
        - Searches Unity Hub installation locations for that specific version
        - Checks custom install paths, standard locations, and multiple drives

@@ -344,6 +344,16 @@ def unity_base_url(unity_port):
     return f"http://localhost:{unity_port}"
 
 
+def pytest_addoption(parser):
+    """Add custom command-line options"""
+    parser.addoption(
+        "--unity-exe",
+        action="store",
+        default=None,
+        help="Path to Unity.exe (overrides UNITY_EXE environment variable and auto-detection)"
+    )
+
+
 def pytest_configure(config):
     """Pytest configuration"""
     config.addinivalue_line("markers", "slow: marks slow tests")
@@ -357,6 +367,12 @@ def pytest_configure(config):
     # Get worker ID from pytest-xdist
     worker_id = getattr(config, 'workerinput', {}).get('workerid', 'master')
     config.worker_id = worker_id
+
+    # Set UNITY_EXE environment variable from command-line option if provided
+    unity_exe = config.getoption("--unity-exe")
+    if unity_exe:
+        os.environ["UNITY_EXE"] = unity_exe
+        print(f"\nUsing Unity.exe from command-line: {unity_exe}")
 
 
 def pytest_collection_modifyitems(config, items):

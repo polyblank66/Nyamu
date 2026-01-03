@@ -91,6 +91,9 @@ pytest -m essential
 - `NYAMU_CLEANUP_WORKERS="true"` - Clean up worker projects after tests
 - `UNITY_EXE="path"` - Override Unity.exe auto-detection
 
+**Command-line options:**
+- `--unity-exe="path"` - Override Unity.exe path (highest priority, overrides environment variable)
+
 **Notes:**
 - First parallel run creates worker projects (~30s overhead)
 - Subsequent runs are much faster with `NYAMU_SKIP_SYNC=true`

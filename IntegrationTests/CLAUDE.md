@@ -74,7 +74,8 @@ cd IntegrationTests && python -m pytest -n auto
 - `NYAMU_CLEANUP_WORKERS="true"` - Remove worker projects after tests
 
 **Manual Unity.exe Override:**
-- `UNITY_EXE="C:\Path\To\Unity.exe"` - Override auto-detection
+- `UNITY_EXE="C:\Path\To\Unity.exe"` - Environment variable override
+- `pytest --unity-exe="C:\Path\To\Unity.exe"` - Command-line argument (highest priority)
 
 **Project Path (Auto-set):**
 - `NYAMU_WORKER_PROJECT_PATH` - Set automatically by conftest.py
@@ -157,6 +158,20 @@ pytest -n 2 -m essential
 # Subsequent runs (fast - skips sync)
 $env:NYAMU_SKIP_SYNC="true"
 pytest -n 2 -m essential
+```
+
+### Custom Unity.exe Path
+```bash
+# Using command-line argument (recommended)
+pytest --unity-exe="D:\Unity\2021.3.45f2\Editor\Unity.exe" -m essential
+
+# Using environment variable
+$env:UNITY_EXE="D:\Unity\2021.3.45f2\Editor\Unity.exe"
+pytest -m essential
+
+# Command-line overrides environment variable
+$env:UNITY_EXE="D:\Wrong\Path\Unity.exe"
+pytest --unity-exe="D:\Correct\Path\Unity.exe" -m essential
 ```
 
 See `README.md` for comprehensive documentation and advanced usage.

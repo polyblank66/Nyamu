@@ -113,18 +113,37 @@ class ProjectManager:
                     shutil.rmtree(dst_dir)
                 shutil.copytree(src_dir, dst_dir)
 
-    def create_worker_nyamu_config(self, port: int):
+    def create_worker_nyamu_config(self, port: int) -> bool:
         """
         Create worker-specific .nyamu configuration.
 
         Args:
             port: HTTP server port for this worker
+
+        Returns:
+            True if configuration was newly created or modified, False if already exists unchanged
         """
         nyamu_dir = self.worker_project_path / ".nyamu"
         nyamu_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create NyamuSettings.json
+        # Check if config already exists with same port
         settings_path = nyamu_dir / "NyamuSettings.json"
+        bat_path = nyamu_dir / "nyamu.bat"
+        config_exists = settings_path.exists() and bat_path.exists()
+
+        # If config exists, check if port matches
+        if config_exists:
+            try:
+                with open(settings_path, 'r') as f:
+                    existing_settings = json.load(f)
+                existing_port = existing_settings.get("MonoBehaviour", {}).get("serverPort")
+                if existing_port == port:
+                    print(f"  .nyamu config already exists for {self.worker_id} on port {port} (skipping)")
+                    return False  # No changes needed
+            except (json.JSONDecodeError, FileNotFoundError):
+                pass  # Will recreate below
+
+        # Create NyamuSettings.json
         settings = {
             "MonoBehaviour": {
                 "serverPort": port,
@@ -143,7 +162,6 @@ class ProjectManager:
         mcp_server_js = self.unity_package_path / "Node" / "mcp-server.js"
         worker_log = nyamu_dir / "mcp-server.log"
 
-        bat_path = nyamu_dir / "nyamu.bat"
         bat_content = f'''@echo off
 node "{mcp_server_js}" --port {port} --log-file "{worker_log}" %*
 '''
@@ -152,6 +170,7 @@ node "{mcp_server_js}" --port {port} --log-file "{worker_log}" %*
             f.write(bat_content)
 
         print(f"  Created .nyamu config for {self.worker_id} on port {port}")
+        return True  # Config was created/modified
 
     def cleanup_worker_project(self):
         """Remove worker project copy (cleanup after tests)."""

@@ -89,7 +89,8 @@ def setup_worker_environment(worker_id, worker_port, worker_project_path):
         manager.create_or_sync_worker_project()
 
         # Create .nyamu config with worker-specific port
-        manager.create_worker_nyamu_config(worker_port)
+        # Returns True if config was created/modified, False if unchanged
+        config_changed = manager.create_worker_nyamu_config(worker_port)
 
         # Start Unity batch-mode instance
         from unity_manager import UnityInstanceManager, find_unity_exe, pre_register_project_port
@@ -99,9 +100,10 @@ def setup_worker_environment(worker_id, worker_port, worker_project_path):
         except FileNotFoundError as e:
             pytest.skip(str(e))
 
-        # Pre-register project port to prevent race conditions in global registry
-        # This uses a file lock to ensure sequential registration across workers
-        pre_register_project_port(unity_exe, worker_project_path, worker_port, timeout=60)
+        # Pre-register project port only if config changed
+        # This prevents race conditions in global registry while avoiding unnecessary work
+        if config_changed:
+            pre_register_project_port(unity_exe, worker_project_path, worker_port, timeout=60)
 
         unity_manager = UnityInstanceManager(unity_exe, worker_project_path, worker_port)
 
@@ -133,8 +135,22 @@ def setup_worker_environment(worker_id, worker_port, worker_project_path):
         except FileNotFoundError as e:
             pytest.skip(str(e))
 
-        # Pre-register project port to prevent race conditions in global registry
-        pre_register_project_port(unity_exe, worker_project_path, worker_port, timeout=60)
+        # Check if .nyamu config exists and has correct port
+        settings_file_path = worker_project_path / ".nyamu" / "NyamuSettings.json"
+        config_needs_update = True
+        if settings_file_path.exists():
+            try:
+                with open(settings_file_path, 'r') as f:
+                    settings = json.load(f)
+                existing_port = settings.get("MonoBehaviour", {}).get("serverPort")
+                if existing_port == worker_port:
+                    config_needs_update = False
+            except (json.JSONDecodeError, FileNotFoundError):
+                pass
+
+        # Pre-register project port only if config changed or doesn't exist
+        if config_needs_update:
+            pre_register_project_port(unity_exe, worker_project_path, worker_port, timeout=60)
 
         unity_manager = UnityInstanceManager(unity_exe, worker_project_path, worker_port)
 

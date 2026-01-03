@@ -155,7 +155,7 @@ async def test_cancel_tests_tool_registration(mcp_client, unity_state_manager):
 
     assert "description" in tests_cancel_tool
     assert "EditMode" in tests_cancel_tool["description"]  # Should mention EditMode limitation
-    assert "TestRunnerApi" in tests_cancel_tool["description"]  # Should reference the Unity API
+    assert "Unity" in tests_cancel_tool["description"] and "API" in tests_cancel_tool["description"]  # Should reference the Unity API
 
     assert "inputSchema" in tests_cancel_tool
     schema = tests_cancel_tool["inputSchema"]

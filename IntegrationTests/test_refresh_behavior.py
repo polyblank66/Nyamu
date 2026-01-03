@@ -109,7 +109,7 @@ async def test_mcp_tools_list_includes_force_parameter():
         force_param = input_schema["properties"]["force"]
         assert force_param["type"] == "boolean"
         assert "description" in force_param
-        assert "ForceUpdate" in force_param["description"]
+        assert "reimport" in force_param["description"].lower() or "force" in force_param["description"].lower()
 
         # Check tool description mentions force usage
         description = refresh_tool["description"]

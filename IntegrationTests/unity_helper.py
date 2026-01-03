@@ -31,10 +31,13 @@ class UnityLockManager:
 
     def __init__(self, lock_dir=None, lock_name="unity_state.lock"):
         if lock_dir is None:
-            lock_dir = Path(tempfile.gettempdir()) / "nyamu_unity_locks"
+            # Use project-local Temp directory to avoid antivirus scanning
+            # Find project root (D:\code\Nyamu) by going up from this file
+            project_root = Path(__file__).parent.parent
+            lock_dir = project_root / "Temp" / "nyamu_unity_locks"
 
         self.lock_dir = Path(lock_dir)
-        self.lock_dir.mkdir(exist_ok=True)
+        self.lock_dir.mkdir(parents=True, exist_ok=True)
 
         # Create unique lock file path for this instance
         # Use lock_name to differentiate between different Unity projects (for parallel execution)

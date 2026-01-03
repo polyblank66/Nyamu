@@ -193,9 +193,12 @@ def pre_register_project_port(unity_exe_path: str, project_path: Path, port: int
     Returns:
         True if registration succeeded, False otherwise
     """
-    # Use global lock file in temp directory (shared across all workers)
-    temp_dir = Path(os.environ.get("TEMP", "/tmp"))
-    lock_file = temp_dir / "nyamu_registry_lock.lock"
+    # Use project-local Temp directory to avoid antivirus scanning
+    # Find project root (D:\code\Nyamu) by going up from this file
+    project_root = Path(__file__).parent.parent
+    lock_dir = project_root / "Temp" / "nyamu_unity_locks"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    lock_file = lock_dir / "nyamu_registry_lock.lock"
 
     print(f"  Pre-registering project port {port} (with global lock)...")
 

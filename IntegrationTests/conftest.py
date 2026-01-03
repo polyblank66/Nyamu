@@ -262,21 +262,11 @@ async def unity_helper(mcp_client, worker_project_path):
 
 @pytest_asyncio.fixture(scope="function")
 async def temp_files(mcp_client, unity_helper):
-    """Fixture for tracking temporary files with GUARANTEED cleanup using file lock"""
-    from unity_helper import UnityLockManager, wait_for_unity_idle
+    """Fixture for tracking temporary files with cleanup"""
+    from unity_helper import wait_for_unity_idle
     import shutil
-    import hashlib
 
     created_files = []
-
-    # Create unique lock file name based on project path from environment variable
-    worker_project_path = os.environ.get("NYAMU_WORKER_PROJECT_PATH")
-    if worker_project_path:
-        path_hash = hashlib.md5(str(worker_project_path).encode()).hexdigest()[:8]
-        lock_name = f"unity_state_{path_hash}.lock"
-    else:
-        lock_name = "unity_state.lock"
-    lock_manager = UnityLockManager(lock_name=lock_name)
 
     def register_temp_file(file_path):
         created_files.append(file_path)
@@ -284,36 +274,35 @@ async def temp_files(mcp_client, unity_helper):
 
     yield register_temp_file
 
-    # CRITICAL: Acquire lock before cleanup to prevent race conditions
+    # Cleanup temporary files
     if created_files:
-        with lock_manager:
-            try:
-                # Wait for Unity to finish any pending operations
-                await wait_for_unity_idle(mcp_client, timeout=30)
+        try:
+            # Wait for Unity to finish any pending operations
+            await wait_for_unity_idle(mcp_client, timeout=30)
 
-                # Delete files
-                for file_path in created_files:
-                    try:
-                        if os.path.isdir(file_path):
-                            shutil.rmtree(file_path, ignore_errors=True)
-                        elif os.path.exists(file_path):
-                            os.remove(file_path)
+            # Delete files
+            for file_path in created_files:
+                try:
+                    if os.path.isdir(file_path):
+                        shutil.rmtree(file_path, ignore_errors=True)
+                    elif os.path.exists(file_path):
+                        os.remove(file_path)
 
-                        # Remove .meta file
-                        meta_path = file_path + ".meta"
-                        if os.path.exists(meta_path):
-                            os.remove(meta_path)
-                    except Exception as e:
-                        print(f"Could not remove {file_path}: {e}")
+                    # Remove .meta file
+                    meta_path = file_path + ".meta"
+                    if os.path.exists(meta_path):
+                        os.remove(meta_path)
+                except Exception as e:
+                    print(f"Could not remove {file_path}: {e}")
 
-                # CRITICAL: Force refresh after deletions
-                await unity_helper.assets_refresh_if_available(force=True)
+            # Force refresh after deletions
+            await unity_helper.assets_refresh_if_available(force=True)
 
-                # Wait for refresh to complete
-                await wait_for_unity_idle(mcp_client, timeout=30)
+            # Wait for refresh to complete
+            await wait_for_unity_idle(mcp_client, timeout=30)
 
-            except Exception as e:
-                print(f"Temp file cleanup failed: {e}")
+        except Exception as e:
+            print(f"Temp file cleanup failed: {e}")
 
 
 @pytest.fixture(scope="session")

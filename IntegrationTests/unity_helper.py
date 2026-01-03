@@ -8,112 +8,8 @@ import tempfile
 import asyncio
 import time
 import json
-import threading
 from typing import List, Optional, Dict, Any
 from pathlib import Path
-
-# Platform-specific imports for file locking
-if os.name == 'nt':  # Windows
-    import msvcrt
-else:  # Unix/Linux/Mac
-    import fcntl
-
-
-class UnityLockManager:
-    """File-based lock for coordinating pytest-xdist workers accessing Unity"""
-
-    # Class-level tracking of lock ownership per process
-    _lock_holder = None
-    _lock_count = 0
-    _lock_file = None  # Shared file handle across all instances in the same process
-    _lock_file_path = None
-    _thread_lock = threading.Lock()  # Protects critical section within process
-
-    def __init__(self, lock_dir=None, lock_name="unity_state.lock"):
-        if lock_dir is None:
-            # Use project-local Temp directory to avoid antivirus scanning
-            # Find project root (D:\code\Nyamu) by going up from this file
-            project_root = Path(__file__).parent.parent
-            lock_dir = project_root / "Temp" / "nyamu_unity_locks"
-
-        self.lock_dir = Path(lock_dir)
-        self.lock_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create unique lock file path for this instance
-        # Use lock_name to differentiate between different Unity projects (for parallel execution)
-        self.lock_file_path = self.lock_dir / lock_name
-
-        # Set class-level lock path if not already set (for backward compatibility)
-        if UnityLockManager._lock_file_path is None:
-            UnityLockManager._lock_file_path = self.lock_file_path
-
-        self.acquired = False
-
-    def __enter__(self):
-        """Acquire exclusive lock on Unity state (reentrant within same process)"""
-        # Acquire thread lock to make the check-and-lock atomic
-        UnityLockManager._thread_lock.acquire()
-
-        try:
-            # Check if this process already holds the lock
-            if UnityLockManager._lock_count > 0:
-                # Reentrant lock - increment counter
-                UnityLockManager._lock_count += 1
-                self.acquired = False  # We didn't actually acquire the file lock
-                return self
-
-            # Acquire the file lock - use instance-specific lock file path
-            UnityLockManager._lock_file = open(self.lock_file_path, 'w')
-
-            try:
-                if os.name == 'nt':  # Windows
-                    msvcrt.locking(UnityLockManager._lock_file.fileno(), msvcrt.LK_LOCK, 1)
-                else:  # Unix
-                    fcntl.flock(UnityLockManager._lock_file.fileno(), fcntl.LOCK_EX)
-            except OSError as e:
-                # errno 36 (EDEADLK) means we already have the lock in this process
-                # This can happen with async fixture teardowns - treat as reentrant
-                if e.errno == 36:
-                    UnityLockManager._lock_count += 1
-                    self.acquired = False
-                    return self
-                else:
-                    raise
-
-            UnityLockManager._lock_holder = self
-            UnityLockManager._lock_count = 1
-            self.acquired = True
-
-            return self
-        finally:
-            # Always release thread lock
-            UnityLockManager._thread_lock.release()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Release lock"""
-        # Acquire thread lock to make the decrement-and-unlock atomic
-        UnityLockManager._thread_lock.acquire()
-
-        try:
-            if not self.acquired:
-                # This is a reentrant call, just decrement counter
-                UnityLockManager._lock_count -= 1
-                return
-
-            # Release the actual file lock
-            UnityLockManager._lock_count -= 1
-            if UnityLockManager._lock_count == 0:
-                UnityLockManager._lock_holder = None
-                if UnityLockManager._lock_file:
-                    if os.name == 'nt':
-                        msvcrt.locking(UnityLockManager._lock_file.fileno(), msvcrt.LK_UNLCK, 1)
-                    else:
-                        fcntl.flock(UnityLockManager._lock_file.fileno(), fcntl.LOCK_UN)
-                    UnityLockManager._lock_file.close()
-                    UnityLockManager._lock_file = None
-        finally:
-            # Always release thread lock
-            UnityLockManager._thread_lock.release()
 
 
 async def wait_for_unity_idle(mcp_client, timeout=30, poll_interval=0.2):
@@ -152,20 +48,9 @@ class UnityStateManager:
     def __init__(self, mcp_client, project_path=None):
         self.mcp_client = mcp_client
 
-        # Create unique lock file name based on project path for parallel execution
-        if project_path:
-            import hashlib
-            # Use hash of project path to create unique but short lock file name
-            path_hash = hashlib.md5(str(project_path).encode()).hexdigest()[:8]
-            lock_name = f"unity_state_{path_hash}.lock"
-        else:
-            lock_name = "unity_state.lock"
-
-        self.lock_manager = UnityLockManager(lock_name=lock_name)
-
     async def ensure_clean_state(self, cleanup_level="full", skip_force_refresh=False, lightweight=False):
         """
-        Ensures Unity is in a clean, working state suitable for tests - ALWAYS acquires lock for non-noop cleanup
+        Ensures Unity is in a clean, working state suitable for tests
 
         Args:
             cleanup_level: "noop", "minimal", or "full" cleanup level
@@ -179,73 +64,71 @@ class UnityStateManager:
                 print("Skipping Unity state cleanup - protocol test only")
                 return True
 
-            # CRITICAL: Acquire lock for all Unity operations
-            with self.lock_manager:
-                # Wait for Unity to be idle before cleanup
-                await wait_for_unity_idle(self.mcp_client, timeout=30)
+            # Wait for Unity to be idle before cleanup
+            await wait_for_unity_idle(self.mcp_client, timeout=30)
 
-                if cleanup_level == "minimal":
-                    # NEW: Minimal now checks for stale file references
-                    print("Using minimal Unity state cleanup...")
-                    try:
-                        status_response = await self.mcp_client.scripts_compile_status()
-                        status_text = status_response["result"]["content"][0]["text"]
+            if cleanup_level == "minimal":
+                # NEW: Minimal now checks for stale file references
+                print("Using minimal Unity state cleanup...")
+                try:
+                    status_response = await self.mcp_client.scripts_compile_status()
+                    status_text = status_response["result"]["content"][0]["text"]
 
-                        if "cs2001" in status_text.lower() or ("source file" in status_text.lower() and "could not be found" in status_text.lower()):
-                            # Stale file references detected - upgrade to force refresh
-                            print("Stale file references detected - performing force refresh")
-                            await self.assets_refresh(force=True)
-                            await wait_for_unity_idle(self.mcp_client, timeout=30)
-                        else:
-                            # No errors - just brief wait
-                            await asyncio.sleep(0.1)
-                    except Exception as e:
-                        print(f"Minimal cleanup check failed: {e}")
-                        await asyncio.sleep(0.1)
-
-                    return True
-
-                # Legacy lightweight mode
-                if lightweight:
-                    print("Using lightweight Unity state cleanup...")
-                    await self.assets_refresh(force=False)
-                    await wait_for_unity_idle(self.mcp_client, timeout=30)
-                    await self.ensure_compilation_clean()
-                    await wait_for_unity_idle(self.mcp_client, timeout=30)
-                    return True
-
-                if skip_force_refresh:
-                    # Moderate cleanup - avoids expensive force refresh
-                    print("Using moderate Unity state cleanup...")
-                    await self.assets_refresh(force=False)
-                    await wait_for_unity_idle(self.mcp_client, timeout=30)
-
-                    compilation_clean = await self.ensure_compilation_clean()
-                    if not compilation_clean:
-                        print("Warning: Unity has compilation errors, trying force refresh...")
+                    if "cs2001" in status_text.lower() or ("source file" in status_text.lower() and "could not be found" in status_text.lower()):
+                        # Stale file references detected - upgrade to force refresh
+                        print("Stale file references detected - performing force refresh")
                         await self.assets_refresh(force=True)
                         await wait_for_unity_idle(self.mcp_client, timeout=30)
-                        await self.ensure_compilation_clean()
+                    else:
+                        # No errors - just brief wait
+                        await asyncio.sleep(0.1)
+                except Exception as e:
+                    print(f"Minimal cleanup check failed: {e}")
+                    await asyncio.sleep(0.1)
 
-                    await wait_for_unity_idle(self.mcp_client, timeout=30)
-                    return True
+                return True
 
-                # Full aggressive cleanup for structural changes (optimized)
-                print("Using full Unity state cleanup...")
-                await self.assets_refresh(force=True)
+            # Legacy lightweight mode
+            if lightweight:
+                print("Using lightweight Unity state cleanup...")
+                await self.assets_refresh(force=False)
+                await wait_for_unity_idle(self.mcp_client, timeout=30)
+                await self.ensure_compilation_clean()
+                await wait_for_unity_idle(self.mcp_client, timeout=30)
+                return True
+
+            if skip_force_refresh:
+                # Moderate cleanup - avoids expensive force refresh
+                print("Using moderate Unity state cleanup...")
+                await self.assets_refresh(force=False)
                 await wait_for_unity_idle(self.mcp_client, timeout=30)
 
                 compilation_clean = await self.ensure_compilation_clean()
-                await wait_for_unity_idle(self.mcp_client, timeout=30)
-
                 if not compilation_clean:
-                    print("Warning: Unity has compilation errors that need to be cleared")
+                    print("Warning: Unity has compilation errors, trying force refresh...")
                     await self.assets_refresh(force=True)
                     await wait_for_unity_idle(self.mcp_client, timeout=30)
                     await self.ensure_compilation_clean()
-                    await wait_for_unity_idle(self.mcp_client, timeout=30)
 
+                await wait_for_unity_idle(self.mcp_client, timeout=30)
                 return True
+
+            # Full aggressive cleanup for structural changes (optimized)
+            print("Using full Unity state cleanup...")
+            await self.assets_refresh(force=True)
+            await wait_for_unity_idle(self.mcp_client, timeout=30)
+
+            compilation_clean = await self.ensure_compilation_clean()
+            await wait_for_unity_idle(self.mcp_client, timeout=30)
+
+            if not compilation_clean:
+                print("Warning: Unity has compilation errors that need to be cleared")
+                await self.assets_refresh(force=True)
+                await wait_for_unity_idle(self.mcp_client, timeout=30)
+                await self.ensure_compilation_clean()
+                await wait_for_unity_idle(self.mcp_client, timeout=30)
+
+            return True
 
         except Exception as e:
             print(f"Warning: Could not ensure Unity clean state: {e}")

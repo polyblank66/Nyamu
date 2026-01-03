@@ -203,9 +203,18 @@ async def test_editor_status_during_compilation(unity_state_manager):
 @pytest.mark.asyncio
 async def test_editor_status_consistency_with_compile_status(mcp_client, unity_state_manager, unity_base_url):
     """Test that editor_status isCompiling matches compile_status"""
-    # Get both statuses
-    editor_status = await mcp_client.editor_status()
-    compile_status_response = requests.get(f"{unity_base_url}/scripts-compile-status")
+    # Get both statuses with retry for race condition during parallel startup
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            editor_status = await mcp_client.editor_status()
+            compile_status_response = requests.get(f"{unity_base_url}/scripts-compile-status")
+            break
+        except (RuntimeError, requests.RequestException) as e:
+            if attempt < max_retries - 1 and "unavailable" in str(e).lower():
+                await asyncio.sleep(3)  # Wait for Unity HTTP server to stabilize
+                continue
+            raise
 
     editor_data = json.loads(editor_status["result"]["content"][0]["text"])
     compile_data = compile_status_response.json()

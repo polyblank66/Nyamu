@@ -217,7 +217,17 @@ async def test_cancel_tests_during_long_test_execution():
 @pytest.mark.asyncio
 async def test_cancel_tests_response_format(mcp_client, unity_state_manager):
     """Test that cancel_tests response has correct format"""
-    response = await mcp_client.tests_run_cancel()
+    # Call with retry for race condition during parallel startup
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = await mcp_client.tests_run_cancel()
+            break
+        except RuntimeError as e:
+            if attempt < max_retries - 1 and "unavailable" in str(e).lower():
+                await asyncio.sleep(3)  # Wait for Unity HTTP server to stabilize
+                continue
+            raise
 
     # Verify MCP response structure
     assert response["jsonrpc"] == "2.0"

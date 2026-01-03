@@ -8,19 +8,119 @@ import asyncio
 import os
 import subprocess
 import time
+import json
 from pathlib import Path
 from typing import Optional
 import requests
 
 
-def find_unity_exe() -> str:
+def get_unity_version_from_project(project_path: Path) -> str:
     """
-    Find Unity.exe path.
+    Read Unity version from ProjectVersion.txt.
+
+    Args:
+        project_path: Path to Unity project root
+
+    Returns:
+        Unity version string (e.g., "2021.3.45f2")
+
+    Raises:
+        FileNotFoundError: If ProjectVersion.txt is missing
+        ValueError: If version cannot be parsed
+    """
+    version_file = project_path / "ProjectSettings" / "ProjectVersion.txt"
+
+    if not version_file.exists():
+        raise FileNotFoundError(f"ProjectVersion.txt not found at {version_file}")
+
+    with open(version_file, 'r') as f:
+        for line in f:
+            if line.startswith("m_EditorVersion:"):
+                version = line.split(":", 1)[1].strip()
+                if version:
+                    return version
+
+    raise ValueError(f"Could not parse Unity version from {version_file}")
+
+
+def find_unity_exe_for_version(unity_version: str) -> Optional[str]:
+    """
+    Find Unity.exe for a specific version using Unity Hub locations.
+
+    Search strategy (matching unity-merge.bat):
+    1. Unity Hub secondaryInstallPath.json (custom installation path)
+    2. Standard Unity Hub path (%ProgramFiles%\\Unity\\Hub\\Editor)
+    3. Alternate standard path (C:\\Program Files\\Unity\\Hub\\Editor)
+    4. Search common drives (C, D, E, S)
+
+    Args:
+        unity_version: Unity version to find (e.g., "2021.3.45f2")
+
+    Returns:
+        Path to Unity.exe if found, None otherwise
+    """
+    # Method 1: Check Unity Hub's secondaryInstallPath.json for custom installation
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        secondary_path_file = Path(appdata) / "UnityHub" / "secondaryInstallPath.json"
+        if secondary_path_file.exists():
+            try:
+                with open(secondary_path_file, 'r') as f:
+                    content = f.read().strip()
+                    # Remove quotes from JSON string (it's just a quoted path)
+                    secondary_path = content.strip('"')
+                    unity_exe = Path(secondary_path) / unity_version / "Editor" / "Unity.exe"
+                    if unity_exe.exists():
+                        print(f"Found Unity {unity_version} at secondary install path: {unity_exe}")
+                        return str(unity_exe)
+            except (json.JSONDecodeError, OSError):
+                pass  # Continue to other methods
+
+    # Method 2: Check standard Unity Hub path
+    program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+    standard_path = Path(program_files) / "Unity" / "Hub" / "Editor"
+    unity_exe = standard_path / unity_version / "Editor" / "Unity.exe"
+    if unity_exe.exists():
+        print(f"Found Unity {unity_version} at standard path: {unity_exe}")
+        return str(unity_exe)
+
+    # Method 3: Check alternate standard path (in case ProgramFiles is different)
+    alt_path = Path("C:\\Program Files\\Unity\\Hub\\Editor")
+    unity_exe = alt_path / unity_version / "Editor" / "Unity.exe"
+    if unity_exe.exists():
+        print(f"Found Unity {unity_version} at alternate standard path: {unity_exe}")
+        return str(unity_exe)
+
+    # Method 4: Search common drives
+    for drive in ["C", "D", "E", "S"]:
+        # Pattern 1: {Drive}:\Unity\Hub\{Version}\Editor\Unity.exe
+        unity_exe = Path(f"{drive}:\\Unity\\Hub\\{unity_version}\\Editor\\Unity.exe")
+        if unity_exe.exists():
+            print(f"Found Unity {unity_version} on drive {drive}: {unity_exe}")
+            return str(unity_exe)
+
+        # Pattern 2: {Drive}:\Program Files\Unity\Hub\Editor\{Version}\Editor\Unity.exe
+        unity_exe = Path(f"{drive}:\\Program Files\\Unity\\Hub\\Editor\\{unity_version}\\Editor\\Unity.exe")
+        if unity_exe.exists():
+            print(f"Found Unity {unity_version} on drive {drive}: {unity_exe}")
+            return str(unity_exe)
+
+    return None
+
+
+def find_unity_exe(project_path: Optional[Path] = None) -> str:
+    """
+    Find Unity.exe path with automatic version detection.
 
     Checks in order:
-    1. UNITY_EXE environment variable (highest priority)
-    2. Unity Hub default locations (Windows)
-    3. Common Unity installation paths
+    1. UNITY_EXE environment variable (highest priority - manual override)
+    2. Automatic detection based on project's Unity version:
+       - Reads version from ProjectSettings/ProjectVersion.txt
+       - Searches Unity Hub installation locations for that specific version
+       - Checks custom install paths, standard locations, and multiple drives
+
+    Args:
+        project_path: Path to Unity project root. If None, tries to auto-detect from environment.
 
     Returns:
         Path to Unity.exe
@@ -28,35 +128,49 @@ def find_unity_exe() -> str:
     Raises:
         FileNotFoundError: If Unity.exe cannot be found
     """
-    # 1. Check UNITY_EXE environment variable
+    # 1. Check UNITY_EXE environment variable (manual override)
     unity_exe = os.environ.get("UNITY_EXE")
     if unity_exe and Path(unity_exe).exists():
+        print(f"Using Unity from UNITY_EXE environment variable: {unity_exe}")
         return unity_exe
 
-    # 2. Check Unity Hub default locations (Windows)
-    hub_paths = [
-        Path("C:/Program Files/Unity/Hub/Editor"),
-        Path("C:/Program Files/Unity/Editor"),
-        Path("D:/Program Files/Unity"),
-        Path("C:/Program Files/Unity"),
-    ]
+    # 2. Auto-detect project path if not provided
+    if project_path is None:
+        # Try to get from NYAMU_WORKER_PROJECT_PATH environment variable (set by conftest.py)
+        worker_project = os.environ.get("NYAMU_WORKER_PROJECT_PATH")
+        if worker_project:
+            project_path = Path(worker_project)
+        else:
+            # Fall back to default project path
+            current_file = Path(__file__)
+            project_path = current_file.parent.parent / "Nyamu.UnityTestProject"
 
-    for hub_path in hub_paths:
-        if hub_path.exists():
-            # Look for Editor/Unity.exe in version subdirectories
-            for version_dir in sorted(hub_path.glob("*"), reverse=True):
-                unity_exe_path = version_dir / "Editor" / "Unity.exe"
-                if unity_exe_path.exists():
-                    return str(unity_exe_path)
+    # 3. Read Unity version from project
+    try:
+        unity_version = get_unity_version_from_project(project_path)
+        print(f"Project requires Unity version: {unity_version}")
+    except (FileNotFoundError, ValueError) as e:
+        raise FileNotFoundError(
+            f"Cannot determine Unity version from project at {project_path}: {e}\n"
+            "Set UNITY_EXE environment variable to manually specify Unity.exe path.\n"
+            "Example: set UNITY_EXE=C:\\Program Files\\Unity\\Hub\\Editor\\2021.3.45f2\\Editor\\Unity.exe"
+        )
 
-            # Direct Unity.exe in hub path
-            unity_exe_path = hub_path / "Unity.exe"
-            if unity_exe_path.exists():
-                return str(unity_exe_path)
+    # 4. Find Unity.exe for the specific version
+    unity_exe_path = find_unity_exe_for_version(unity_version)
 
+    if unity_exe_path:
+        return unity_exe_path
+
+    # Unity not found - provide helpful error message
     raise FileNotFoundError(
-        "Unity.exe not found. Set UNITY_EXE environment variable to Unity.exe path. "
-        "Example: set UNITY_EXE=C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.50f1\\Editor\\Unity.exe"
+        f"Unity Editor {unity_version} not found!\n\n"
+        "This script searched for Unity in the following locations:\n"
+        "  - Unity Hub secondary install path (%APPDATA%\\UnityHub\\secondaryInstallPath.json)\n"
+        "  - Standard paths on drives C, D, E, S\n\n"
+        f"Please ensure Unity {unity_version} is installed via Unity Hub.\n"
+        "Alternatively, set UNITY_EXE environment variable to Unity.exe path:\n"
+        f"  Example: set UNITY_EXE=C:\\Program Files\\Unity\\Hub\\Editor\\{unity_version}\\Editor\\Unity.exe"
     )
 
 

@@ -28,12 +28,13 @@ def worker_id(request):
     return getattr(request.config, 'worker_id', 'master')
 
 @pytest.fixture(scope="session")
-def worker_port(worker_id):
+def worker_port(worker_id, worker_project_path):
     """Get Unity HTTP server port for this worker"""
     if worker_id == "master":
         # Read actual port from NyamuSettings.json
+        settings_file_path = worker_project_path / ".nyamu" / "NyamuSettings.json"
         try:
-            with open(settings_file(worker_id), 'r') as f:
+            with open(settings_file_path, 'r') as f:
                 settings = json.load(f)
             port = settings["MonoBehaviour"]["serverPort"]
             if not isinstance(port, int) or not (1 <= port <= 65535):

@@ -28,3 +28,5 @@ __pycache__/
 
 # Parallel test worker Unity project copies
 Nyamu.UnityTestProject.worker_*/
+
+Temp/

@@ -92,12 +92,16 @@ def setup_worker_environment(worker_id, worker_port, worker_project_path):
         manager.create_worker_nyamu_config(worker_port)
 
         # Start Unity batch-mode instance
-        from unity_manager import UnityInstanceManager, find_unity_exe
+        from unity_manager import UnityInstanceManager, find_unity_exe, pre_register_project_port
 
         try:
             unity_exe = find_unity_exe()
         except FileNotFoundError as e:
             pytest.skip(str(e))
+
+        # Pre-register project port to prevent race conditions in global registry
+        # This uses a file lock to ensure sequential registration across workers
+        pre_register_project_port(unity_exe, worker_project_path, worker_port, timeout=60)
 
         unity_manager = UnityInstanceManager(unity_exe, worker_project_path, worker_port)
 
@@ -122,12 +126,15 @@ def setup_worker_environment(worker_id, worker_port, worker_project_path):
     elif serial_batch_mode:
         # === SERIAL MODE (BATCH-MODE UNITY) ===
         # Launch single Unity batch-mode instance for serial execution
-        from unity_manager import UnityInstanceManager, find_unity_exe
+        from unity_manager import UnityInstanceManager, find_unity_exe, pre_register_project_port
 
         try:
             unity_exe = find_unity_exe()
         except FileNotFoundError as e:
             pytest.skip(str(e))
+
+        # Pre-register project port to prevent race conditions in global registry
+        pre_register_project_port(unity_exe, worker_project_path, worker_port, timeout=60)
 
         unity_manager = UnityInstanceManager(unity_exe, worker_project_path, worker_port)
 

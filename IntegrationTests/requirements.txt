@@ -7,3 +7,4 @@ aiohttp==3.9.1
 mcp>=1.0.0
 trio>=0.32.0  # For potential anyio trio backend usage
 psutil # To allow pytest-xdist determine physical cores count
+filelock>=3.0.0  # Cross-process file locking for registry synchronization

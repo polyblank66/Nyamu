@@ -9,9 +9,11 @@ import os
 import subprocess
 import time
 import json
+import hashlib
 from pathlib import Path
 from typing import Optional
 import requests
+import filelock
 
 
 def get_unity_version_from_project(project_path: Path) -> str:
@@ -172,6 +174,77 @@ def find_unity_exe(project_path: Optional[Path] = None) -> str:
         "Alternatively, set UNITY_EXE environment variable to Unity.exe path:\n"
         f"  Example: set UNITY_EXE=C:\\Program Files\\Unity\\Hub\\Editor\\{unity_version}\\Editor\\Unity.exe"
     )
+
+
+def pre_register_project_port(unity_exe_path: str, project_path: Path, port: int, timeout: int = 60) -> bool:
+    """
+    Pre-register project port in global registry using Unity batch-mode.
+
+    This prevents race conditions when multiple Unity instances start simultaneously.
+    Uses a global file lock to ensure sequential registration across all workers.
+
+    Args:
+        unity_exe_path: Path to Unity.exe
+        project_path: Path to Unity project
+        port: Port to register for this project
+        timeout: Maximum time to wait for registration (seconds)
+
+    Returns:
+        True if registration succeeded, False otherwise
+    """
+    # Use global lock file in temp directory (shared across all workers)
+    temp_dir = Path(os.environ.get("TEMP", "/tmp"))
+    lock_file = temp_dir / "nyamu_registry_lock.lock"
+
+    print(f"  Pre-registering project port {port} (with global lock)...")
+
+    lock = filelock.FileLock(str(lock_file), timeout=30)
+
+    try:
+        with lock:
+            # Run Unity in batch-mode to trigger NyamuSettings.Reload
+            # This will register the port in NyamuProjectsRegistry.json
+            log_file = project_path / ".nyamu" / "pre-registration.log"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+
+            cmd = [
+                unity_exe_path,
+                "-batchmode",
+                "-nographics",
+                "-quit",
+                "-projectPath", str(project_path),
+                "-logFile", str(log_file),
+            ]
+
+            print(f"    Running: {' '.join(cmd)}")
+
+            start_time = time.time()
+            result = subprocess.run(
+                cmd,
+                cwd=str(project_path),
+                timeout=timeout,
+                capture_output=True
+            )
+
+            elapsed = time.time() - start_time
+
+            if result.returncode == 0:
+                print(f"    Pre-registration completed successfully in {elapsed:.1f}s")
+                return True
+            else:
+                print(f"    Pre-registration exited with code {result.returncode} after {elapsed:.1f}s")
+                # Not a critical failure - Unity will retry registration on main startup
+                return False
+
+    except subprocess.TimeoutExpired:
+        print(f"    Pre-registration timed out after {timeout}s")
+        return False
+    except filelock.Timeout:
+        print(f"    Could not acquire registry lock within 30s - another worker is registering")
+        return False
+    except Exception as e:
+        print(f"    Pre-registration failed: {e}")
+        return False
 
 
 class UnityInstanceManager:

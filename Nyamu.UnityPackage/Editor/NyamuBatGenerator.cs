@@ -62,6 +62,7 @@ namespace Nyamu
                 var batContent = GenerateBatContent(mcpServerPath, port);
                 WriteBatFile(batContent);
                 GeneratePostmanCollection();
+                GenerateGitignore();
             }
             catch (Exception ex)
             {
@@ -191,6 +192,37 @@ namespace Nyamu
             catch (Exception ex)
             {
                 NyamuLogger.LogWarning($"[Nyamu][BatGenerator] Failed to generate Postman collection: {ex.Message}");
+            }
+        }
+
+        // Generates .gitignore file in .nyamu directory to exclude all contents from git
+        static void GenerateGitignore()
+        {
+            try
+            {
+                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var outputDir = Path.Combine(projectRoot, ".nyamu");
+
+                if (!Directory.Exists(outputDir))
+                    Directory.CreateDirectory(outputDir);
+
+                var gitignorePath = Path.Combine(outputDir, ".gitignore");
+                var gitignoreContent = $"# created by dev.polyblank.nyamu package automatically{Environment.NewLine}*{Environment.NewLine}";
+
+                if (!ShouldWriteFile(gitignorePath, gitignoreContent))
+                {
+                    NyamuLogger.LogDebug($"[Nyamu][BatGenerator] .gitignore already up to date: {gitignorePath}");
+                    return;
+                }
+
+                var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+                File.WriteAllText(gitignorePath, gitignoreContent, encoding);
+
+                NyamuLogger.LogInfo($"[Nyamu][BatGenerator] Generated .gitignore: {gitignorePath}");
+            }
+            catch (Exception ex)
+            {
+                NyamuLogger.LogWarning($"[Nyamu][BatGenerator] Failed to generate .gitignore: {ex.Message}");
             }
         }
 

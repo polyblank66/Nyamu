@@ -1,20 +1,41 @@
-# YAMU MCP Server Integration Tests
+# Nyamu MCP Server Integration Tests
 
-This directory contains comprehensive integration tests for the YAMU MCP (Model Context Protocol) server. The tests verify that the MCP server correctly handles compilation and test execution requests from external tools.
+This directory contains comprehensive integration tests for the Nyamu MCP (Model Context Protocol) server. The tests verify that the MCP server correctly handles compilation and test execution requests from external tools.
+
+## ✨ Latest Features (2026-01)
+
+### Automatic Unity.exe Detection
+- **No manual configuration needed** - Auto-detects Unity version from project
+- **Smart search strategy**: Checks Unity Hub paths, custom installs, multiple drives
+- **Version-specific**: Finds exact Unity version required by the project
+- **Override available**: Use `UNITY_EXE` environment variable if needed
+
+### Parallel Testing with Batch-Mode Unity
+- **Automatic worker isolation**: Each worker gets its own Unity project copy
+- **Pre-registration system**: Prevents registry conflicts with file locks
+- **Smart config caching**: Skips pre-registration when config unchanged
+- **2-4x performance boost**: Run tests in parallel with `-n auto`
+
+### Registry Conflict Prevention
+- **Global file locking**: Prevents race conditions in `NyamuProjectsRegistry.json`
+- **Batch-mode pre-registration**: Sequential registration using Unity CLI
+- **Conditional triggering**: Only runs when `.nyamu` config changes
 
 ## 🚀 Performance Optimized Test Suite
 
 The test suite features a **three-tier cleanup system** for dramatic performance improvements:
 - **Protocol tests**: ~90% faster (0.4s vs 4.5s per test)
-- **Essential test suite**: ~50% faster (20s vs 36s for 5 tests)
-- **Overall suite**: 60-70% faster execution
+- **Essential test suite**: ~50% faster (20s serial, ~8s parallel)
+- **Overall suite**: 60-70% faster execution (5-10 min parallel vs 20-25 min serial)
 - **Full randomized testing support** with `pytest-random-order`
 
-**Note**: The full integration test suite can take up to 20 minutes to complete, depending on Unity compilation times and system performance. For faster iteration, use `-m essential` or `-m protocol` to run subset of tests.
+**Note**: The full integration test suite can take up to 20 minutes serially, or 5-10 minutes with parallel execution. For faster iteration, use `-m essential` or `-m protocol` to run subset of tests.
 
 ## Prerequisites
 
-1. **Unity Editor** must be running with the YAMU project open
+1. **Unity Installation**:
+   - **Manual mode**: Unity Editor running with Nyamu project open
+   - **Batch mode**: Unity Hub with project version installed (auto-detected)
 2. **Python 3.7+** installed
 3. **Node.js** installed (for MCP server)
 
@@ -22,46 +43,59 @@ The test suite features a **three-tier cleanup system** for dramatic performance
 
 1. Install Python dependencies:
 ```bash
-cd McpTests
+cd IntegrationTests
 pip install -r requirements.txt
 ```
 
-2. Ensure Unity Editor is running and the YAMU HTTP server is active (should start automatically)
+2. **For manual mode**: Ensure Unity Editor is running and the Nyamu HTTP server is active (starts automatically)
 
-3. Verify Unity HTTP server is accessible:
+3. **For batch mode**: No manual Unity setup needed - Unity instances start automatically
+
+4. Verify Unity HTTP server is accessible (manual mode only):
 ```bash
-curl http://localhost:17932/compile-status
+curl http://localhost:17542/scripts-compile-status
 ```
 
 ## Running Tests
 
-### 🚀 Parallel Execution (New!)
+### 🚀 Parallel Execution with Automatic Unity Instances
 
-Run tests in parallel for **2-4x speedup**:
+Run tests in parallel with automatic Unity batch-mode instances for **2-4x speedup**:
 
 ```bash
-# Use all CPU cores (recommended)
-pytest -n auto
+# Parallel execution (auto-starts Unity instances)
+pytest -n auto                  # Use all CPU cores
+pytest -n 2 -m essential        # 2 workers, essential tests
+pytest -n 4 -m "not slow"       # 4 workers, fast tests
 
-# Use specific number of workers
-pytest -n 2  # 2 workers
-pytest -n 4  # 4 workers
-
-# Parallel with test selection
-pytest -n auto -m "not slow"  # Fast tests in parallel
-pytest -n auto -m essential   # Essential tests in parallel
+# Serial with batch-mode Unity (CI/CD)
+$env:NYAMU_SERIAL_BATCH_MODE="true"
+pytest -m essential
 ```
+
+**How it works:**
+- **Auto-detects**: pytest-xdist worker count triggers parallel mode
+- **Isolation**: Each worker gets its own Unity project copy
+- **Automatic**: Unity.exe detected from project version, instances auto-started
+- **Ports**: Worker-specific ports (17542 base, +1 per worker)
+- **Registry**: Pre-registration prevents conflicts
 
 **Performance gains:**
 - Full test suite: ~20-25 minutes → ~5-10 minutes (with -n auto)
 - Essential tests: ~20s → ~8s (with -n 2)
 - Protocol tests: ~15s → ~5s (with -n 4)
 
+**Environment variables:**
+- `NYAMU_SERIAL_BATCH_MODE="true"` - Use batch-mode for serial tests
+- `NYAMU_SKIP_SYNC="true"` - Skip project sync (faster reruns)
+- `NYAMU_CLEANUP_WORKERS="true"` - Clean up worker projects after tests
+- `UNITY_EXE="path"` - Override Unity.exe auto-detection
+
 **Notes:**
+- First parallel run creates worker projects (~30s overhead)
+- Subsequent runs are much faster with `NYAMU_SKIP_SYNC=true`
 - Smart cleanup system skips unnecessary operations for passing tests
-- Reduced wait times from 2s to 1s in cleanup operations
-- Single refresh instead of double refresh saves ~2-3s per structural test
-- Tests are designed for safe parallel execution
+- Unity.exe detection supports custom Unity Hub install paths
 
 ### Run All Tests (Serial)
 ```bash

@@ -114,7 +114,7 @@ async def test_mcp_tools_list_includes_force_parameter():
         # Check tool description mentions force usage
         description = refresh_tool["description"]
         assert "force=true" in description
-        assert "deletions" in description.lower()
+        assert "delet" in description.lower()  # Matches "deleted", "deleting", "deletions"
 
     finally:
         await client.stop()

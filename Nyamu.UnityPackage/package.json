@@ -1,7 +1,7 @@
 {
   "name": "dev.polyblank.nyamu",
   "displayName": "Nyamu",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "unity": "2021.3",
   "unityRelease": "45f2",
   "description": "Minimal MCP server for Unity designed to give coding agents a tool to check script compilation",

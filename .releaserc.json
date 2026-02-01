@@ -10,6 +10,5 @@
       "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
     }],
     "@semantic-release/github"
-  ],
-  "initialVersion": "0.1.0"
+  ]
 }

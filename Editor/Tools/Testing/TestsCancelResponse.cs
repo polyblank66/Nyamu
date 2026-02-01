@@ -1,3 +1,4 @@
+#if UTF_TESTS_CANCEL_TOOL_AVAILABLE
 namespace Nyamu.Tools.Testing
 {
     // Response DTO for cancelling test execution
@@ -8,3 +9,4 @@ namespace Nyamu.Tools.Testing
         public string guid;
     }
 }
+#endif

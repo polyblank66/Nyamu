@@ -136,7 +136,9 @@ namespace Nyamu
         static TestsRunSingleTool _testsRunSingleTool;
         static TestsRunAllTool _testsRunAllTool;
         static TestsRunRegexTool _testsRunRegexTool;
+#if UTF_TESTS_CANCEL_TOOL_AVAILABLE
         static TestsCancelTool _testsCancelTool;
+#endif
 
         // Step 4 Group C: shader tools
         static CompileShaderTool _compileShaderTool;
@@ -292,7 +294,9 @@ namespace Nyamu
             _testsRunSingleTool = new TestsRunSingleTool();
             _testsRunAllTool = new TestsRunAllTool();
             _testsRunRegexTool = new TestsRunRegexTool();
+#if UTF_TESTS_CANCEL_TOOL_AVAILABLE
             _testsCancelTool = new TestsCancelTool();
+#endif
 
             // Create tools (Step 4 Group C: shader tools)
             _compileShaderTool = new CompileShaderTool();
@@ -677,6 +681,7 @@ namespace Nyamu
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsCancelRequest");
 
+#if UTF_TESTS_CANCEL_TOOL_AVAILABLE
             var query = request.Url.Query ?? "";
             var testRunGuid = ExtractQueryParameter(query, "guid");
 
@@ -687,6 +692,9 @@ namespace Nyamu
 
             var response = _testsCancelTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
+#else
+            return "{\"status\":\"error\",\"message\":\"tests_run_cancel tool is only available with NUnit v2 (package: com.unity.ext.nunit)\",\"guid\":\"\"}";
+#endif
         }
 
         // Helper method for ShaderCompilationService to update progress tracking

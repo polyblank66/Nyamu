@@ -1,3 +1,4 @@
+#if UTF_TESTS_CANCEL_TOOL_AVAILABLE
 using System;
 using System.Threading.Tasks;
 using Nyamu.Core.Interfaces;
@@ -95,3 +96,4 @@ namespace Nyamu.Tools.Testing
         }
     }
 }
+#endif

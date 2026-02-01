@@ -14,6 +14,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.test-framework",
+            "expression": "[2.0,1000.0)",
+            "define": "UTF_TESTS_CANCEL_TOOL_AVAILABLE"
+        }
+    ],
     "noEngineReferences": false
 }

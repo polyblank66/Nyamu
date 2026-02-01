@@ -42,7 +42,7 @@ Check script compilation with Nyamu MCP tool
 * `tests_run_all` – Runs all Unity tests in the specified mode (EditMode or PlayMode).
 * `tests_run_single` – Runs a single specific Unity test by its full name.
 * `tests_run_status` – Returns the current test execution status without running tests. Includes execution state, last test time, test results, and test run ID.
-* `tests_run_cancel` – Cancels running Unity test execution. Supports cancellation of EditMode tests by GUID or current test run.
+* `tests_run_cancel` – Cancels running Unity test execution. Supports cancellation of EditMode tests by GUID or current test run. Note: Tool is only available with NUnit v2 (package: com.unity.ext.nunit)
 
 ### Editor Status
 * `editor_status` – Returns the current Unity Editor status, including compilation state, test execution state, and play mode state, for real-time monitoring.

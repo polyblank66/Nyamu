@@ -52,6 +52,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: v${{ steps.semantic.outputs.new_release_version }}
           files: Nyamu.UnityTestProject/Artifacts/dev.polyblank.nyamu-${{ steps.semantic.outputs.new_release_version }}.unitypackage
 
 

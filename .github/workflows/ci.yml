@@ -34,7 +34,7 @@ jobs:
       - name: Export UnityPackage (optional)
         if: steps.semantic.outputs.new_release_published == 'true'
         continue-on-error: true
-        uses: game-ci/unity-actions@v4
+        uses: game-ci/unity-actions@v3
         with:
           version: 2021.3.45f2
           targetPlatform: StandaloneLinux64

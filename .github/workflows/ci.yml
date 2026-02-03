@@ -34,14 +34,15 @@ jobs:
       - name: Export UnityPackage (optional)
         if: steps.semantic.outputs.new_release_published == 'true'
         continue-on-error: true
-        uses: game-ci/unity-actions@v3
+        uses: game-ci/unity-builder@v4
         with:
-          version: 2021.3.45f2
-          targetPlatform: StandaloneLinux64
+          unityVersion: 2021.3.45f2
           projectPath: Nyamu.UnityTestProject
-          customParameters: -executeMethod ExportUnityPackage.Export -quit -batchmode -nographics
+          buildMethod: ExportUnityPackage.Export
+          targetPlatform: StandaloneLinux64
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+
 
       # 4. Optional upload to GitHub Release
       - name: Upload UnityPackage to GitHub Release (optional)

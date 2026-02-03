@@ -1,3 +1,17 @@
+## [0.1.4](https://github.com/polyblank66/Nyamu/compare/v0.1.3...v0.1.4) (2026-02-03)
+
+
+### Bug Fixes
+
+* add support for .unitypackage installation to NyamuBatGenerator ([af9c469](https://github.com/polyblank66/Nyamu/commit/af9c4691f6b333d9a42e65a7384ff4ac5c4d3963))
+
+## [0.1.3](https://github.com/polyblank66/Nyamu/compare/v0.1.2...v0.1.3) (2026-02-03)
+
+
+### Bug Fixes
+
+* add .meta for copied README.md ([cbde8d6](https://github.com/polyblank66/Nyamu/commit/cbde8d671083fd5bf8a360934775e24272fd9fcf))
+
 ## [0.1.2](https://github.com/polyblank66/Nyamu/compare/v0.1.1...v0.1.2) (2026-02-01)
 
 

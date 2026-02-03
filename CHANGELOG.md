@@ -1,3 +1,10 @@
+## [0.1.5](https://github.com/polyblank66/Nyamu/compare/v0.1.4...v0.1.5) (2026-02-03)
+
+
+### Bug Fixes
+
+* Resolve issue with upm or git installation ([bc6a7a4](https://github.com/polyblank66/Nyamu/commit/bc6a7a42b6021eb0f4dcdecfa1d629f5ff805e4d))
+
 ## [0.1.4](https://github.com/polyblank66/Nyamu/compare/v0.1.3...v0.1.4) (2026-02-03)
 
 

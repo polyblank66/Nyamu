@@ -35,8 +35,8 @@ jobs:
           rm -f Samples.meta
           git commit -am "fix: Samples => Samples~"
         fi
-        git checkout main -- README.md
-        git commit -am "chore: copy README.md from main"
+        git checkout main -- README.md CHANGELOG.md
+        git commit -am "chore: copy README.md and CHANGELOG.md from main"
         git push -f -u origin upm
       env:
         PKG_ROOT: Nyamu.UnityPackage

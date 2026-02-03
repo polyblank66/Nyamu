@@ -87,6 +87,19 @@ namespace Nyamu
 
                 var projectRoot = profectRootDirectory.FullName;
 
+                // Search relative to NyamuBatGenerator.cs script (for .unitypackage installations)
+                var currentScriptPath = new System.Diagnostics.StackTrace(true).GetFrame(0).GetFileName();
+                if (currentScriptPath != null)
+                {
+                    var scriptDirectory = Path.GetDirectoryName(currentScriptPath);
+                    if (scriptDirectory != null)
+                    {
+                        var relativeMcpServerPath = Path.Combine(scriptDirectory, "..", "Node", "mcp-server.js");
+                        if (File.Exists(relativeMcpServerPath))
+                            return relativeMcpServerPath;
+                    }
+                }
+
                 // Search PackageCache first (production)
                 var packageCacheRoot = Path.Combine(projectRoot, "Library", "PackageCache");
                 if (Directory.Exists(packageCacheRoot))
@@ -229,6 +242,20 @@ namespace Nyamu
         // Finds the Postman collection template path
         static string FindPostmanTemplatePath()
         {
+            // Search relative to NyamuBatGenerator.cs script (for .unitypackage installations)
+            var currentScriptPath = new System.Diagnostics.StackTrace(true).GetFrame(0).GetFileName();
+            if (currentScriptPath != null)
+            {
+                var scriptDirectory = Path.GetDirectoryName(currentScriptPath);
+                if (scriptDirectory != null)
+                {
+                    // The template is located at the root of the package, so go up two directories from 'Editor'
+                    var relativeTemplatePath = Path.Combine(scriptDirectory, "..", "NyamuServer-API.postman_collection.json");
+                    if (File.Exists(relativeTemplatePath))
+                        return Path.GetFullPath(relativeTemplatePath);
+                }
+            }
+            
             // Search in Packages folder (dev mode)
             var packagesPath = Path.Combine(Application.dataPath, "..", "Packages", "dev.polyblank.nyamu", "NyamuServer-API.postman_collection.json");
             if (File.Exists(packagesPath))

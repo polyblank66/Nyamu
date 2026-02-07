@@ -32,8 +32,8 @@ jobs:
 
       # 3. Restore Unity Cache (optional)
       - name: Restore Unity Cache (optional)
-        if: steps.semantic.outputs.new_release_published == 'true'
-        continue-on-error: true
+        # if: steps.semantic.outputs.new_release_published == 'true'
+        # continue-on-error: true
         uses: actions/cache@v3
         with:
           path: Nyamu.UnityTestProject/Library
@@ -44,8 +44,8 @@ jobs:
 
       # 4. Export UnityPackage (optional)
       - name: Export UnityPackage (optional)
-        if: steps.semantic.outputs.new_release_published == 'true'
-        continue-on-error: true
+        # if: steps.semantic.outputs.new_release_published == 'true'
+        # continue-on-error: true
         uses: game-ci/unity-builder@v4
         with:
           unityVersion: 2021.3.45f2
@@ -60,8 +60,8 @@ jobs:
 
       # 5. Upload UnityPackage to GitHub Release (optional)
       - name: Upload UnityPackage to GitHub Release (optional)
-        if: steps.semantic.outputs.new_release_published == 'true'
-        continue-on-error: true
+        # if: steps.semantic.outputs.new_release_published == 'true'
+        # continue-on-error: true
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

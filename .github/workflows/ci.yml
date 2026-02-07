@@ -58,27 +58,19 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
 
 
-      # 5. Determine target release version
-      - name: Determine target release version
-        id: target_version
-        run: |
-          if [ "${{ steps.semantic.outputs.new_release_published }}" == "true" ]; then
-            echo "version=${{ steps.semantic.outputs.new_release_version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${{ steps.semantic.outputs.last_release_version }}" >> $GITHUB_OUTPUT
-          fi
-
-      # 6. Upload UnityPackage to GitHub Release (optional)
+      # 5. Upload UnityPackage to GitHub Release (optional)
       - name: Upload UnityPackage to GitHub Release (optional)
-        if: steps.target_version.outputs.version != ''
+        # if: steps.semantic.outputs.new_release_published == 'true'
+        # continue-on-error: true
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.target_version.outputs.version }}
-          files: Nyamu.UnityTestProject/Artifacts/dev.polyblank.nyamu-${{ steps.target_version.outputs.version }}.unitypackage
+          tag_name: v${{ steps.semantic.outputs.new_release_version }}
+          files: Nyamu.UnityTestProject/Artifacts/dev.polyblank.nyamu-${{ steps.semantic.outputs.new_release_version }}.unitypackage
 
-      # 7. Create upm branch
+
+      # 6. Create upm branch
       - name: Create upm branch
         run: |
           git branch -d upm &> /dev/null || echo upm branch not found
@@ -97,7 +89,7 @@ jobs:
         env:
           PKG_ROOT: Nyamu.UnityPackage
 
-      # 8. Create upm git tag
+      # 7. Create upm git tag
       - name: Create upm git tag
         if: steps.semantic.outputs.new_release_published == 'true'
         run: |

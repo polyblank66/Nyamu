@@ -73,6 +73,7 @@ jobs:
       # 6. Create upm branch
       - name: Create upm branch
         run: |
+          git checkout -- .
           git branch -d upm &> /dev/null || echo upm branch not found
           git subtree split -P "$PKG_ROOT" -b upm
           git checkout upm

@@ -30,7 +30,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Restore Unity Cache (optional)
+      # 3. Copy README.md and CHANGELOG.md to Unity package
+      - name: Copy README.md and CHANGELOG.md to Unity package
+        run: |
+          cp README.md CHANGELOG.md Nyamu.UnityPackage/
+          git config --global user.name 'github-bot'
+          git config --global user.email 'github-bot@users.noreply.github.com'
+          git add Nyamu.UnityPackage/README.md Nyamu.UnityPackage/CHANGELOG.md
+          git diff --staged --quiet || git commit -m "chore: copy README.md and CHANGELOG.md to Unity package [skip ci]"
+          git push
+
+      # 4. Restore Unity Cache (optional)
       - name: Restore Unity Cache (optional)
         # if: steps.semantic.outputs.new_release_published == 'true'
         # continue-on-error: true
@@ -42,7 +52,7 @@ jobs:
             Library-Nyamu-
             Library-
 
-      # 4. Export UnityPackage (optional)
+      # 5. Export UnityPackage (optional)
       - name: Export UnityPackage (optional)
         # if: steps.semantic.outputs.new_release_published == 'true'
         # continue-on-error: true
@@ -58,7 +68,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
 
 
-      # 5. Upload UnityPackage to GitHub Release (optional)
+      # 6. Upload UnityPackage to GitHub Release (optional)
       - name: Upload UnityPackage to GitHub Release (optional)
         if: steps.semantic.outputs.new_release_published == 'true'
         # continue-on-error: true
@@ -70,27 +80,18 @@ jobs:
           files: Nyamu.UnityTestProject/Artifacts/dev.polyblank.nyamu-${{ steps.semantic.outputs.new_release_version }}.unitypackage
 
 
-      # 6. Create upm branch
+      # 7. Create upm branch
       - name: Create upm branch
         run: |
           git checkout -- .
           git branch -d upm &> /dev/null || echo upm branch not found
           git subtree split -P "$PKG_ROOT" -b upm
           git checkout upm
-          git config --global user.name 'github-bot'
-          git config --global user.email 'github-bot@users.noreply.github.com'
-          if [[ -d "Samples" ]]; then
-            git mv Samples Samples~
-            rm -f Samples.meta
-            git commit -am "fix: Samples => Samples~"
-          fi
-          git checkout main -- README.md CHANGELOG.md
-          git commit -am "chore: copy README.md and CHANGELOG.md from main"
           git push -f -u origin upm
         env:
           PKG_ROOT: Nyamu.UnityPackage
 
-      # 7. Create upm git tag
+      # 8. Create upm git tag
       - name: Create upm git tag
         if: steps.semantic.outputs.new_release_published == 'true'
         run: |

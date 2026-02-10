@@ -184,9 +184,11 @@ namespace Nyamu
                         NyamuLogger.LogInfo($"[Nyamu][Server] Server started on port {port} after {attempt + 1} attempt(s)");
                     break;
                 }
-                catch (HttpListenerException ex) when (ex.ErrorCode == 48 || ex.ErrorCode == 32 || ex.Message.Contains("already in use") || ex.Message.Contains("normally permitted"))
+                catch (Exception ex)
                 {
                     // Port still in use (likely TIME_WAIT state after domain reload)
+                    // Note: Mono may throw SocketException instead of HttpListenerException,
+                    // so we catch all exceptions here to ensure retries always happen.
                     try
                     {
                         _listener?.Close();
@@ -196,7 +198,7 @@ namespace Nyamu
 
                     if (attempt < maxRetries - 1)
                     {
-                        NyamuLogger.LogDebug($"[Nyamu][Server] Port {port} temporarily unavailable, retrying in {retryDelayMs}ms (attempt {attempt + 1}/{maxRetries})");
+                        NyamuLogger.LogDebug($"[Nyamu][Server] Port {port} temporarily unavailable, retrying in {retryDelayMs}ms (attempt {attempt + 1}/{maxRetries}): {ex.Message}");
                         System.Threading.Thread.Sleep(retryDelayMs);
                     }
                     else
@@ -204,17 +206,6 @@ namespace Nyamu
                         NyamuLogger.LogError($"[Nyamu][Server] Port {port} remains in use after {maxRetries} attempts: {ex.Message}. " +
                             "This may happen if another Unity Editor instance is using this port. Please check Project Settings > Nyamu to change the port.");
                     }
-                }
-                catch (Exception ex)
-                {
-                    NyamuLogger.LogError($"[Nyamu][Server] Unexpected error starting HTTP listener: {ex.Message}");
-                    try
-                    {
-                        _listener?.Close();
-                    }
-                    catch { }
-                    _listener = null;
-                    break;
                 }
             }
 

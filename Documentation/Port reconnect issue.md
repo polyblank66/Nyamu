@@ -114,33 +114,44 @@ skip ports that are actually free, narrowing the available range unnecessarily.
 There is no cleanup mechanism (e.g., verifying that registered projects are
 still running, or removing entries on clean shutdown).
 
-### 6. Platform-specific error code gaps
+### 6. Mono throws SocketException, not HttpListenerException
 
 **Location:** `NyamuServer.cs`, retry `catch` clause (line 187)
 
-The exception filter checks specific error codes:
+**This is the confirmed primary bug.** The retry logic catches
+`HttpListenerException`, but Unity uses the Mono runtime, and Mono's
+`HttpListener.Start()` throws a `SocketException` (or a plain `Exception`)
+when the port is occupied — not `HttpListenerException`.
 
-```csharp
-catch (HttpListenerException ex) when (
-    ex.ErrorCode == 48 ||          // macOS: EADDRINUSE
-    ex.ErrorCode == 32 ||          // Linux: EPIPE (wrong code for this purpose)
-    ex.Message.Contains("already in use") ||
-    ex.Message.Contains("normally permitted"))
+Evidence from production logs:
+
+```
+[Nyamu][Server] Unexpected error starting HTTP listener: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+NyamuServer.cs:208  ← generic catch (Exception) block, NOT the retry block
 ```
 
-- Error code 48 is macOS `EADDRINUSE`.
-- Error code 32 is not the correct "address in use" code on Linux (should be
-  98 `EADDRINUSE`).
-- On Windows, `HttpListenerException.ErrorCode` returns Win32 error codes
-  (e.g., 183 `ERROR_ALREADY_EXISTS` or 5 `ERROR_ACCESS_DENIED`), not socket
-  error codes.
-- The `Message.Contains` fallbacks provide some coverage but depend on
-  locale-specific error message text.
+The error message contains `"normally permitted"`, which the `when` clause
+checks for — but the clause never runs because the exception type doesn't
+match `HttpListenerException` in the first place.
 
-If the exception doesn't match any of these conditions, it falls through to
-the generic `catch (Exception)` block (line 209), which does **not retry** —
-it breaks immediately. This means on some platforms, a retryable port conflict
-may be treated as a fatal error.
+The generic `catch (Exception)` block has `break`, so the server gives up
+on the **very first attempt** with zero retries. Once this happens, every
+subsequent domain reload repeats the same pattern:
+
+```
+Domain reload → Initialize() → Cleanup() (no-op, _listener is null)
+→ try bind port → SocketException → catch (Exception) → break → dead
+→ next domain reload → same thing
+```
+
+The server stays dead until Unity is fully restarted.
+
+Additionally, the `when` filter itself has issues with error codes:
+
+- Error code 48 is macOS `EADDRINUSE`.
+- Error code 32 is `EPIPE` on Linux, not `EADDRINUSE` (should be 98).
+- On Windows, `HttpListenerException.ErrorCode` returns Win32 error codes,
+  not Unix errno values.
 
 ### 7. Multi-editor instance synchronization
 
@@ -194,13 +205,15 @@ to synchronize across processes.
   actually in use. Remove stale entries whose ports are free.
 - Add a timestamp or PID to entries so stale ones can be identified.
 
-### For issue 6 (platform error codes)
+### For issue 6 (Mono SocketException) — FIXED
 
-- Use `SocketError` enum values instead of raw integer codes (e.g.,
-  `SocketError.AddressAlreadyInUse` which is 10048 on Windows, mapped
-  correctly per platform by .NET).
-- Or: catch all `HttpListenerException` in the retry loop regardless of
-  error code, since any listener start failure is worth retrying.
+- Replaced the two separate catch blocks (`HttpListenerException` with
+  `when` filter + generic `Exception` with `break`) with a single
+  `catch (Exception)` that always retries.
+- Since the only code inside the `try` is `HttpListener` creation and
+  `Start()`, any exception there is port-related and worth retrying.
+- This fixes the Mono `SocketException` issue and eliminates the
+  platform-specific error code problem entirely.
 
 ### For issue 7 (multi-editor synchronization)
 

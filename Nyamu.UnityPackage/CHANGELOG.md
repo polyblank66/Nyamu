@@ -1,3 +1,10 @@
+## [0.1.6](https://github.com/polyblank66/Nyamu/compare/v0.1.5...v0.1.6) (2026-02-10)
+
+
+### Bug Fixes
+
+* Catch all exceptions in HTTP listener retry loop to handle Mono's SocketException ([1ddf512](https://github.com/polyblank66/Nyamu/commit/1ddf512735cb387f501bf2483384678d196a184e))
+
 ## [0.1.5](https://github.com/polyblank66/Nyamu/compare/v0.1.4...v0.1.5) (2026-02-03)
 
 

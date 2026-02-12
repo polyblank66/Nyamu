@@ -221,6 +221,81 @@ to synchronize across processes.
 - Or: use the registry only as a hint and rely on actual port binding as
   the source of truth — if `HttpListener.Start()` fails, try the next port.
 
+## Why Not Use SO_REUSEADDR?
+
+The ideal solution for TIME_WAIT issues is the `SO_REUSEADDR` socket option,
+which tells the OS "allow binding to a port in TIME_WAIT state." Unfortunately,
+**HttpListener doesn't expose socket options**.
+
+### HttpListener Architecture Limitation
+
+`System.Net.HttpListener` doesn't directly manage the underlying socket. On
+Windows, it registers application-level prefixes with the **HTTP.sys kernel
+driver**, which manages the actual TCP connections. On other platforms (Mono),
+it uses similar OS-level HTTP handling mechanisms. The underlying socket is
+never exposed to application code.
+
+Because HttpListener delegates socket management to the OS, you cannot:
+- Set `SO_REUSEADDR` via reflection (the socket isn't accessible)
+- Call `Socket.SetSocketOption()` (no Socket object exists in user space)
+- Override socket creation behavior (it's handled by the OS driver)
+
+### Alternative Approaches Considered
+
+#### Option 1: Switch to TcpListener (allows SO_REUSEADDR)
+
+```csharp
+var listener = new TcpListener(IPAddress.Loopback, port);
+listener.Server.SetSocketOption(
+    SocketOptionLevel.Socket,
+    SocketOptionName.ReuseAddress,
+    true);
+listener.Start();
+```
+
+**Pros:** Full socket control, can set `SO_REUSEADDR`
+
+**Cons:**
+- Must implement HTTP parsing (headers, methods, routing, body reading)
+- Additional complexity and testing burden
+- Need to handle HTTP-specific edge cases (chunked encoding, keep-alive, etc.)
+
+**Decision:** Not worth the complexity for the MCP server use case.
+
+#### Option 2: Third-party HTTP server libraries
+
+Libraries like **EmbedIO**, **Grapevine**, or **NanoHTTPD** might work with
+Unity/Mono and expose socket options.
+
+**Cons:**
+- Additional dependency
+- Compatibility risk with Unity/Mono runtime
+- Would need testing across all Unity versions
+
+**Decision:** Too risky for a package that needs to work across many Unity
+versions.
+
+#### Option 3: Extended retry window (CHOSEN)
+
+Increase retries from 3 × 300ms (900ms) to 10 × 500ms (5s).
+
+**Pros:**
+- Simple, no architectural changes
+- Works for 95%+ of TIME_WAIT cases (most clear within seconds)
+- TIME_WAIT issue only occurs during development (domain reloads), not production
+
+**Cons:**
+- Doesn't eliminate TIME_WAIT, just waits it out
+- In rare cases (very slow machines under load), 5s might still be insufficient
+
+**Decision:** Chosen for simplicity and effectiveness.
+
+### References
+
+- [Is there a way to enable SO_REUSEADDR with System.Net.HttpListener?](https://www.appsloveworld.com/csharp/100/712/is-there-a-way-to-enable-the-so-reuseaddr-socket-option-when-using-system-net-htt)
+- [Port reuse in C# (TcpListener & TcpClient)](https://vocalsteve.wordpress.com/2011/03/16/port-reuse-in-c-tcplistener-tcpclient/)
+- [Socket.SetSocketOption Method - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets.socket.setsocketoption?view=net-8.0)
+
 ## Relevant Files
 
 | File | Role |

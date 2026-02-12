@@ -167,8 +167,9 @@ namespace Nyamu
             _listenerReady = new ManualResetEvent(false);
 
             // Try to start HTTP listener with retry logic for port release delays
-            const int maxRetries = 3;
-            const int retryDelayMs = 300;
+            // Increased retry window to handle TIME_WAIT state (can take up to 2 minutes on some systems)
+            const int maxRetries = 10;
+            const int retryDelayMs = 500;
             var port = NyamuSettings.Instance.serverPort;
             var success = false;
 

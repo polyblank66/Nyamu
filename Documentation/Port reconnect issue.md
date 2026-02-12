@@ -171,12 +171,11 @@ to synchronize across processes.
 
 ## Possible Fixes
 
-### For issue 1 (TIME_WAIT)
+### For issue 1 (TIME_WAIT) — FIXED
 
-- Increase retry count and/or delay (e.g., 10 retries × 500ms = 5s).
-- Use exponential backoff instead of fixed delay.
-- Set `SO_REUSEADDR` on the underlying socket (if HttpListener allows it) to
-  bypass TIME_WAIT.
+- Increased retry window from 3 × 300ms (900ms) to 10 × 500ms (5s).
+- This provides sufficient time for most TIME_WAIT states to clear.
+- Future improvement: exponential backoff or SO_REUSEADDR socket option.
 
 ### For issue 2 (fallback to occupied port)
 

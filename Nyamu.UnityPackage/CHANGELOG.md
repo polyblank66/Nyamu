@@ -1,3 +1,10 @@
+## [0.1.7](https://github.com/polyblank66/Nyamu/compare/v0.1.6...v0.1.7) (2026-02-12)
+
+
+### Bug Fixes
+
+* Increase HTTP listener retry window to 5 seconds to handle TIME_WAIT state ([11b975b](https://github.com/polyblank66/Nyamu/commit/11b975b92f08e59a7b3eb0cd690f408c64582928))
+
 ## [0.1.6](https://github.com/polyblank66/Nyamu/compare/v0.1.5...v0.1.6) (2026-02-10)
 
 

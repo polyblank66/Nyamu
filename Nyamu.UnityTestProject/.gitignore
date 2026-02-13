@@ -36,3 +36,6 @@ ExportedObj/
 *.mdb
 *.opendb
 *.VC.db
+
+# Unity Package Exporter folder
+/Artifacts

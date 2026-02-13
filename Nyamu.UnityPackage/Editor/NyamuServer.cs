@@ -26,6 +26,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
@@ -53,7 +54,6 @@ namespace Nyamu
     {
         public const int CompileTimeoutSeconds = 5;
         public const int ThreadSleepMilliseconds = 50;
-        public const int ThreadJoinTimeoutMilliseconds = 1000;
 
         public static class Endpoints
         {
@@ -96,11 +96,8 @@ namespace Nyamu
 
         // HTTP server components
         static HttpListener _listener;
-        static Thread _thread;
-        static ManualResetEvent _listenerReady;
-
-        // Shutdown coordination
-        static volatile bool _shouldStop;
+        static Task _acceptTask;
+        static CancellationTokenSource _cancellation;
 
         // Infrastructure components for refactored architecture
         static CompilationStateManager _compilationStateManager;
@@ -152,7 +149,17 @@ namespace Nyamu
 
         static void Initialize()
         {
-            Cleanup();
+            // Domain reload safety: ensure previous instance is fully cleaned up
+            // When "Disable Domain Reload" is enabled, static fields persist across Play Mode transitions
+            if (_acceptTask != null || _cancellation != null || _listener != null)
+            {
+                NyamuLogger.LogDebug("[Nyamu][Server] Detected stale state, forcing cleanup");
+                Cleanup();
+            }
+            else
+            {
+                Cleanup();
+            }
 
             // Initialize infrastructure components first (creates state managers and monitors)
             InitializeInfrastructure();
@@ -162,9 +169,6 @@ namespace Nyamu
 
             // Detect if domain reload occurred after a pending refresh
             DetectRefreshCompletion();
-
-            _shouldStop = false;
-            _listenerReady = new ManualResetEvent(false);
 
             // Try to start HTTP listener with retry logic for port release delays
             // Increased retry window to handle TIME_WAIT state (can take up to 2 minutes on some systems)
@@ -216,9 +220,8 @@ namespace Nyamu
                 return;
             }
 
-            _thread = new(HttpRequestProcessor);
-            _thread.IsBackground = true;
-            _thread.Start();
+            _cancellation = new CancellationTokenSource();
+            _acceptTask = AcceptRequestsAsync(_cancellation.Token);
 
             EditorApplication.quitting += Cleanup;
             AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
@@ -298,47 +301,59 @@ namespace Nyamu
 
         static void Cleanup()
         {
-            _shouldStop = true;
+            // Event unsubscription (idempotent)
+            EditorApplication.quitting -= Cleanup;
+            AssemblyReloadEvents.beforeAssemblyReload -= Cleanup;
 
-            // Cleanup monitors (unsubscribe from Unity events)
+            // Cleanup monitors
             _compilationMonitor?.Cleanup();
             _editorMonitor?.Cleanup();
-
-            // Save timestamps before shutdown/domain reload
             SaveTimestampsCache();
 
-            // Properly close HttpListener to release port
+            // 1. Cancel accept loop (idempotent - safe to call multiple times)
+            try
+            {
+                _cancellation?.Cancel();
+            }
+            catch (ObjectDisposedException) { } // Already disposed
+
+            // 2. Stop listener (releases port immediately)
             if (_listener != null)
             {
                 try
                 {
-                    if (_listener.IsListening)
-                        _listener.Stop();
+                    if (_listener.IsListening) _listener.Stop();
                     _listener.Close();
                 }
                 catch { }
-                finally
-                {
-                    _listener = null;
-                }
+                finally { _listener = null; }
             }
 
-            // Dispose ManualResetEvent
+            // 3. Check if accept loop completed, but don't block
+            if (_acceptTask != null)
+            {
+                try
+                {
+                    // Check if task already completed (non-blocking)
+                    // Don't wait during cleanup as listener.Stop() will cause task to exit asynchronously
+                    if (_acceptTask.IsCompleted)
+                    {
+                        // Task completed, consume any exceptions
+                        _ = _acceptTask.Exception;
+                    }
+                    // If not completed, that's OK - cancellation + listener.Stop() will cause it to exit
+                }
+                catch { }
+                finally { _acceptTask = null; }
+            }
+
+            // 4. Dispose cancellation token
             try
             {
-                _listenerReady?.Set(); // Unblock any waiting threads
-                _listenerReady?.Dispose();
-                _listenerReady = null;
+                _cancellation?.Dispose();
+                _cancellation = null;
             }
             catch { }
-
-            if (_thread?.IsAlive == true)
-            {
-                if (!_thread.Join(Constants.ThreadJoinTimeoutMilliseconds))
-                {
-                    NyamuLogger.LogWarning("[Nyamu][Server] HTTP thread did not stop gracefully");
-                }
-            }
         }
 
         // Public method to restart server (e.g., when port changes)
@@ -353,56 +368,39 @@ namespace Nyamu
         // HTTP SERVER INFRASTRUCTURE
         // ========================================================================
 
-        static void ProcessRequestCallback(IAsyncResult result)
+        static async Task AcceptRequestsAsync(CancellationToken token)
         {
-            try
-            {
-                var listener = (HttpListener)result.AsyncState;
-                if (!listener.IsListening)
-                {
-                    _listenerReady.Set();
-                    return;
-                }
-
-                var context = listener.EndGetContext(result);
-
-                // Signal that we're ready for the next request
-                _listenerReady.Set();
-
-                // Process this request in ThreadPool (multi-threaded)
-                ThreadPool.QueueUserWorkItem(_ =>
-                {
-                    try
-                    {
-                        ProcessHttpRequest(context);
-                    }
-                    catch (Exception ex)
-                    {
-                        HandleHttpException(ex);
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                HandleHttpException(ex);
-                _listenerReady.Set(); // Unblock even on error
-            }
-        }
-
-        static void HttpRequestProcessor()
-        {
-            while (!_shouldStop && _listener?.IsListening == true && _listenerReady != null)
+            while (!token.IsCancellationRequested)
             {
                 try
                 {
-                    _listenerReady.Reset();
-                    _listener.BeginGetContext(ProcessRequestCallback, _listener);
-                    _listenerReady.WaitOne(); // Wait for callback to be ready for next request
+                    // GetContextAsync() is cancellation-aware
+                    var contextTask = _listener.GetContextAsync();
+
+                    // Race between context arrival and cancellation
+                    var completed = await Task.WhenAny(contextTask, Task.Delay(-1, token));
+
+                    if (completed != contextTask)
+                        break; // Cancellation won the race
+
+                    var context = await contextTask;
+
+                    // Process in ThreadPool (preserves existing multi-threading behavior)
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            ProcessHttpRequest(context);
+                        }
+                        catch (Exception ex)
+                        {
+                            HandleHttpException(ex);
+                        }
+                    }, token);
                 }
-                catch (Exception ex)
-                {
-                    HandleHttpException(ex);
-                }
+                catch (ObjectDisposedException) { break; } // Listener stopped
+                catch (HttpListenerException) { break; }  // Listener error
+                catch (Exception ex) { HandleHttpException(ex); }
             }
         }
 
@@ -1181,7 +1179,7 @@ namespace Nyamu
                 ex.Message.Contains("connection was aborted"))
                 return;
 
-            if (!_shouldStop)
+            if (_cancellation == null || !_cancellation.IsCancellationRequested)
                 NyamuLogger.LogException($"[Nyamu][Server] NyamuServer error: {ex.Message}", ex);
         }
     }

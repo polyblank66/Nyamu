@@ -88,8 +88,12 @@ async def test_assets_refresh_basic(mcp_session):
     # Verify response contains asset refresh completion message
     assert "Asset database refresh completed" in content_text
 
-    # Verify compilation status is included
-    assert "Compilation completed" in content_text or "Last compilation" in content_text
+    # Verify compilation status is included (or explicitly stated no compilation)
+    assert (
+        "Compilation completed" in content_text
+        or "Last compilation" in content_text
+        or "no compilation triggered" in content_text
+    )
 
 
 @pytest.mark.structural

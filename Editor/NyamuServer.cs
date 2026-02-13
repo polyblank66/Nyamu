@@ -329,20 +329,20 @@ namespace Nyamu
                 finally { _listener = null; }
             }
 
-            // 3. Check if accept loop completed, but don't block
+            // 3. Wait for accept loop to exit (with timeout to avoid blocking too long)
             if (_acceptTask != null)
             {
                 try
                 {
-                    // Check if task already completed (non-blocking)
-                    // Don't wait during cleanup as listener.Stop() will cause task to exit asynchronously
-                    if (_acceptTask.IsCompleted)
+                    // Wait up to 1 second for task to complete
+                    // This is necessary to ensure port is fully released before rebinding
+                    if (!_acceptTask.Wait(1000))
                     {
-                        // Task completed, consume any exceptions
-                        _ = _acceptTask.Exception;
+                        // Task didn't complete in time, but port should still be released soon
+                        NyamuLogger.LogDebug("[Nyamu][Server] Accept loop still running after 1s, continuing cleanup");
                     }
-                    // If not completed, that's OK - cancellation + listener.Stop() will cause it to exit
                 }
+                catch (AggregateException) { } // Expected from task cancellation
                 catch { }
                 finally { _acceptTask = null; }
             }

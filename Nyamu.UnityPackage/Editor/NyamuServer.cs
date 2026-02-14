@@ -30,6 +30,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
+using System.Linq;
 using System;
 using Nyamu.Core;
 using Nyamu.Core.Monitors;
@@ -98,6 +99,7 @@ namespace Nyamu
         static HttpListener _listener;
         static Task _acceptTask;
         static CancellationTokenSource _cancellation;
+        static System.Collections.Concurrent.ConcurrentDictionary<Task, byte> _activeHandlers = new();
 
         // Infrastructure components for refactored architecture
         static CompilationStateManager _compilationStateManager;
@@ -347,7 +349,32 @@ namespace Nyamu
                 finally { _acceptTask = null; }
             }
 
-            // 4. Dispose cancellation token
+            // 4. Wait for active request handlers to complete (with timeout)
+            var activeHandlers = _activeHandlers.Keys.ToArray();
+            if (activeHandlers.Length > 0)
+            {
+                try
+                {
+                    NyamuLogger.LogDebug($"[Nyamu][Server] Waiting for {activeHandlers.Length} active request handler(s) to complete");
+
+                    // Wait up to 2 seconds for handlers to finish
+                    if (!Task.WaitAll(activeHandlers, 2000))
+                    {
+                        var stillRunning = 0;
+                        foreach (var t in activeHandlers)
+                            if (!t.IsCompleted) stillRunning++;
+                        NyamuLogger.LogWarning($"[Nyamu][Server] {stillRunning} request handler(s) still running after 2s, forcing cleanup");
+                    }
+                }
+                catch (AggregateException) { } // Expected from handler exceptions
+                catch { }
+                finally
+                {
+                    _activeHandlers.Clear();
+                }
+            }
+
+            // 5. Dispose cancellation token
             try
             {
                 _cancellation?.Dispose();
@@ -386,7 +413,7 @@ namespace Nyamu
                     var context = await contextTask;
 
                     // Process in ThreadPool (preserves existing multi-threading behavior)
-                    _ = Task.Run(() =>
+                    var handlerTask = Task.Run(() =>
                     {
                         try
                         {
@@ -397,6 +424,10 @@ namespace Nyamu
                             HandleHttpException(ex);
                         }
                     }, token);
+
+                    // Track active handler and remove when completed
+                    _activeHandlers.TryAdd(handlerTask, 0);
+                    _ = handlerTask.ContinueWith(t => _activeHandlers.TryRemove(t, out _), TaskScheduler.Default);
                 }
                 catch (ObjectDisposedException) { break; } // Listener stopped
                 catch (HttpListenerException) { break; }  // Listener error

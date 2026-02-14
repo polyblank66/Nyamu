@@ -1,3 +1,12 @@
+## [0.1.8](https://github.com/polyblank66/Nyamu/compare/v0.1.7...v0.1.8) (2026-02-14)
+
+
+### Bug Fixes
+
+* Clean up completed request handler tasks from active handlers ([7a36b76](https://github.com/polyblank66/Nyamu/commit/7a36b762f32282b5e58323e1f2e2a972c1ddf3d7))
+* Modernize NyamuServer HTTP threading to async/await pattern ([8cf487b](https://github.com/polyblank66/Nyamu/commit/8cf487b7023c31d49373c8e71c605947e1c5a9aa))
+* Wait for accept task completion to ensure port release ([a54d3ff](https://github.com/polyblank66/Nyamu/commit/a54d3ff6896337d1cf7c491b76230b79fe89c0be))
+
 ## [0.1.7](https://github.com/polyblank66/Nyamu/compare/v0.1.6...v0.1.7) (2026-02-12)
 
 

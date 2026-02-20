@@ -151,6 +151,8 @@ namespace Nyamu
 
         static void Initialize()
         {
+            NyamuLogger.LogDebug($"[Nyamu][Server] Initialize started at {DateTime.UtcNow:HH:mm:ss.fff}");
+
             // Domain reload safety: ensure previous instance is fully cleaned up
             // When "Disable Domain Reload" is enabled, static fields persist across Play Mode transitions
             if (_acceptTask != null || _cancellation != null || _listener != null)
@@ -178,6 +180,7 @@ namespace Nyamu
             const int retryDelayMs = 500;
             var port = NyamuSettings.Instance.serverPort;
             var success = false;
+            var bindStart = DateTime.UtcNow;
 
             for (var attempt = 0; attempt < maxRetries; attempt++)
             {
@@ -205,12 +208,15 @@ namespace Nyamu
 
                     if (attempt < maxRetries - 1)
                     {
-                        NyamuLogger.LogDebug($"[Nyamu][Server] Port {port} temporarily unavailable, retrying in {retryDelayMs}ms (attempt {attempt + 1}/{maxRetries}): {ex.Message}");
+                        var elapsed = (DateTime.UtcNow - bindStart).TotalMilliseconds;
+                        NyamuLogger.LogDebug($"[Nyamu][Server] Port {port} unavailable, retrying in {retryDelayMs}ms (attempt {attempt + 1}/{maxRetries}, elapsed: {elapsed:F0}ms): [{ex.GetType().Name}] {ex.Message}");
                         System.Threading.Thread.Sleep(retryDelayMs);
                     }
                     else
                     {
-                        NyamuLogger.LogError($"[Nyamu][Server] Port {port} remains in use after {maxRetries} attempts: {ex.Message}. " +
+                        var elapsed = (DateTime.UtcNow - bindStart).TotalMilliseconds;
+                        NyamuLogger.LogError($"[Nyamu][Server] Port {port} remains in use after {maxRetries} attempts ({elapsed:F0}ms): [{ex.GetType().Name}] {ex.Message}. " +
+                            "Run 'netsh http show servicepoint' or 'netstat -ano | findstr {port}' to identify what holds the port. " +
                             "This may happen if another Unity Editor instance is using this port. Please check Project Settings > Nyamu to change the port.");
                     }
                 }
@@ -303,6 +309,9 @@ namespace Nyamu
 
         static void Cleanup()
         {
+            var cleanupStart = DateTime.UtcNow;
+            NyamuLogger.LogDebug("[Nyamu][Server] Cleanup started");
+
             // Event unsubscription (idempotent)
             EditorApplication.quitting -= Cleanup;
             AssemblyReloadEvents.beforeAssemblyReload -= Cleanup;
@@ -322,26 +331,52 @@ namespace Nyamu
             // 2. Stop listener (releases port immediately)
             if (_listener != null)
             {
+                var wasListening = false;
                 try
                 {
-                    if (_listener.IsListening) _listener.Stop();
+                    wasListening = _listener.IsListening;
+                    NyamuLogger.LogDebug($"[Nyamu][Server] Stopping listener (IsListening={wasListening}) at {DateTime.UtcNow:HH:mm:ss.fff}");
+                    if (wasListening) _listener.Stop();
                     _listener.Close();
+                    NyamuLogger.LogDebug($"[Nyamu][Server] Listener closed at {DateTime.UtcNow:HH:mm:ss.fff}");
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    NyamuLogger.LogWarning($"[Nyamu][Server] Exception during listener stop/close (wasListening={wasListening}): [{ex.GetType().Name}] {ex.Message}");
+                }
                 finally { _listener = null; }
+            }
+            else
+            {
+                NyamuLogger.LogDebug("[Nyamu][Server] Listener was null at cleanup time (already stopped or never started)");
             }
 
             // 3. Wait for accept loop to exit (with timeout to avoid blocking too long)
             if (_acceptTask != null)
             {
+                var taskToTrack = _acceptTask;
+                var taskStatusBefore = _acceptTask.Status;
                 try
                 {
                     // Wait up to 1 second for task to complete
                     // This is necessary to ensure port is fully released before rebinding
                     if (!_acceptTask.Wait(1000))
                     {
-                        // Task didn't complete in time, but port should still be released soon
-                        NyamuLogger.LogDebug("[Nyamu][Server] Accept loop still running after 1s, continuing cleanup");
+                        var elapsed = (DateTime.UtcNow - cleanupStart).TotalMilliseconds;
+                        NyamuLogger.LogDebug($"[Nyamu][Server] Accept loop still running after 1s (elapsed: {elapsed:F0}ms, status before wait: {taskStatusBefore}, status after: {taskToTrack.Status})");
+
+                        _ = taskToTrack.ContinueWith(t =>
+                        {
+                            var status = t.IsFaulted ? $"faulted ({t.Exception?.GetBaseException()?.Message})"
+                                       : t.IsCanceled ? "canceled"
+                                       : "completed";
+                            NyamuLogger.LogDebug($"[Nyamu][Server] Dangling accept task finally {status} at {DateTime.UtcNow:HH:mm:ss.fff}");
+                        }, TaskScheduler.Default);
+                    }
+                    else
+                    {
+                        var elapsed = (DateTime.UtcNow - cleanupStart).TotalMilliseconds;
+                        NyamuLogger.LogDebug($"[Nyamu][Server] Accept loop exited cleanly (elapsed: {elapsed:F0}ms)");
                     }
                 }
                 catch (AggregateException) { } // Expected from task cancellation
@@ -381,6 +416,8 @@ namespace Nyamu
                 _cancellation = null;
             }
             catch { }
+
+            NyamuLogger.LogDebug($"[Nyamu][Server] Cleanup finished at {DateTime.UtcNow:HH:mm:ss.fff} (total elapsed: {(DateTime.UtcNow - cleanupStart).TotalMilliseconds:F0}ms)");
         }
 
         // Public method to restart server (e.g., when port changes)

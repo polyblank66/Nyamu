@@ -159,7 +159,7 @@ namespace Nyamu
 
         static void Initialize()
         {
-            NyamuLogger.LogDebug($"[Nyamu][Server] Initialize started at {DateTime.UtcNow:HH:mm:ss.fff}");
+            NyamuLogger.LogDebug("[Nyamu][Server] Initialize started");
 
             // Cancel any deferred recovery from a previous initialization attempt.
             // After domain reload, EditorApplication.update subscriptions are cleared, but
@@ -352,10 +352,10 @@ namespace Nyamu
                 try
                 {
                     wasListening = _listener.IsListening;
-                    NyamuLogger.LogDebug($"[Nyamu][Server] Stopping listener (IsListening={wasListening}) at {DateTime.UtcNow:HH:mm:ss.fff}");
+                    NyamuLogger.LogDebug($"[Nyamu][Server] Stopping listener (IsListening={wasListening})");
                     if (wasListening) _listener.Stop();
                     _listener.Close();
-                    NyamuLogger.LogDebug($"[Nyamu][Server] Listener closed at {DateTime.UtcNow:HH:mm:ss.fff}");
+                    NyamuLogger.LogDebug("[Nyamu][Server] Listener closed");
                 }
                 catch (Exception ex)
                 {
@@ -387,7 +387,7 @@ namespace Nyamu
                             var status = t.IsFaulted ? $"faulted ({t.Exception?.GetBaseException()?.Message})"
                                        : t.IsCanceled ? "canceled"
                                        : "completed";
-                            NyamuLogger.LogDebug($"[Nyamu][Server] Dangling accept task finally {status} at {DateTime.UtcNow:HH:mm:ss.fff}");
+                            NyamuLogger.LogDebug($"[Nyamu][Server] Dangling accept task finally {status}");
                         }, TaskScheduler.Default);
                     }
                     else
@@ -434,7 +434,7 @@ namespace Nyamu
             }
             catch { }
 
-            NyamuLogger.LogDebug($"[Nyamu][Server] Cleanup finished at {DateTime.UtcNow:HH:mm:ss.fff} (total elapsed: {(DateTime.UtcNow - cleanupStart).TotalMilliseconds:F0}ms)");
+            NyamuLogger.LogDebug($"[Nyamu][Server] Cleanup finished (total elapsed: {(DateTime.UtcNow - cleanupStart).TotalMilliseconds:F0}ms)");
         }
 
         // Public method to restart server (e.g., when port changes)

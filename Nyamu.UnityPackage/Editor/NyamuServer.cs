@@ -101,6 +101,14 @@ namespace Nyamu
         static CancellationTokenSource _cancellation;
         static System.Collections.Concurrent.ConcurrentDictionary<Task, byte> _activeHandlers = new();
 
+        // Deferred recovery: retries port binding via EditorApplication.update after
+        // immediate retries fail (e.g. due to TIME_WAIT from Mono raw sockets).
+        static bool _deferredRecoveryActive;
+        static int _deferredRetryAttempt;
+        static double _deferredRetryTime;
+        const int MaxDeferredAttempts = 20;
+        const double DeferredRetryIntervalSeconds = 3.0;
+
         // Infrastructure components for refactored architecture
         static CompilationStateManager _compilationStateManager;
         static TestStateManager _testStateManager;
@@ -152,6 +160,11 @@ namespace Nyamu
         static void Initialize()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Initialize started at {DateTime.UtcNow:HH:mm:ss.fff}");
+
+            // Cancel any deferred recovery from a previous initialization attempt.
+            // After domain reload, EditorApplication.update subscriptions are cleared, but
+            // _deferredRecoveryActive may still be true if "Disable Domain Reload" is on.
+            _deferredRecoveryActive = false;
 
             // Domain reload safety: ensure previous instance is fully cleaned up
             // When "Disable Domain Reload" is enabled, static fields persist across Play Mode transitions
@@ -224,7 +237,11 @@ namespace Nyamu
 
             if (!success)
             {
-                NyamuLogger.LogError("[Nyamu][Server] Failed to start Nyamu MCP server. MCP integration will not be available.");
+                NyamuLogger.LogWarning($"[Nyamu][Server] Port {port} still in use after immediate retries. Scheduling deferred recovery every {DeferredRetryIntervalSeconds}s...");
+                _deferredRecoveryActive = true;
+                _deferredRetryAttempt = 0;
+                _deferredRetryTime = EditorApplication.timeSinceStartup + DeferredRetryIntervalSeconds;
+                EditorApplication.update += TryDeferredBind;
                 return;
             }
 
@@ -426,6 +443,58 @@ namespace Nyamu
             NyamuLogger.LogInfo("[Nyamu][Server] Restarting server...");
             Initialize();
             NyamuLogger.LogInfo($"[Nyamu][Server] Server restarted on port {NyamuSettings.Instance.serverPort}");
+        }
+
+        // Called every editor frame during deferred recovery. Attempts to bind the port
+        // without blocking the main thread. Unsubscribes itself on success, failure, or
+        // when a domain reload causes Initialize() to run again.
+        static void TryDeferredBind()
+        {
+            // A domain reload triggered a new Initialize() which either succeeded or started
+            // its own deferred recovery — either way, our job here is done.
+            if (!_deferredRecoveryActive)
+            {
+                EditorApplication.update -= TryDeferredBind;
+                return;
+            }
+
+            if (EditorApplication.timeSinceStartup < _deferredRetryTime)
+                return;
+
+            _deferredRetryAttempt++;
+            var port = NyamuSettings.Instance.serverPort;
+
+            try
+            {
+                _listener = new HttpListener();
+                _listener.Prefixes.Add($"http://localhost:{port}/");
+                _listener.Start();
+
+                _cancellation = new CancellationTokenSource();
+                _acceptTask = AcceptRequestsAsync(_cancellation.Token);
+                EditorApplication.quitting += Cleanup;
+                AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
+
+                _deferredRecoveryActive = false;
+                NyamuLogger.LogInfo($"[Nyamu][Server] Deferred recovery succeeded on attempt {_deferredRetryAttempt} (port {port})");
+                EditorApplication.update -= TryDeferredBind;
+            }
+            catch (Exception ex)
+            {
+                try { _listener?.Close(); } catch { }
+                _listener = null;
+
+                if (_deferredRetryAttempt >= MaxDeferredAttempts)
+                {
+                    _deferredRecoveryActive = false;
+                    NyamuLogger.LogError($"[Nyamu][Server] Deferred recovery gave up after {MaxDeferredAttempts} attempts. MCP integration will not be available.");
+                    EditorApplication.update -= TryDeferredBind;
+                    return;
+                }
+
+                NyamuLogger.LogDebug($"[Nyamu][Server] Deferred attempt {_deferredRetryAttempt}/{MaxDeferredAttempts} failed, next in {DeferredRetryIntervalSeconds}s: [{ex.GetType().Name}] {ex.Message}");
+                _deferredRetryTime = EditorApplication.timeSinceStartup + DeferredRetryIntervalSeconds;
+            }
         }
 
         // ========================================================================

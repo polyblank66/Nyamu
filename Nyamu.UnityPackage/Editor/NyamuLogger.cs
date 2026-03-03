@@ -81,7 +81,7 @@ namespace Nyamu
 		{
 			// Use cached min log level to avoid accessing NyamuSettings from non-main threads
 			if (logLevel >= _cachedMinLogLevel)
-				Debug.unityLogger.Log(Map(logLevel), message);
+				Debug.unityLogger.Log(Map(logLevel), $"[{DateTime.Now:HH:mm:ss.fff}]{message}");
 		}
 
 		private static LogType Map(LogLevel minLogLevel)

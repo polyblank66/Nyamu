@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Nyamu.Core.Interfaces;
 using UnityEditor;
@@ -16,7 +17,7 @@ namespace Nyamu.Tools.Assets
             var state = context.AssetState;
 
             // Check if refresh is already in progress
-            System.DateTime refreshRequestTime = System.DateTime.MinValue;
+            DateTime refreshRequestTime;
             lock (state.Lock)
             {
                 if (state.IsRefreshing)
@@ -30,9 +31,9 @@ namespace Nyamu.Tools.Assets
 
                 // Mark refresh as starting
                 state.IsRefreshing = true;
-                refreshRequestTime = System.DateTime.Now;
+                refreshRequestTime = DateTime.Now;
                 state.RefreshRequestTime = refreshRequestTime;
-                state.RefreshCompletedTime = System.DateTime.MinValue;
+                state.RefreshCompletedTime = DateTime.MinValue;
                 state.IsWaitingForCompilation = false;
             }
 
@@ -42,8 +43,8 @@ namespace Nyamu.Tools.Assets
                 try
                 {
                     // Store in SessionState (must be on main thread!)
-                    SessionState.SetString(Server.SESSION_KEY_REFRESH_REQUEST_TIME, refreshRequestTime.ToString("o"));
-                    SessionState.EraseString(Server.SESSION_KEY_REFRESH_COMPLETED_TIME);
+                    SessionState.SetString(Server.SessionKeyRefreshRequestTime, refreshRequestTime.ToString("o"));
+                    SessionState.EraseString(Server.SessionKeyRefreshCompletedTime);
 
                     if (request.force)
                     {
@@ -57,7 +58,7 @@ namespace Nyamu.Tools.Assets
                     // Start monitoring for refresh completion
                     Server.StartRefreshMonitoring(state);
                 }
-                catch (System.Exception ex)
+                catch (Exception ex)
                 {
                     // Reset refresh flags immediately if AssetDatabase.Refresh() fails
                     lock (state.Lock)

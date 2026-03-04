@@ -24,9 +24,7 @@ namespace Nyamu.Tools.Compilation
             }
 
             // Queue compilation on main thread
-            context.UnityExecutor.Enqueue(() =>
-                CompilationPipeline.RequestScriptCompilation()
-            );
+            context.UnityExecutor.Enqueue(CompilationPipeline.RequestScriptCompilation);
 
             // Wait for compilation to start (delegated to helper in Server)
             var (success, message) = Server.WaitForCompilationToStart(

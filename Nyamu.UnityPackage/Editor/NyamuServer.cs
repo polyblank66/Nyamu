@@ -29,7 +29,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text;
-using System.Collections.Generic;
 using System.Linq;
 using System;
 using Nyamu.Core;
@@ -43,6 +42,7 @@ using Nyamu.Tools.Settings;
 using Nyamu.Tools.Assets;
 using Nyamu.Tools.Editor.PlayMode;
 using Nyamu.TestExecution;
+// ReSharper disable InconsistentlySynchronizedField
 
 namespace Nyamu
 {
@@ -51,7 +51,7 @@ namespace Nyamu
     // ============================================================================
 
     // Configuration constants for the Nyamu MCP server
-    static class Constants
+    internal static class Constants
     {
         public const int CompileTimeoutSeconds = 5;
         public const int ThreadSleepMilliseconds = 50;
@@ -91,73 +91,73 @@ namespace Nyamu
         // ========================================================================
 
         // SessionState keys for detecting fresh editor start vs domain reload
-        internal const string SESSION_KEY_EDITOR_RUNNING = "Nyamu_EditorRunning";
-        internal const string SESSION_KEY_REFRESH_REQUEST_TIME = "Nyamu_RefreshRequestTime";
-        internal const string SESSION_KEY_REFRESH_COMPLETED_TIME = "Nyamu_RefreshCompletedTime";
+        private const string SessionKeyEditorRunning = "Nyamu_EditorRunning";
+        public const string SessionKeyRefreshRequestTime = "Nyamu_RefreshRequestTime";
+        public const string SessionKeyRefreshCompletedTime = "Nyamu_RefreshCompletedTime";
 
         // HTTP server components
-        static HttpListener _listener;
-        static Task _acceptTask;
-        static CancellationTokenSource _cancellation;
-        static System.Collections.Concurrent.ConcurrentDictionary<Task, byte> _activeHandlers = new();
+        private static HttpListener _listener;
+        private static Task _acceptTask;
+        private static CancellationTokenSource _cancellation;
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Task, byte> ActiveHandlers = new();
 
         // Deferred recovery: retries port binding via EditorApplication.update after
         // immediate retries fail (e.g. due to TIME_WAIT from Mono raw sockets).
-        static bool _deferredRecoveryActive;
-        static int _deferredRetryAttempt;
-        static double _deferredRetryTime;
-        const int MaxDeferredAttempts = 20;
-        const double DeferredRetryIntervalSeconds = 3.0;
+        private static bool _deferredRecoveryActive;
+        private static int _deferredRetryAttempt;
+        private static double _deferredRetryTime;
+        private const int MaxDeferredAttempts = 20;
+        private const double DeferredRetryIntervalSeconds = 3.0;
 
         // Infrastructure components for refactored architecture
-        static CompilationStateManager _compilationStateManager;
-        static TestStateManager _testStateManager;
-        static ShaderStateManager _shaderStateManager;
-        static AssetStateManager _assetStateManager;
-        static EditorStateManager _editorStateManager;
-        static SettingsStateManager _settingsStateManager;
-        static UnityThreadExecutor _unityThreadExecutor;
-        static Core.ExecutionContext _executionContext;
+        private static CompilationStateManager _compilationStateManager;
+        private static TestStateManager _testStateManager;
+        private static ShaderStateManager _shaderStateManager;
+        private static AssetStateManager _assetStateManager;
+        private static EditorStateManager _editorStateManager;
+        private static SettingsStateManager _settingsStateManager;
+        private static UnityThreadExecutor _unityThreadExecutor;
+        private static Core.ExecutionContext _executionContext;
 
         // Monitors and services
-        static CompilationMonitor _compilationMonitor;
-        static EditorMonitor _editorMonitor;
-        static SettingsMonitor _settingsMonitor;
-        static TestExecutionService _testExecutionService;
-        static TestCallbacks _testCallbacks;
+        private static CompilationMonitor _compilationMonitor;
+        private static EditorMonitor _editorMonitor;
+        private static SettingsMonitor _settingsMonitor;
+        private static TestExecutionService _testExecutionService;
+        private static TestCallbacks _testCallbacks;
 
         // Tools (Step 2-3: read-only tools)
-        static CompilationStatusTool _compilationStatusTool;
-        static TestsStatusTool _testsStatusTool;
-        static ShaderCompilationStatusTool _shaderCompilationStatusTool;
-        static EditorStatusTool _editorStatusTool;
-        static McpSettingsTool _mcpSettingsTool;
+        private static CompilationStatusTool _compilationStatusTool;
+        private static TestsStatusTool _testsStatusTool;
+        private static ShaderCompilationStatusTool _shaderCompilationStatusTool;
+        private static EditorStatusTool _editorStatusTool;
+        private static McpSettingsTool _mcpSettingsTool;
 
         // Tools (Step 4 Group A: simple write tools)
-        static CompilationTriggerTool _compilationTriggerTool;
-        static AssetsRefreshTool _assetsRefreshTool;
-        static ExecuteMenuItemTool _executeMenuItemTool;
-        static EditorExitPlayModeTool _editorExitPlayModeTool;
+        private static CompilationTriggerTool _compilationTriggerTool;
+        private static AssetsRefreshTool _assetsRefreshTool;
+        private static ExecuteMenuItemTool _executeMenuItemTool;
+        private static EditorExitPlayModeTool _editorExitPlayModeTool;
 
         // Step 4 Group B: test tools
-        static TestsRunSingleTool _testsRunSingleTool;
-        static TestsRunAllTool _testsRunAllTool;
-        static TestsRunRegexTool _testsRunRegexTool;
+        private static TestsRunSingleTool _testsRunSingleTool;
+        private static TestsRunAllTool _testsRunAllTool;
+        private static TestsRunRegexTool _testsRunRegexTool;
 #if UTF_TESTS_CANCEL_TOOL_AVAILABLE
         static TestsCancelTool _testsCancelTool;
 #endif
 
         // Step 4 Group C: shader tools
-        static CompileShaderTool _compileShaderTool;
-        static CompileAllShadersTool _compileAllShadersTool;
-        static CompileShadersRegexTool _compileShadersRegexTool;
+        private static CompileShaderTool _compileShaderTool;
+        private static CompileAllShadersTool _compileAllShadersTool;
+        private static CompileShadersRegexTool _compileShadersRegexTool;
 
         static Server()
         {
             Initialize();
         }
 
-        static void Initialize()
+        private static void Initialize()
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Initialize started");
 
@@ -216,14 +216,18 @@ namespace Nyamu
                     {
                         _listener?.Close();
                     }
-                    catch { }
+                    catch
+                    {
+                        // ignored
+                    }
+
                     _listener = null;
 
                     if (attempt < maxRetries - 1)
                     {
                         var elapsed = (DateTime.UtcNow - bindStart).TotalMilliseconds;
                         NyamuLogger.LogDebug($"[Nyamu][Server] Port {port} unavailable, retrying in {retryDelayMs}ms (attempt {attempt + 1}/{maxRetries}, elapsed: {elapsed:F0}ms): [{ex.GetType().Name}] {ex.Message}");
-                        System.Threading.Thread.Sleep(retryDelayMs);
+                        Thread.Sleep(retryDelayMs);
                     }
                     else
                     {
@@ -252,7 +256,7 @@ namespace Nyamu
             AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
         }
 
-        static void InitializeInfrastructure()
+        private static void InitializeInfrastructure()
         {
             // Create state managers
             _compilationStateManager = new CompilationStateManager();
@@ -324,7 +328,7 @@ namespace Nyamu
             _compileShadersRegexTool = new CompileShadersRegexTool();
         }
 
-        static void Cleanup()
+        private static void Cleanup()
         {
             var cleanupStart = DateTime.UtcNow;
             NyamuLogger.LogDebug("[Nyamu][Server] Cleanup started");
@@ -384,7 +388,7 @@ namespace Nyamu
 
                         _ = taskToTrack.ContinueWith(t =>
                         {
-                            var status = t.IsFaulted ? $"faulted ({t.Exception?.GetBaseException()?.Message})"
+                            var status = t.IsFaulted ? $"faulted ({t.Exception?.GetBaseException().Message})"
                                        : t.IsCanceled ? "canceled"
                                        : "completed";
                             NyamuLogger.LogDebug($"[Nyamu][Server] Dangling accept task finally {status}");
@@ -397,12 +401,15 @@ namespace Nyamu
                     }
                 }
                 catch (AggregateException) { } // Expected from task cancellation
-                catch { }
+                catch
+                {
+                    // ignored
+                }
                 finally { _acceptTask = null; }
             }
 
             // 4. Wait for active request handlers to complete (with timeout)
-            var activeHandlers = _activeHandlers.Keys.ToArray();
+            var activeHandlers = ActiveHandlers.Keys.ToArray();
             if (activeHandlers.Length > 0)
             {
                 try
@@ -419,10 +426,13 @@ namespace Nyamu
                     }
                 }
                 catch (AggregateException) { } // Expected from handler exceptions
-                catch { }
+                catch
+                {
+                    // ignored
+                }
                 finally
                 {
-                    _activeHandlers.Clear();
+                    ActiveHandlers.Clear();
                 }
             }
 
@@ -432,7 +442,10 @@ namespace Nyamu
                 _cancellation?.Dispose();
                 _cancellation = null;
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             NyamuLogger.LogDebug($"[Nyamu][Server] Cleanup finished (total elapsed: {(DateTime.UtcNow - cleanupStart).TotalMilliseconds:F0}ms)");
         }
@@ -448,7 +461,7 @@ namespace Nyamu
         // Called every editor frame during deferred recovery. Attempts to bind the port
         // without blocking the main thread. Unsubscribes itself on success, failure, or
         // when a domain reload causes Initialize() to run again.
-        static void TryDeferredBind()
+        private static void TryDeferredBind()
         {
             // A domain reload triggered a new Initialize() which either succeeded or started
             // its own deferred recovery — either way, our job here is done.
@@ -481,7 +494,12 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                try { _listener?.Close(); } catch { }
+                try { _listener?.Close(); }
+                catch
+                {
+                    // ignored
+                }
+
                 _listener = null;
 
                 if (_deferredRetryAttempt >= MaxDeferredAttempts)
@@ -501,7 +519,7 @@ namespace Nyamu
         // HTTP SERVER INFRASTRUCTURE
         // ========================================================================
 
-        static async Task AcceptRequestsAsync(CancellationToken token)
+        private static async Task AcceptRequestsAsync(CancellationToken token)
         {
             while (!token.IsCancellationRequested)
             {
@@ -532,8 +550,8 @@ namespace Nyamu
                     }, token);
 
                     // Track active handler and remove when completed
-                    _activeHandlers.TryAdd(handlerTask, 0);
-                    _ = handlerTask.ContinueWith(t => _activeHandlers.TryRemove(t, out _), TaskScheduler.Default);
+                    ActiveHandlers.TryAdd(handlerTask, 0);
+                    _ = handlerTask.ContinueWith(t => ActiveHandlers.TryRemove(t, out _), TaskScheduler.Default);
                 }
                 catch (ObjectDisposedException) { break; } // Listener stopped
                 catch (HttpListenerException) { break; }  // Listener error
@@ -541,7 +559,7 @@ namespace Nyamu
             }
         }
 
-        static void ProcessHttpRequest(HttpListenerContext context)
+        private static void ProcessHttpRequest(HttpListenerContext context)
         {
             var request = context.Request;
             var response = context.Response;
@@ -552,7 +570,7 @@ namespace Nyamu
             SendResponse(response, responseString);
         }
 
-        static void SetupResponseHeaders(HttpListenerResponse response)
+        private static void SetupResponseHeaders(HttpListenerResponse response)
         {
             response.StatusCode = (int)HttpStatusCode.OK;
             response.ContentType = "application/json";
@@ -561,7 +579,7 @@ namespace Nyamu
             response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
         }
 
-        static string RouteRequest(HttpListenerRequest request, HttpListenerResponse response)
+        private static string RouteRequest(HttpListenerRequest request, HttpListenerResponse response)
         {
             return request.Url.AbsolutePath switch
             {
@@ -586,7 +604,7 @@ namespace Nyamu
             };
         }
 
-        static string HandleCompileAndWaitRequest()
+        private static string HandleCompileAndWaitRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleCompileAndWaitRequest");
 
@@ -626,11 +644,7 @@ namespace Nyamu
             // Now wait for compilation to start
             while ((DateTime.Now - waitStart) < timeout)
             {
-                bool isCompiling;
-                lock (_compilationStateManager.Lock)
-                {
-                    isCompiling = _compilationStateManager.IsCompiling;
-                }
+                var isCompiling = _compilationStateManager.IsCompiling;
 
                 if (isCompiling || EditorApplication.isCompiling)
                     return (true, "Compilation started.");
@@ -650,7 +664,7 @@ namespace Nyamu
             return (false, "Compilation may not have started.");
         }
 
-        static string HandleCompileStatusRequest()
+        private static string HandleCompileStatusRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleCompileStatusRequest");
 
@@ -660,18 +674,18 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string ExtractQueryParameter(string query, string paramName)
+        private static string ExtractQueryParameter(string query, string paramName)
         {
             if (!query.Contains($"{paramName}="))
                 return null;
 
-            var paramStart = query.IndexOf($"{paramName}=") + paramName.Length + 1;
-            var paramEnd = query.IndexOf("&", paramStart);
+            var paramStart = query.IndexOf($"{paramName}=", StringComparison.Ordinal) + paramName.Length + 1;
+            var paramEnd = query.IndexOf("&", paramStart, StringComparison.Ordinal);
             var value = paramEnd == -1 ? query.Substring(paramStart) : query.Substring(paramStart, paramEnd - paramStart);
             return Uri.UnescapeDataString(value);
         }
 
-        static string HandleEditorStatusRequest()
+        private static string HandleEditorStatusRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleEditorStatusRequest");
 
@@ -681,7 +695,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleMcpSettingsRequest()
+        private static string HandleMcpSettingsRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleMcpSettingsRequest");
 
@@ -691,7 +705,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleTestsRunSingleRequest(HttpListenerRequest request)
+        private static string HandleTestsRunSingleRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunSingleRequest");
 
@@ -705,13 +719,16 @@ namespace Nyamu
                     var bodyText = new StreamReader(request.InputStream).ReadToEnd();
                     toolRequest = JsonUtility.FromJson<TestsRunSingleRequest>(bodyText);
                 }
-                catch { }
+                catch
+                {
+                    // ignored
+                }
             }
 
             // Fallback to query parameters if body not available
             if (toolRequest == null)
             {
-                var query = request.Url.Query ?? "";
+                var query = request.Url.Query;
                 var testName = ExtractQueryParameter(query, "test_name");
                 var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
 
@@ -726,9 +743,9 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleTestsRunAllRequest(HttpListenerRequest request)
+        private static string HandleTestsRunAllRequest(HttpListenerRequest request)
         {
-            NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunAllRequest");
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleTestsRunAllRequest");
 
             TestsRunAllRequest toolRequest = null;
 
@@ -740,13 +757,16 @@ namespace Nyamu
                     var bodyText = new StreamReader(request.InputStream).ReadToEnd();
                     toolRequest = JsonUtility.FromJson<TestsRunAllRequest>(bodyText);
                 }
-                catch { }
+                catch
+                {
+                    // ignored
+                }
             }
 
             // Fallback to query parameters if body not available
             if (toolRequest == null)
             {
-                var query = request.Url.Query ?? "";
+                var query = request.Url.Query;
                 var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
 
                 toolRequest = new TestsRunAllRequest
@@ -759,7 +779,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleTestsRunRegexRequest(HttpListenerRequest request)
+        private static string HandleTestsRunRegexRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunRegexRequest");
 
@@ -773,13 +793,16 @@ namespace Nyamu
                     var bodyText = new StreamReader(request.InputStream).ReadToEnd();
                     toolRequest = JsonUtility.FromJson<TestsRunRegexRequest>(bodyText);
                 }
-                catch { }
+                catch
+                {
+                    // ignored
+                }
             }
 
             // Fallback to query parameters if body not available
             if (toolRequest == null)
             {
-                var query = request.Url.Query ?? "";
+                var query = request.Url.Query;
                 var filterRegex = ExtractQueryParameter(query, "filter_regex");
                 var mode = ExtractQueryParameter(query, "mode") ?? "EditMode";
 
@@ -794,7 +817,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleTestsStatusRequest()
+        private static string HandleTestsStatusRequest()
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsStatusRequest");
 
@@ -804,7 +827,8 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleTestsCancelRequest(HttpListenerRequest request)
+        // ReSharper disable once UnusedParameter.Local
+        private static string HandleTestsCancelRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsCancelRequest");
 
@@ -848,26 +872,24 @@ namespace Nyamu
         }
 
 
-        static string HandleCompileShaderRequest(HttpListenerRequest request)
+        private static string HandleCompileShaderRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileShaderRequest");
 
             CompileShaderRequest toolRequest = null;
             try
             {
-                using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+                using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+                var body = reader.ReadToEnd();
+                // Parse as old format first, then convert to new
+                var oldRequest = JsonUtility.FromJson<CompileShaderRequest>(body);
+                if (oldRequest != null)
                 {
-                    var body = reader.ReadToEnd();
-                    // Parse as old format first, then convert to new
-                    var oldRequest = JsonUtility.FromJson<CompileShaderRequest>(body);
-                    if (oldRequest != null)
+                    toolRequest = new CompileShaderRequest
                     {
-                        toolRequest = new CompileShaderRequest
-                        {
-                            shaderName = oldRequest.shaderName,
-                            timeout = 30
-                        };
-                    }
+                        shaderName = oldRequest.shaderName,
+                        timeout = 30
+                    };
                 }
             }
             catch
@@ -875,20 +897,19 @@ namespace Nyamu
                 return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
             }
 
-            if (toolRequest == null)
-                toolRequest = new CompileShaderRequest { timeout = 30 };
+            toolRequest ??= new CompileShaderRequest { timeout = 30 };
 
             var response = _compileShaderTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleCompileAllShadersRequest(HttpListenerRequest request)
+        private static string HandleCompileAllShadersRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileAllShadersRequest");
             if (request.HttpMethod != "POST")
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use POST.\"}";
 
-            CompileAllShadersRequest toolRequest = null;
+            CompileAllShadersRequest toolRequest;
             try
             {
                 var bodyText = new StreamReader(request.InputStream).ReadToEnd();
@@ -899,20 +920,19 @@ namespace Nyamu
                 return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
             }
 
-            if (toolRequest == null)
-                toolRequest = new CompileAllShadersRequest { timeout = 120 };
+            toolRequest ??= new CompileAllShadersRequest { timeout = 120 };
 
             var response = _compileAllShadersTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleCompileShadersRegexRequest(HttpListenerRequest request)
+        private static string HandleCompileShadersRegexRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileShadersRegexRequest");
             if (request.HttpMethod != "POST")
                 return "{\"status\":\"error\",\"message\":\"Method not allowed. Use POST.\"}";
 
-            CompileShadersRegexToolRequest toolRequest = null;
+            CompileShadersRegexToolRequest toolRequest;
             try
             {
                 var bodyText = new StreamReader(request.InputStream).ReadToEnd();
@@ -923,14 +943,13 @@ namespace Nyamu
                 return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
             }
 
-            if (toolRequest == null)
-                toolRequest = new CompileShadersRegexToolRequest { timeout = 120 };
+            toolRequest ??= new CompileShadersRegexToolRequest { timeout = 120 };
 
             var response = _compileShadersRegexTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleShaderCompilationStatusRequest(HttpListenerRequest request)
+        private static string HandleShaderCompilationStatusRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleShaderCompilationStatusRequest");
             if (request.HttpMethod != "GET")
@@ -942,7 +961,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleExecuteMenuItemRequest(HttpListenerRequest request)
+        private static string HandleExecuteMenuItemRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleExecuteMenuItemRequest");
 
@@ -957,7 +976,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleEditorExitPlayModeRequest(HttpListenerRequest request)
+        private static string HandleEditorExitPlayModeRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleEditorExitPlayModeRequest");
 
@@ -970,13 +989,13 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleNotFoundRequest(HttpListenerResponse response)
+        private static string HandleNotFoundRequest(HttpListenerResponse response)
         {
             response.StatusCode = 404;
             return "{\"status\":\"error\",\"message\":\"Endpoint not found\"}";
         }
 
-        static void SendResponse(HttpListenerResponse response, string content)
+        private static void SendResponse(HttpListenerResponse response, string content)
         {
             var buffer = Encoding.UTF8.GetBytes(content);
             response.ContentLength64 = buffer.Length;
@@ -984,7 +1003,7 @@ namespace Nyamu
             response.OutputStream.Close();
         }
 
-        static void LoadTimestampsCache()
+        private static void LoadTimestampsCache()
         {
             try
             {
@@ -1001,12 +1020,12 @@ namespace Nyamu
                 }
 
                 // Detect if this is a fresh editor start or domain reload
-                bool isEditorRunning = SessionState.GetBool(SESSION_KEY_EDITOR_RUNNING, false);
+                var isEditorRunning = SessionState.GetBool(SessionKeyEditorRunning, false);
 
                 if (!isEditorRunning)
                 {
                     // Fresh editor start - set the flag for subsequent domain reloads
-                    SessionState.SetBool(SESSION_KEY_EDITOR_RUNNING, true);
+                    SessionState.SetBool(SessionKeyEditorRunning, true);
                     NyamuLogger.LogDebug("[Nyamu][Server] Fresh Unity Editor start detected. Clearing any stale refresh state.");
 
                     // Clear refresh state in AssetStateManager
@@ -1016,16 +1035,16 @@ namespace Nyamu
                     _assetStateManager.IsWaitingForCompilation = false;
 
                     // Clear SessionState refresh timestamps
-                    SessionState.EraseString(SESSION_KEY_REFRESH_REQUEST_TIME);
-                    SessionState.EraseString(SESSION_KEY_REFRESH_COMPLETED_TIME);
+                    SessionState.EraseString(SessionKeyRefreshRequestTime);
+                    SessionState.EraseString(SessionKeyRefreshCompletedTime);
                 }
                 else
                 {
                     // Domain reload within same editor session - restore refresh state from SessionState
                     NyamuLogger.LogDebug("[Nyamu][Server] Domain reload detected. Restoring refresh state from SessionState.");
 
-                    var refreshRequestStr = SessionState.GetString(SESSION_KEY_REFRESH_REQUEST_TIME, "");
-                    var refreshCompletedStr = SessionState.GetString(SESSION_KEY_REFRESH_COMPLETED_TIME, "");
+                    var refreshRequestStr = SessionState.GetString(SessionKeyRefreshRequestTime, "");
+                    var refreshCompletedStr = SessionState.GetString(SessionKeyRefreshCompletedTime, "");
 
                     _assetStateManager.RefreshRequestTime = ParseDateTime(refreshRequestStr);
                     _assetStateManager.RefreshCompletedTime = ParseDateTime(refreshCompletedStr);
@@ -1044,7 +1063,7 @@ namespace Nyamu
             }
         }
 
-        static void DetectRefreshCompletion()
+        private static void DetectRefreshCompletion()
         {
             if (_assetStateManager == null) return;
 
@@ -1064,7 +1083,7 @@ namespace Nyamu
                     _assetStateManager.IsWaitingForCompilation = false;
 
                     // Update SessionState
-                    SessionState.SetString(SESSION_KEY_REFRESH_COMPLETED_TIME, DateTime.Now.ToString("o"));
+                    SessionState.SetString(SessionKeyRefreshCompletedTime, DateTime.Now.ToString("o"));
 
                     NyamuLogger.LogDebug($"[Nyamu][Server] Detected domain reload after refresh. Age: {age.TotalSeconds:F1}s");
                 }
@@ -1078,8 +1097,8 @@ namespace Nyamu
                     _assetStateManager.IsWaitingForCompilation = false;
 
                     // Clear SessionState
-                    SessionState.EraseString(SESSION_KEY_REFRESH_REQUEST_TIME);
-                    SessionState.EraseString(SESSION_KEY_REFRESH_COMPLETED_TIME);
+                    SessionState.EraseString(SessionKeyRefreshRequestTime);
+                    SessionState.EraseString(SessionKeyRefreshCompletedTime);
                 }
             }
         }
@@ -1109,7 +1128,7 @@ namespace Nyamu
             }
         }
 
-        static DateTime ParseDateTime(string str)
+        private static DateTime ParseDateTime(string str)
         {
             if (string.IsNullOrEmpty(str))
                 return DateTime.MinValue;
@@ -1138,11 +1157,11 @@ namespace Nyamu
             }
         }
 
-        static void MonitorRefreshCompletion()
+        private static void MonitorRefreshCompletion()
         {
             // Update cached state (this runs on main thread)
-            bool unityIsUpdating = EditorApplication.isUpdating;
-            bool isCompiling = EditorApplication.isCompiling;
+            var unityIsUpdating = EditorApplication.isUpdating;
+            var isCompiling = EditorApplication.isCompiling;
 
             // Update state manager
             lock (_assetStateManager.Lock)
@@ -1192,11 +1211,10 @@ namespace Nyamu
                     }
 
                     // Update SessionState
-                    SessionState.SetString(SESSION_KEY_REFRESH_COMPLETED_TIME, DateTime.Now.ToString("o"));
+                    SessionState.SetString(SessionKeyRefreshCompletedTime, DateTime.Now.ToString("o"));
 
                     EditorApplication.update -= MonitorRefreshCompletion;
                     NyamuLogger.LogDebug("[Nyamu][Server] Refresh chain completed (with compilation)");
-                    return;
                 }
             }
             else
@@ -1213,7 +1231,7 @@ namespace Nyamu
                     }
 
                     // Update SessionState
-                    SessionState.SetString(SESSION_KEY_REFRESH_COMPLETED_TIME, DateTime.Now.ToString("o"));
+                    SessionState.SetString(SessionKeyRefreshCompletedTime, DateTime.Now.ToString("o"));
 
                     EditorApplication.update -= MonitorRefreshCompletion;
                     NyamuLogger.LogDebug("[Nyamu][Server] Refresh completed (no compilation)");
@@ -1221,12 +1239,12 @@ namespace Nyamu
             }
         }
 
-        static string HandleAssetsRefreshRequest(HttpListenerRequest request)
+        private static string HandleAssetsRefreshRequest(HttpListenerRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleAssetsRefreshRequest");
 
             // Parse force parameter from query string
-            bool force = request.Url.Query.Contains("force=true");
+            var force = request.Url.Query.Contains("force=true");
 
             // Use new tool architecture
             var toolRequest = new AssetsRefreshRequest { force = force };
@@ -1235,7 +1253,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static string HandleAssetsRefreshStatusRequest(HttpListenerRequest request)
+        private static string HandleAssetsRefreshStatusRequest(HttpListenerRequest _)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleAssetsRefreshStatusRequest");
 
@@ -1251,7 +1269,7 @@ namespace Nyamu
                 refreshCompleted = _assetStateManager.RefreshCompletedTime;
             }
 
-            bool isCompiling = _compilationStateManager.IsCompiling;
+            var isCompiling = _compilationStateManager.IsCompiling;
 
             // Determine status
             string status;
@@ -1267,7 +1285,7 @@ namespace Nyamu
                 status = "idle";
 
             // Always get last compilation status (regardless of when it occurred)
-            bool hadCompilation = false;
+            var hadCompilation = false;
             CompileError[] compilationErrors;
             DateTime lastCompileTime;
 
@@ -1305,9 +1323,9 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        static void HandleHttpException(Exception ex)
+        private static void HandleHttpException(Exception ex)
         {
-            if (ex is HttpListenerException || ex is ThreadAbortException)
+            if (ex is HttpListenerException or ThreadAbortException)
                 return;
 
             // Ignore common client disconnection errors

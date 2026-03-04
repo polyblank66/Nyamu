@@ -49,7 +49,7 @@ namespace Nyamu.ShaderCompilation
                     {
                         status = "error",
                         message = $"No shaders found matching '{queryName}'",
-                        allMatches = new ShaderMatch[0]
+                        allMatches = Array.Empty<ShaderMatch>()
                     };
                 }
 
@@ -157,7 +157,7 @@ namespace Nyamu.ShaderCompilation
                     successfulCompilations = 0,
                     failedCompilations = 0,
                     totalCompilationTime = 0,
-                    results = new ShaderCompileResult[0]
+                    results = Array.Empty<ShaderCompileResult>()
                 };
             }
             finally
@@ -202,7 +202,7 @@ namespace Nyamu.ShaderCompilation
                         successfulCompilations = 0,
                         failedCompilations = 0,
                         totalCompilationTime = 0,
-                        results = new ShaderCompileResult[0]
+                        results = Array.Empty<ShaderCompileResult>()
                     };
                 }
 
@@ -267,7 +267,7 @@ namespace Nyamu.ShaderCompilation
                     successfulCompilations = 0,
                     failedCompilations = 0,
                     totalCompilationTime = 0,
-                    results = new ShaderCompileResult[0]
+                    results = Array.Empty<ShaderCompileResult>()
                 };
             }
             finally

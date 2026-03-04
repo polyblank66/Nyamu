@@ -11,12 +11,12 @@ namespace Nyamu.TestExecution
     // Handles Unity Test Runner callbacks and result collection
     public class TestCallbacks : ICallbacks, IErrorCallbacks
     {
-        readonly TestStateManager _state;
-        readonly object _timestampLock;
+        private readonly TestStateManager _state;
+        private readonly object _timestampLock;
 
-        bool _shouldRestorePlayModeSettings;
-        bool _originalEnterPlayModeOptionsEnabled;
-        EnterPlayModeOptions _originalEnterPlayModeOptions;
+        private bool _shouldRestorePlayModeSettings;
+        private bool _originalEnterPlayModeOptionsEnabled;
+        private EnterPlayModeOptions _originalEnterPlayModeOptions;
 
         public TestCallbacks(TestStateManager state, object timestampLock)
         {
@@ -133,7 +133,7 @@ namespace Nyamu.TestExecution
             _state.IsRunningTests = false;
         }
 
-        void CollectTestResults(ITestResultAdaptor result, List<TestResult> results)
+        private void CollectTestResults(ITestResultAdaptor result, List<TestResult> results)
         {
             // Recursively collect test results from Unity's test hierarchy
             if (result.Test.IsTestAssembly)
@@ -161,7 +161,7 @@ namespace Nyamu.TestExecution
             }
         }
 
-        int CountTests(ITestAdaptor test)
+        private int CountTests(ITestAdaptor test)
         {
             if (!test.HasChildren) return test.IsSuite ? 0 : 1;
 

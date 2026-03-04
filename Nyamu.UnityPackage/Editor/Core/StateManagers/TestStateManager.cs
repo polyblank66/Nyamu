@@ -7,19 +7,19 @@ namespace Nyamu.Core.StateManagers
     // Manages test execution state with thread-safe access
     public class TestStateManager
     {
-        readonly object _lock = new object();
-        bool _isRunningTests;
-        DateTime _lastTestTime = DateTime.MinValue;
-        TestResults _testResults;
-        string _currentTestRunId = null;
-        TestCallbacks _testCallbacks;
-        string _testExecutionError = null;
-        bool _hasTestExecutionError = false;
+        private readonly object _lock = new();
+        private bool _isRunningTests;
+        private DateTime _lastTestTime = DateTime.MinValue;
+        private TestResults _testResults;
+        private string _currentTestRunId;
+        private TestCallbacks _testCallbacks;
+        private string _testExecutionError;
+        private bool _hasTestExecutionError;
 
         // Test execution progress tracking
-        int _testsTotal = 0;
-        int _testsCompleted = 0;
-        string _currentTestName = "";
+        private int _testsTotal;
+        private int _testsCompleted;
+        private string _currentTestName = "";
 
         public object Lock => _lock;
 

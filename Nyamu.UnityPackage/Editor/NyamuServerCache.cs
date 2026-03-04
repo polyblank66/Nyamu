@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Nyamu
 {
-    [System.Serializable]
+    [Serializable]
     public class NyamuServerCache
     {
         private const string CachePath = ".nyamu/NyamuServerCache.json";
@@ -37,7 +37,10 @@ namespace Nyamu
                     {
                         File.Delete(CachePath);
                     }
-                    catch { }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
             }
             else

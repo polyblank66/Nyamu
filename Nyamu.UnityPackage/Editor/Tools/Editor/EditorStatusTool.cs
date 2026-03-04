@@ -17,32 +17,11 @@ namespace Nyamu.Tools.Editor
             var editorState = context.EditorState;
             var assetState = context.AssetState;
 
-            bool isCompiling;
-            bool isRunningTests;
-            bool isPlaying;
-            bool isRefreshing;
-            bool isWaitingForCompilation;
-
-            lock (compilationState.Lock)
-            {
-                isCompiling = compilationState.IsCompiling;
-            }
-
-            lock (testState.Lock)
-            {
-                isRunningTests = testState.IsRunningTests;
-            }
-
-            lock (editorState.Lock)
-            {
-                isPlaying = editorState.IsPlaying;
-            }
-
-            lock (assetState.Lock)
-            {
-                isRefreshing = assetState.IsRefreshing;
-                isWaitingForCompilation = assetState.IsWaitingForCompilation;
-            }
+            var isCompiling = compilationState.IsCompiling;
+            var isRunningTests = testState.IsRunningTests;
+            var isPlaying = editorState.IsPlaying;
+            var isRefreshing = assetState.IsRefreshing;
+            var isWaitingForCompilation = assetState.IsWaitingForCompilation;
 
             var response = new EditorStatusResponse
             {

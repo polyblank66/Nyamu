@@ -6,9 +6,9 @@ namespace Nyamu.Core.StateManagers
     // Manages settings cache state with thread-safe access
     public class SettingsStateManager
     {
-        readonly object _lock = new object();
-        McpSettingsResponse _cachedSettings;
-        DateTime _lastSettingsRefresh = DateTime.MinValue;
+        private readonly object _lock = new();
+        private McpSettingsResponse _cachedSettings;
+        private DateTime _lastSettingsRefresh = DateTime.MinValue;
 
         public object Lock => _lock;
 

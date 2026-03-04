@@ -12,11 +12,11 @@ namespace Nyamu
 
     // Automatically generates a .bat file for MCP integration on Unity load
     // The .bat file provides a convenient entry point for Claude Code MCP configuration
-    static class NyamuBatGenerator
+    internal static class NyamuBatGenerator
     {
         // Entry point - runs automatically when Unity Editor loads
         [InitializeOnLoadMethod]
-        static void Initialize()
+        private static void Initialize()
         {
             // Generate bat file on initial load
             GenerateBatFile();
@@ -26,7 +26,7 @@ namespace Nyamu
         }
 
         // Called when packages are registered (installed/updated/removed)
-        static void OnPackagesRegistered(PackageRegistrationEventArgs args)
+        private static void OnPackagesRegistered(PackageRegistrationEventArgs args)
         {
             // Debug: Log all packages passed to this event
             var addedPackages = string.Join(", ", args.added.Select(p => $"{p.name}@{p.version}"));
@@ -47,7 +47,7 @@ namespace Nyamu
             }
         }
 
-        static void GenerateBatFile()
+        private static void GenerateBatFile()
         {
             try
             {
@@ -77,7 +77,7 @@ namespace Nyamu
         }
 
         // Locates mcp-server.js in either PackageCache or embedded package
-        static string FindMcpServerPath()
+        private static string FindMcpServerPath()
         {
             try
             {
@@ -138,10 +138,14 @@ namespace Nyamu
         }
 
         // Generates .bat file content with proper MCP protocol compliance
-        static string GenerateBatContent(string mcpServerPath, int port)
+        private static string GenerateBatContent(string mcpServerPath, int port)
         {
             // Determine log file path relative to project root
-            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var directoryInfo = Directory.GetParent(Application.dataPath);
+            if (directoryInfo == null)
+                return string.Empty;
+
+            var projectRoot = directoryInfo.FullName;
             var logFilePath = Path.Combine(projectRoot, ".nyamu", "mcp-server.log");
 
             // Normalize path for Windows (backslashes) and quote for spaces
@@ -152,15 +156,19 @@ namespace Nyamu
             // --port parameter configures the Unity HTTP server port
             // --log-file parameter enables file-based logging
             // %* forwards all additional command-line arguments
-            return $"@echo off{Environment.NewLine}node \"{mcpServerPath}\" --port {port} --log-file \"{normalizedLogPath}\" %*{Environment.NewLine}";
+            return
+                $"@echo off{Environment.NewLine}node \"{mcpServerPath}\" --port {port} --log-file \"{normalizedLogPath}\" %*{Environment.NewLine}";
         }
 
         // Writes .bat file to .nyamu/nyamu.bat (idempotent)
-        static void WriteBatFile(string content)
+        private static void WriteBatFile(string content)
         {
             try
             {
-                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var directoryInfo = Directory.GetParent(Application.dataPath);
+                if (directoryInfo == null)
+                    return;
+                var projectRoot = directoryInfo.FullName;
                 var outputDir = Path.Combine(projectRoot, ".nyamu");
                 Directory.CreateDirectory(outputDir);
 
@@ -184,7 +192,7 @@ namespace Nyamu
         }
 
         // Generates Postman collection file in .nyamu directory
-        static void GeneratePostmanCollection()
+        private static void GeneratePostmanCollection()
         {
             try
             {
@@ -195,7 +203,11 @@ namespace Nyamu
                     return;
                 }
 
-                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var directoryInfo = Directory.GetParent(Application.dataPath);
+                if (directoryInfo == null)
+                    return;
+                
+                var projectRoot = directoryInfo.FullName;
                 var projectName = Path.GetFileName(projectRoot);
                 var port = NyamuSettings.Instance.serverPort;
 
@@ -209,11 +221,15 @@ namespace Nyamu
         }
 
         // Generates .gitignore file in .nyamu directory to exclude all contents from git
-        static void GenerateGitignore()
+        private static void GenerateGitignore()
         {
             try
             {
-                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var directoryInfo = Directory.GetParent(Application.dataPath);
+                if (directoryInfo == null)
+                    return;
+                
+                var projectRoot = directoryInfo.FullName;
                 var outputDir = Path.Combine(projectRoot, ".nyamu");
 
                 if (!Directory.Exists(outputDir))
@@ -240,7 +256,7 @@ namespace Nyamu
         }
 
         // Finds the Postman collection template path
-        static string FindPostmanTemplatePath()
+        private static string FindPostmanTemplatePath()
         {
             // Search in Packages folder (dev mode)
             var packagesPath = Path.Combine(Application.dataPath, "..", "Packages", "dev.polyblank.nyamu", "NyamuServer-API.postman_collection.json");
@@ -278,7 +294,7 @@ namespace Nyamu
         }
 
         // Generates Postman collection content from template
-        static string GeneratePostmanCollectionContent(string templatePath, string projectName, int port)
+        private static string GeneratePostmanCollectionContent(string templatePath, string projectName, int port)
         {
             var template = File.ReadAllText(templatePath);
 
@@ -299,11 +315,14 @@ namespace Nyamu
         }
 
         // Writes Postman collection file
-        static void WritePostmanCollectionFile(string content, string projectName)
+        private static void WritePostmanCollectionFile(string content, string projectName)
         {
             try
             {
-                var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                var directoryInfo = Directory.GetParent(Application.dataPath);
+                if (directoryInfo == null)
+                    return;
+                var projectRoot = directoryInfo.FullName;
                 var outputDir = Path.Combine(projectRoot, ".nyamu");
 
                 if (!Directory.Exists(outputDir))
@@ -329,7 +348,7 @@ namespace Nyamu
         }
 
         // Checks if file needs to be written (idempotency)
-        static bool ShouldWriteFile(string filePath, string newContent)
+        private static bool ShouldWriteFile(string filePath, string newContent)
         {
             if (!File.Exists(filePath))
                 return true;

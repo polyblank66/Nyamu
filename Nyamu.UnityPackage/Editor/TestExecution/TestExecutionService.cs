@@ -12,9 +12,9 @@ namespace Nyamu.TestExecution
     // Coordinates test execution with asset refresh
     public class TestExecutionService
     {
-        readonly TestStateManager _testState;
-        readonly AssetStateManager _assetState;
-        readonly TestCallbacks _callbacks;
+        private readonly TestStateManager _testState;
+        private readonly AssetStateManager _assetState;
+        private readonly TestCallbacks _callbacks;
 
         public TestExecutionService(
             TestStateManager testState,
@@ -38,7 +38,7 @@ namespace Nyamu.TestExecution
                 StartTestExecution(mode, filter, filterRegex);
                 executionStarted = true; // If we reach here, execution started successfully
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 NyamuLogger.LogError($"[Nyamu][Server] Failed to start test execution: {ex.Message}");
             }
@@ -55,7 +55,7 @@ namespace Nyamu.TestExecution
             }
         }
 
-        void WaitForAssetRefreshCompletion()
+        private void WaitForAssetRefreshCompletion()
         {
             // Wait for asset refresh to complete (similar to WaitForCompilationToStart but simpler)
             int maxWait = 30000; // 30 seconds max wait
@@ -85,7 +85,7 @@ namespace Nyamu.TestExecution
             }
         }
 
-        void StartTestExecution(string mode, string filter, string filterRegex)
+        private void StartTestExecution(string mode, string filter, string filterRegex)
         {
             _testState.TestResults = null;
 

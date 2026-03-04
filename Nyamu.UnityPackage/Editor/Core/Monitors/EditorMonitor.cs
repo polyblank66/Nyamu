@@ -7,9 +7,9 @@ namespace Nyamu.Core.Monitors
     // Monitors Unity Editor state and processes main thread actions
     public class EditorMonitor
     {
-        readonly EditorStateManager _state;
-        readonly IUnityThreadExecutor _unityThreadExecutor;
-        readonly SettingsMonitor _settingsMonitor;
+        private readonly EditorStateManager _state;
+        private readonly IUnityThreadExecutor _unityThreadExecutor;
+        private readonly SettingsMonitor _settingsMonitor;
 
         public EditorMonitor(EditorStateManager state, IUnityThreadExecutor unityThreadExecutor, SettingsMonitor settingsMonitor)
         {
@@ -28,7 +28,7 @@ namespace Nyamu.Core.Monitors
             EditorApplication.update -= OnEditorUpdate;
         }
 
-        void OnEditorUpdate()
+        private void OnEditorUpdate()
         {
             // Execute main thread actions
             _unityThreadExecutor.Process();

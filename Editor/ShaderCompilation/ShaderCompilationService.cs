@@ -14,16 +14,6 @@ namespace Nyamu.ShaderCompilation
     {
         public static CompileShaderResponse CompileSingleShader(string queryName)
         {
-            // Create a new empty scene to avoid save dialog blocking shader compilation
-            try
-            {
-                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            }
-            catch (Exception ex)
-            {
-                NyamuLogger.LogWarning($"[Nyamu][ShaderCompilation] Failed to create new scene: {ex.Message}");
-            }
-
             try
             {
                 var shaderGuids = AssetDatabase.FindAssets("t:Shader");
@@ -51,6 +41,16 @@ namespace Nyamu.ShaderCompilation
                         message = $"No shaders found matching '{queryName}'",
                         allMatches = Array.Empty<ShaderMatch>()
                     };
+                }
+
+                // Create a new empty scene to avoid save dialog blocking shader compilation
+                try
+                {
+                    EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                }
+                catch (Exception ex)
+                {
+                    NyamuLogger.LogWarning($"[Nyamu][ShaderCompilation] Failed to create new scene: {ex.Message}");
                 }
 
                 var bestMatch = matches[0];

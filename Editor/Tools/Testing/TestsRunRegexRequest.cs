@@ -1,6 +1,9 @@
+using System;
+
 namespace Nyamu.Tools.Testing
 {
     // Request DTO for running tests matching a regex pattern
+    [Serializable]
     public class TestsRunRegexRequest
     {
         public string testFilterRegex;

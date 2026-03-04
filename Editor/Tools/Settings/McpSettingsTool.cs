@@ -8,7 +8,7 @@ namespace Nyamu.Tools.Settings
     {
         public string Name => "mcp_settings";
 
-        const int SettingsCacheDurationSeconds = 5;
+        private const int SettingsCacheDurationSeconds = 5;
 
         public Task<McpSettingsResponse> ExecuteAsync(
             McpSettingsRequest request,

@@ -7,7 +7,7 @@ namespace Nyamu.Core.Monitors
     // Monitors and refreshes cached Nyamu settings periodically
     public class SettingsMonitor
     {
-        readonly SettingsStateManager _state;
+        private readonly SettingsStateManager _state;
 
         public SettingsMonitor(SettingsStateManager state)
         {
@@ -24,7 +24,7 @@ namespace Nyamu.Core.Monitors
             }
         }
 
-        void RefreshCachedSettings()
+        private void RefreshCachedSettings()
         {
             try
             {

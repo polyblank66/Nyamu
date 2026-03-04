@@ -1,7 +1,9 @@
+using System;
+
 namespace Nyamu.Tools.Shaders
 {
     // Request DTO for compiling a single shader
-    [System.Serializable]
+    [Serializable]
     public class CompileShaderRequest
     {
         public string shaderName;

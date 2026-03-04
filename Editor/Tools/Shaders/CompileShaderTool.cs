@@ -21,7 +21,7 @@ namespace Nyamu.Tools.Shaders
                 {
                     status = "error",
                     message = "Shader name is required.",
-                    allMatches = new ShaderMatch[0]
+                    allMatches = Array.Empty<ShaderMatch>()
                 });
             }
 
@@ -36,7 +36,7 @@ namespace Nyamu.Tools.Shaders
                     {
                         status = "warning",
                         message = "Shader compilation already in progress.",
-                        allMatches = new ShaderMatch[0]
+                        allMatches = Array.Empty<ShaderMatch>()
                     });
                 }
 
@@ -90,7 +90,7 @@ namespace Nyamu.Tools.Shaders
             {
                 status = "error",
                 message = "Timeout.",
-                allMatches = new ShaderMatch[0]
+                allMatches = Array.Empty<ShaderMatch>()
             });
         }
     }

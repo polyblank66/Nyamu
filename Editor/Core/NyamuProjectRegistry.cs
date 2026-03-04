@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using UnityEditor;
 using UnityEngine;
 
 namespace Nyamu.Core
@@ -15,20 +14,20 @@ namespace Nyamu.Core
 	/// </summary>
 	public static class NyamuProjectRegistry
 	{
-		const int DefaultStartPort = 17942;
-		const int MaxPortSearchRange = 100;
-		const int MinValidPort = 1024;
-		const int MaxValidPort = 65535;
+		private const int DefaultStartPort = 17942;
+		private const int MaxPortSearchRange = 100;
+		private const int MinValidPort = 1024;
+		private const int MaxValidPort = 65535;
 
-		static readonly object _registryLock = new object();
+		private static readonly object RegistryLock = new();
 
-		static string RegistryPath => Path.Combine(
+		private static string RegistryPath => Path.Combine(
 			Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
 			".nyamu",
 			"NyamuProjectsRegistry.json"
 		);
 
-		[System.Serializable]
+		[Serializable]
 		public class ProjectEntry
 		{
 			public string projectPath;
@@ -37,10 +36,10 @@ namespace Nyamu.Core
 			public string projectName;
 		}
 
-		[System.Serializable]
+		[Serializable]
 		public class RegistryData
 		{
-			public List<ProjectEntry> projectEntries = new List<ProjectEntry>();
+			public List<ProjectEntry> projectEntries = new();
 			public string version = "1.0";
 		}
 
@@ -100,7 +99,7 @@ namespace Nyamu.Core
 		{
 			try
 			{
-				lock (_registryLock)
+				lock (RegistryLock)
 				{
 					var registry = LoadRegistry();
 					var projectPath = GetCurrentProjectPath();
@@ -171,7 +170,7 @@ namespace Nyamu.Core
 			}
 		}
 
-		static RegistryData LoadRegistry()
+		private static RegistryData LoadRegistry()
 		{
 			try
 			{
@@ -199,14 +198,17 @@ namespace Nyamu.Core
 						File.Copy(RegistryPath, backupPath);
 						NyamuLogger.LogInfo($"[Nyamu][Registry] Backed up corrupt registry to {backupPath}");
 					}
-					catch { }
+					catch
+					{
+						// ignored
+					}
 				}
 			}
 
 			return new RegistryData();
 		}
 
-		static void SaveRegistry(RegistryData registry)
+		private static void SaveRegistry(RegistryData registry)
 		{
 			const int maxRetries = 3;
 			const int retryDelayMs = 100;
@@ -244,7 +246,7 @@ namespace Nyamu.Core
 			}
 		}
 
-		static void EnsureRegistryDirectory()
+		private static void EnsureRegistryDirectory()
 		{
 			try
 			{
@@ -260,12 +262,13 @@ namespace Nyamu.Core
 			}
 		}
 
-		static string GetCurrentProjectPath()
+		private static string GetCurrentProjectPath()
 		{
-			return Path.GetFullPath(Directory.GetParent(Application.dataPath).FullName);
+			var directoryInfo = Directory.GetParent(Application.dataPath);
+			return directoryInfo != null ? Path.GetFullPath(directoryInfo.FullName) : string.Empty;
 		}
 
-		static bool CanBindPort(int port)
+		private static bool CanBindPort(int port)
 		{
 			try
 			{
@@ -285,7 +288,7 @@ namespace Nyamu.Core
 			}
 		}
 
-		static bool IsPortInRegistryForOtherProject(int port, string excludeProjectPath)
+		private static bool IsPortInRegistryForOtherProject(int port, string excludeProjectPath)
 		{
 			var registry = LoadRegistry();
 

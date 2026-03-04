@@ -14,7 +14,6 @@ namespace Nyamu.Tools.Compilation
         {
             var state = context.CompilationState;
 
-            string status;
             bool isCompiling;
             System.DateTime lastCompileTime;
             System.DateTime lastCompilationRequestTime;
@@ -42,7 +41,7 @@ namespace Nyamu.Tools.Compilation
                 }
             }
 
-            status = isCompiling ? "compiling" : "idle";
+            var status = isCompiling ? "compiling" : "idle";
 
             var response = new CompileStatusResponse
             {

@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using Nyamu.Core.Interfaces;
-using Nyamu.TestExecution;
 
 namespace Nyamu.Tools.Testing
 {

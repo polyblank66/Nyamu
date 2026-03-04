@@ -25,7 +25,7 @@ namespace Nyamu
 
         public int serverPort = 17932;
 
-        public bool manualPortMode = false;
+        public bool manualPortMode;
 
         // Singleton pattern for easy access
         private static NyamuSettings _instance;
@@ -124,7 +124,10 @@ namespace Nyamu
                     EditorJsonUtility.FromJsonOverwrite(oldJson, oldSettings);
                     oldPort = oldSettings.serverPort;
                 }
-                catch { }
+                catch
+                {
+                    // ignored
+                }
             }
 
             // Validate and register port
@@ -219,16 +222,6 @@ namespace Nyamu
             serverPort = NyamuProjectRegistry.FindFreePort();
 
             Save();
-        }
-
-        /// <summary>
-        /// Validate settings when changed in inspector
-        /// </summary>
-        private void OnValidate()
-        {
-            // Note: Validation is now handled in the UI layer (NyamuSettingsProvider)
-            // to ensure proper error messages are shown to the user.
-            // This method is kept empty to prevent auto-correction before UI validation.
         }
     }
 }

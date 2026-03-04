@@ -6,26 +6,26 @@ namespace Nyamu.Core.StateManagers
     // Manages shader compilation state with thread-safe access
     public class ShaderStateManager
     {
-        readonly object _compileLock = new object();
-        readonly object _resultLock = new object();
+        private readonly object _compileLock = new();
+        private readonly object _resultLock = new();
 
-        bool _isCompilingShaders = false;
-        CompileShaderResponse _lastSingleShaderResult = null;
-        CompileAllShadersResponse _lastAllShadersResult = null;
-        CompileShadersRegexResponse _lastRegexShadersResult = null;
-        string _lastShaderCompilationType = "none";
-        DateTime _lastShaderCompilationTime = DateTime.MinValue;
+        private bool _isCompilingShaders;
+        private CompileShaderResponse _lastSingleShaderResult;
+        private CompileAllShadersResponse _lastAllShadersResult;
+        private CompileShadersRegexResponse _lastRegexShadersResult;
+        private string _lastShaderCompilationType = "none";
+        private DateTime _lastShaderCompilationTime = DateTime.MinValue;
 
         // Regex shader compilation progress tracking
-        string _regexShadersPattern = "";
-        int _regexShadersTotal = 0;
-        int _regexShadersCompleted = 0;
-        string _regexShadersCurrentShader = "";
+        private string _regexShadersPattern = "";
+        private int _regexShadersTotal;
+        private int _regexShadersCompleted;
+        private string _regexShadersCurrentShader = "";
 
         // All shaders compilation progress tracking
-        int _allShadersTotal = 0;
-        int _allShadersCompleted = 0;
-        string _allShadersCurrentShader = "";
+        private int _allShadersTotal;
+        private int _allShadersCompleted;
+        private string _allShadersCurrentShader = "";
 
         public object Lock => _compileLock;
         public object ResultLock => _resultLock;

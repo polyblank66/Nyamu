@@ -7,17 +7,17 @@ namespace Nyamu.Core.StateManagers
     // Manages compilation state with thread-safe access
     public class CompilationStateManager
     {
-        readonly object _lock = new object();
-        List<CompileError> _errors = new();
-        bool _isCompiling;
-        DateTime _lastCompileTime = DateTime.MinValue;
-        DateTime _compileRequestTime = DateTime.MinValue;
+        private readonly object _lock = new();
+        private List<CompileError> _errors = new();
+        private bool _isCompiling;
+        private DateTime _lastCompileTime = DateTime.MinValue;
+        private DateTime _compileRequestTime = DateTime.MinValue;
 
         // Compilation progress tracking
-        int _totalAssemblies;
-        int _completedAssemblies;
-        string _currentAssembly = "";
-        DateTime _compilationStartTime = DateTime.MinValue;
+        private int _totalAssemblies;
+        private int _completedAssemblies;
+        private string _currentAssembly = "";
+        private DateTime _compilationStartTime = DateTime.MinValue;
 
         public object Lock => _lock;
 

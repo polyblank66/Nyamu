@@ -59,10 +59,11 @@ namespace Nyamu.Tools.Editor
     }
 
     // Helper class for capturing execution result
-    class MenuItemExecutionResult
+    [Serializable]
+    internal class MenuItemExecutionResult
     {
-        public bool success = false;
-        public string errorMessage = null;
-        public bool completed = false;
+        public bool success;
+        public string errorMessage;
+        public bool completed;
     }
 }

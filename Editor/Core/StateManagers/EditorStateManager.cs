@@ -3,8 +3,8 @@ namespace Nyamu.Core.StateManagers
     // Manages editor state with thread-safe access
     public class EditorStateManager
     {
-        readonly object _lock = new object();
-        bool _isPlaying = false;
+        private readonly object _lock = new();
+        private bool _isPlaying;
 
         public object Lock => _lock;
 

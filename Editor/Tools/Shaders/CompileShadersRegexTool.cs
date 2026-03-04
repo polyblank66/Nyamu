@@ -26,7 +26,7 @@ namespace Nyamu.Tools.Shaders
                     successfulCompilations = 0,
                     failedCompilations = 0,
                     totalCompilationTime = 0,
-                    results = new ShaderCompileResult[0]
+                    results = Array.Empty<ShaderCompileResult>()
                 });
             }
 
@@ -46,7 +46,7 @@ namespace Nyamu.Tools.Shaders
                         successfulCompilations = 0,
                         failedCompilations = 0,
                         totalCompilationTime = 0,
-                        results = new ShaderCompileResult[0]
+                        results = Array.Empty<ShaderCompileResult>()
                     });
                 }
 
@@ -90,7 +90,7 @@ namespace Nyamu.Tools.Shaders
                     successfulCompilations = 0,
                     failedCompilations = 0,
                     totalCompilationTime = 0,
-                    results = new ShaderCompileResult[0]
+                    results = Array.Empty<ShaderCompileResult>()
                 });
             }
 
@@ -141,7 +141,7 @@ namespace Nyamu.Tools.Shaders
                 successfulCompilations = 0,
                 failedCompilations = 0,
                 totalCompilationTime = 0,
-                results = new ShaderCompileResult[0]
+                results = Array.Empty<ShaderCompileResult>()
             });
         }
     }

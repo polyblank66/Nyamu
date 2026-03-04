@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEditor.Compilation;
 using Nyamu.Core.StateManagers;
 using Nyamu.Tools.Compilation;
@@ -10,8 +9,8 @@ namespace Nyamu.Core.Monitors
     // Monitors Unity compilation events and updates CompilationStateManager
     public class CompilationMonitor
     {
-        readonly CompilationStateManager _state;
-        readonly object _timestampLock = new object();
+        private readonly CompilationStateManager _state;
+        private readonly object _timestampLock = new();
 
         // Exposed for use by external services (e.g., TestCallbacks)
         public object TimestampLock => _timestampLock;
@@ -35,7 +34,7 @@ namespace Nyamu.Core.Monitors
             CompilationPipeline.assemblyCompilationFinished -= OnAssemblyCompilationFinished;
         }
 
-        void OnCompilationStarted(object obj)
+        private void OnCompilationStarted(object obj)
         {
             _state.IsCompiling = true;
             _state.CompilationStartTime = DateTime.Now;
@@ -49,7 +48,7 @@ namespace Nyamu.Core.Monitors
             NyamuLogger.LogDebug($"[Nyamu][Compilation] Started - Total assemblies: {assemblies.Length}");
         }
 
-        void OnCompilationFinished(object obj)
+        private void OnCompilationFinished(object obj)
         {
             _state.IsCompiling = false;
 
@@ -67,7 +66,7 @@ namespace Nyamu.Core.Monitors
             NyamuLogger.LogDebug($"[Nyamu][Compilation] Finished");
         }
 
-        void OnAssemblyCompilationFinished(string assemblyPath, CompilerMessage[] messages)
+        private void OnAssemblyCompilationFinished(string assemblyPath, CompilerMessage[] messages)
         {
             var assemblyName = System.IO.Path.GetFileName(assemblyPath);
 

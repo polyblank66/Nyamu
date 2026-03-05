@@ -1,3 +1,10 @@
+## [0.1.9](https://github.com/polyblank66/Nyamu/compare/v0.1.8...v0.1.9) (2026-03-05)
+
+
+### Bug Fixes
+
+* defer NewScene until after shader match to avoid HTTP server downtime [skip ci] ([f13e954](https://github.com/polyblank66/Nyamu/commit/f13e95464a9030a87182f41be27e7a40247765b8))
+
 ## [0.1.8](https://github.com/polyblank66/Nyamu/compare/v0.1.7...v0.1.8) (2026-02-14)
 
 

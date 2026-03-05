@@ -24,13 +24,13 @@
 
 using UnityEngine;
 using UnityEditor;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text;
 using System.Linq;
 using System;
+using Nyamu.Http;
 using Nyamu.Core;
 using Nyamu.Core.Monitors;
 using Nyamu.Core.StateManagers;
@@ -95,14 +95,11 @@ namespace Nyamu
         public const string SessionKeyRefreshRequestTime = "Nyamu_RefreshRequestTime";
         public const string SessionKeyRefreshCompletedTime = "Nyamu_RefreshCompletedTime";
 
-        // HTTP server components
-        private static HttpListener _listener;
-        private static Task _acceptTask;
-        private static CancellationTokenSource _cancellation;
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Task, byte> ActiveHandlers = new();
+        // HTTP server
+        private static TcpHttpServer _httpServer;
 
         // Deferred recovery: retries port binding via EditorApplication.update after
-        // immediate retries fail (e.g. due to TIME_WAIT from Mono raw sockets).
+        // immediate retries fail.
         private static bool _deferredRecoveryActive;
         private static int _deferredRetryAttempt;
         private static double _deferredRetryTime;
@@ -168,17 +165,11 @@ namespace Nyamu
             // _deferredRecoveryActive may still be true if "Disable Domain Reload" is on.
             _deferredRecoveryActive = false;
 
-            // Domain reload safety: ensure previous instance is fully cleaned up
-            // When "Disable Domain Reload" is enabled, static fields persist across Play Mode transitions
-            if (_acceptTask != null || _cancellation != null || _listener != null)
-            {
+            // Domain reload safety: ensure previous instance is fully cleaned up.
+            // When "Disable Domain Reload" is enabled, static fields persist across Play Mode transitions.
+            if (_httpServer != null)
                 NyamuLogger.LogDebug("[Nyamu][Server] Detected stale state, forcing cleanup");
-                Cleanup();
-            }
-            else
-            {
-                Cleanup();
-            }
+            Cleanup();
 
             // Initialize infrastructure components first (creates state managers and monitors)
             InitializeInfrastructure();
@@ -201,9 +192,8 @@ namespace Nyamu
             {
                 try
                 {
-                    _listener = new HttpListener();
-                    _listener.Prefixes.Add($"http://localhost:{port}/");
-                    _listener.Start();
+                    _httpServer = new TcpHttpServer(port, RouteRequest);
+                    _httpServer.Start();
                     success = true;
                     if (attempt > 0)
                         NyamuLogger.LogInfo($"[Nyamu][Server] Server started on port {port} after {attempt + 1} attempt(s)");
@@ -211,19 +201,8 @@ namespace Nyamu
                 }
                 catch (Exception ex)
                 {
-                    // Port still in use (likely TIME_WAIT state after domain reload)
-                    // Note: Mono may throw SocketException instead of HttpListenerException,
-                    // so we catch all exceptions here to ensure retries always happen.
-                    try
-                    {
-                        _listener?.Close();
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-
-                    _listener = null;
+                    // Port still in use after domain reload.
+                    _httpServer = null;
 
                     if (attempt < maxRetries - 1)
                     {
@@ -250,9 +229,6 @@ namespace Nyamu
                 EditorApplication.update += TryDeferredBind;
                 return;
             }
-
-            _cancellation = new CancellationTokenSource();
-            _acceptTask = AcceptRequestsAsync(_cancellation.Token);
 
             EditorApplication.quitting += Cleanup;
             AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
@@ -341,110 +317,9 @@ namespace Nyamu
             _editorMonitor?.Cleanup();
             SaveTimestampsCache();
 
-            // 1. Cancel accept loop (idempotent - safe to call multiple times)
-            try
-            {
-                _cancellation?.Cancel();
-            }
-            catch (ObjectDisposedException) { } // Already disposed
-
-            // 2. Stop listener (releases port immediately)
-            if (_listener != null)
-            {
-                var wasListening = false;
-                try
-                {
-                    wasListening = _listener.IsListening;
-                    NyamuLogger.LogDebug($"[Nyamu][Server] Stopping listener (IsListening={wasListening})");
-                    if (wasListening) _listener.Stop();
-                    _listener.Close();
-                    NyamuLogger.LogDebug("[Nyamu][Server] Listener closed");
-                }
-                catch (Exception ex)
-                {
-                    NyamuLogger.LogWarning($"[Nyamu][Server] Exception during listener stop/close (wasListening={wasListening}): [{ex.GetType().Name}] {ex.Message}");
-                }
-                finally { _listener = null; }
-            }
-            else
-            {
-                NyamuLogger.LogDebug("[Nyamu][Server] Listener was null at cleanup time (already stopped or never started)");
-            }
-
-            // 3. Wait for accept loop to exit (with timeout to avoid blocking too long)
-            if (_acceptTask != null)
-            {
-                var taskToTrack = _acceptTask;
-                var taskStatusBefore = _acceptTask.Status;
-                try
-                {
-                    // Wait up to 1 second for task to complete
-                    // This is necessary to ensure port is fully released before rebinding
-                    if (!_acceptTask.Wait(1000))
-                    {
-                        var elapsed = (DateTime.UtcNow - cleanupStart).TotalMilliseconds;
-                        NyamuLogger.LogDebug($"[Nyamu][Server] Accept loop still running after 1s (elapsed: {elapsed:F0}ms, status before wait: {taskStatusBefore}, status after: {taskToTrack.Status})");
-
-                        _ = taskToTrack.ContinueWith(t =>
-                        {
-                            var status = t.IsFaulted ? $"faulted ({t.Exception?.GetBaseException().Message})"
-                                       : t.IsCanceled ? "canceled"
-                                       : "completed";
-                            NyamuLogger.LogDebug($"[Nyamu][Server] Dangling accept task finally {status}");
-                        }, TaskScheduler.Default);
-                    }
-                    else
-                    {
-                        var elapsed = (DateTime.UtcNow - cleanupStart).TotalMilliseconds;
-                        NyamuLogger.LogDebug($"[Nyamu][Server] Accept loop exited cleanly (elapsed: {elapsed:F0}ms)");
-                    }
-                }
-                catch (AggregateException) { } // Expected from task cancellation
-                catch
-                {
-                    // ignored
-                }
-                finally { _acceptTask = null; }
-            }
-
-            // 4. Wait for active request handlers to complete (with timeout)
-            var activeHandlers = ActiveHandlers.Keys.ToArray();
-            if (activeHandlers.Length > 0)
-            {
-                try
-                {
-                    NyamuLogger.LogDebug($"[Nyamu][Server] Waiting for {activeHandlers.Length} active request handler(s) to complete");
-
-                    // Wait up to 2 seconds for handlers to finish
-                    if (!Task.WaitAll(activeHandlers, 2000))
-                    {
-                        var stillRunning = 0;
-                        foreach (var t in activeHandlers)
-                            if (!t.IsCompleted) stillRunning++;
-                        NyamuLogger.LogWarning($"[Nyamu][Server] {stillRunning} request handler(s) still running after 2s, forcing cleanup");
-                    }
-                }
-                catch (AggregateException) { } // Expected from handler exceptions
-                catch
-                {
-                    // ignored
-                }
-                finally
-                {
-                    ActiveHandlers.Clear();
-                }
-            }
-
-            // 5. Dispose cancellation token
-            try
-            {
-                _cancellation?.Dispose();
-                _cancellation = null;
-            }
-            catch
-            {
-                // ignored
-            }
+            // Stop HTTP server (releases port, waits for in-flight handlers)
+            _httpServer?.Stop();
+            _httpServer = null;
 
             NyamuLogger.LogDebug($"[Nyamu][Server] Cleanup finished (total elapsed: {(DateTime.UtcNow - cleanupStart).TotalMilliseconds:F0}ms)");
         }
@@ -478,12 +353,8 @@ namespace Nyamu
 
             try
             {
-                _listener = new HttpListener();
-                _listener.Prefixes.Add($"http://localhost:{port}/");
-                _listener.Start();
-
-                _cancellation = new CancellationTokenSource();
-                _acceptTask = AcceptRequestsAsync(_cancellation.Token);
+                _httpServer = new TcpHttpServer(port, RouteRequest);
+                _httpServer.Start();
                 EditorApplication.quitting += Cleanup;
                 AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
 
@@ -493,13 +364,7 @@ namespace Nyamu
             }
             catch (Exception ex)
             {
-                try { _listener?.Close(); }
-                catch
-                {
-                    // ignored
-                }
-
-                _listener = null;
+                _httpServer = null;
 
                 if (_deferredRetryAttempt >= MaxDeferredAttempts)
                 {
@@ -515,70 +380,11 @@ namespace Nyamu
         }
 
         // ========================================================================
-        // HTTP SERVER INFRASTRUCTURE
+        // HTTP REQUEST ROUTING
         // ========================================================================
 
-        private static async Task AcceptRequestsAsync(CancellationToken token)
-        {
-            while (!token.IsCancellationRequested)
-            {
-                try
-                {
-                    // GetContextAsync() is cancellation-aware
-                    var contextTask = _listener.GetContextAsync();
 
-                    // Race between context arrival and cancellation
-                    var completed = await Task.WhenAny(contextTask, Task.Delay(-1, token));
-
-                    if (completed != contextTask)
-                        break; // Cancellation won the race
-
-                    var context = await contextTask;
-
-                    // Process in ThreadPool (preserves existing multi-threading behavior)
-                    var handlerTask = Task.Run(() =>
-                    {
-                        try
-                        {
-                            ProcessHttpRequest(context);
-                        }
-                        catch (Exception ex)
-                        {
-                            HandleHttpException(ex);
-                        }
-                    }, token);
-
-                    // Track active handler and remove when completed
-                    ActiveHandlers.TryAdd(handlerTask, 0);
-                    _ = handlerTask.ContinueWith(t => ActiveHandlers.TryRemove(t, out _), TaskScheduler.Default);
-                }
-                catch (ObjectDisposedException) { break; } // Listener stopped
-                catch (HttpListenerException) { break; }  // Listener error
-                catch (Exception ex) { HandleHttpException(ex); }
-            }
-        }
-
-        private static void ProcessHttpRequest(HttpListenerContext context)
-        {
-            var request = context.Request;
-            var response = context.Response;
-
-            SetupResponseHeaders(response);
-
-            var responseString = RouteRequest(request, response);
-            SendResponse(response, responseString);
-        }
-
-        private static void SetupResponseHeaders(HttpListenerResponse response)
-        {
-            response.StatusCode = (int)HttpStatusCode.OK;
-            response.ContentType = "application/json";
-            response.Headers.Add("Access-Control-Allow-Origin", "*");
-            response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
-        }
-
-        private static string RouteRequest(HttpListenerRequest request, HttpListenerResponse response)
+        private static string RouteRequest(TcpHttpRequest request, TcpHttpResponse response)
         {
             return request.Url.AbsolutePath switch
             {
@@ -704,7 +510,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleTestsRunSingleRequest(HttpListenerRequest request)
+        private static string HandleTestsRunSingleRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunSingleRequest");
 
@@ -742,7 +548,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleTestsRunAllRequest(HttpListenerRequest request)
+        private static string HandleTestsRunAllRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleTestsRunAllRequest");
 
@@ -778,7 +584,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleTestsRunRegexRequest(HttpListenerRequest request)
+        private static string HandleTestsRunRegexRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsRunRegexRequest");
 
@@ -827,7 +633,7 @@ namespace Nyamu
         }
 
         // ReSharper disable once UnusedParameter.Local
-        private static string HandleTestsCancelRequest(HttpListenerRequest request)
+        private static string HandleTestsCancelRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug($"[Nyamu][Server] Entering HandleTestsCancelRequest");
 
@@ -871,7 +677,7 @@ namespace Nyamu
         }
 
 
-        private static string HandleCompileShaderRequest(HttpListenerRequest request)
+        private static string HandleCompileShaderRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileShaderRequest");
 
@@ -902,7 +708,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleCompileAllShadersRequest(HttpListenerRequest request)
+        private static string HandleCompileAllShadersRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileAllShadersRequest");
             if (request.HttpMethod != "POST")
@@ -925,7 +731,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleCompileShadersRegexRequest(HttpListenerRequest request)
+        private static string HandleCompileShadersRegexRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCompileShadersRegexRequest");
             if (request.HttpMethod != "POST")
@@ -948,7 +754,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleShaderCompilationStatusRequest(HttpListenerRequest request)
+        private static string HandleShaderCompilationStatusRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleShaderCompilationStatusRequest");
             if (request.HttpMethod != "GET")
@@ -960,7 +766,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleExecuteMenuItemRequest(HttpListenerRequest request)
+        private static string HandleExecuteMenuItemRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleExecuteMenuItemRequest");
 
@@ -975,7 +781,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleEditorExitPlayModeRequest(HttpListenerRequest request)
+        private static string HandleEditorExitPlayModeRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleEditorExitPlayModeRequest");
 
@@ -988,19 +794,12 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleNotFoundRequest(HttpListenerResponse response)
+        private static string HandleNotFoundRequest(TcpHttpResponse response)
         {
             response.StatusCode = 404;
             return "{\"status\":\"error\",\"message\":\"Endpoint not found\"}";
         }
 
-        private static void SendResponse(HttpListenerResponse response, string content)
-        {
-            var buffer = Encoding.UTF8.GetBytes(content);
-            response.ContentLength64 = buffer.Length;
-            response.OutputStream.Write(buffer, 0, buffer.Length);
-            response.OutputStream.Close();
-        }
 
         private static void LoadTimestampsCache()
         {
@@ -1238,7 +1037,7 @@ namespace Nyamu
             }
         }
 
-        private static string HandleAssetsRefreshRequest(HttpListenerRequest request)
+        private static string HandleAssetsRefreshRequest(TcpHttpRequest request)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleAssetsRefreshRequest");
 
@@ -1252,7 +1051,7 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static string HandleAssetsRefreshStatusRequest(HttpListenerRequest _)
+        private static string HandleAssetsRefreshStatusRequest(TcpHttpRequest _)
         {
             NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleAssetsRefreshStatusRequest");
 
@@ -1322,19 +1121,5 @@ namespace Nyamu
             return JsonUtility.ToJson(response);
         }
 
-        private static void HandleHttpException(Exception ex)
-        {
-            if (ex is HttpListenerException or ThreadAbortException)
-                return;
-
-            // Ignore common client disconnection errors
-            if (ex.Message.Contains("transport connection") ||
-                ex.Message.Contains("forcibly closed") ||
-                ex.Message.Contains("connection was aborted"))
-                return;
-
-            if (_cancellation == null || !_cancellation.IsCancellationRequested)
-                NyamuLogger.LogException($"[Nyamu][Server] NyamuServer error: {ex.Message}", ex);
-        }
     }
 }

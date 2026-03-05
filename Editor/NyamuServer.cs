@@ -159,6 +159,8 @@ namespace Nyamu
 
         private static void Initialize()
         {
+            NyamuLogger.RefreshMinLogLevel();
+            
             NyamuLogger.LogDebug("[Nyamu][Server] Initialize started");
 
             // Cancel any deferred recovery from a previous initialization attempt.
@@ -282,9 +284,6 @@ namespace Nyamu
             // Initialize monitors (subscribe to Unity events)
             _compilationMonitor.Initialize();
             _editorMonitor.Initialize();
-
-            // Initialize logger's cached min log level to avoid thread-safety issues
-            NyamuLogger.RefreshMinLogLevel();
 
             // Create execution context with monitors and services
             _executionContext = new Core.ExecutionContext(

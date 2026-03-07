@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEditor.Compilation;
 using Nyamu.Core.StateManagers;
 using Nyamu.Tools.Compilation;
@@ -38,6 +37,7 @@ namespace Nyamu.Core.Monitors
         {
             _state.IsCompiling = true;
             _state.CompilationStartTime = DateTime.Now;
+            _state.ClearErrors();
 
             // Get total assembly count for progress tracking
             var assemblies = CompilationPipeline.GetAssemblies();
@@ -73,19 +73,17 @@ namespace Nyamu.Core.Monitors
             _state.CompletedAssemblies++;
             _state.CurrentAssembly = assemblyName;
 
-            // Update compilation errors
-            var errors = new List<CompileError>();
+            // Accumulate compilation errors across all assemblies
             foreach (var msg in messages)
             {
                 if (msg.type == CompilerMessageType.Error)
-                    errors.Add(new CompileError
+                    _state.AddError(new CompileError
                     {
                         file = msg.file,
                         line = msg.line,
                         message = msg.message
                     });
             }
-            _state.Errors = errors;
 
             NyamuLogger.LogDebug($"[Nyamu][Compilation] Assembly finished: {assemblyName} ({_state.CompletedAssemblies}/{_state.TotalAssemblies})");
         }

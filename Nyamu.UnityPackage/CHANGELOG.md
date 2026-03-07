@@ -1,3 +1,10 @@
+## [0.1.11](https://github.com/polyblank66/Nyamu/compare/v0.1.10...v0.1.11) (2026-03-07)
+
+
+### Bug Fixes
+
+* better compilaion errors detection for multiple script assemblies ([94f4499](https://github.com/polyblank66/Nyamu/commit/94f4499467a110c98f29924a5306e7b29a2a7122))
+
 ## [0.1.10](https://github.com/polyblank66/Nyamu/compare/v0.1.9...v0.1.10) (2026-03-06)
 
 

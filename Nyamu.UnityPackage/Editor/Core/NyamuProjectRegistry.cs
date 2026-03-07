@@ -19,7 +19,7 @@ namespace Nyamu.Core
 		private const int MinValidPort = 1024;
 		private const int MaxValidPort = 65535;
 
-		private static readonly object RegistryLock = new();
+		private static readonly object RegistryLock = new object();
 
 		private static string RegistryPath => Path.Combine(
 			Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -39,7 +39,7 @@ namespace Nyamu.Core
 		[Serializable]
 		public class RegistryData
 		{
-			public List<ProjectEntry> projectEntries = new();
+			public List<ProjectEntry> projectEntries = new List<ProjectEntry>();
 			public string version = "1.0";
 		}
 

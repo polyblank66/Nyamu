@@ -9,7 +9,7 @@ namespace Nyamu.Core.Monitors
     public class CompilationMonitor
     {
         private readonly CompilationStateManager _state;
-        private readonly object _timestampLock = new();
+        private readonly object _timestampLock = new object();
 
         // Exposed for use by external services (e.g., TestCallbacks)
         public object TimestampLock => _timestampLock;

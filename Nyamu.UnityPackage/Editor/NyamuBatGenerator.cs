@@ -21,10 +21,13 @@ namespace Nyamu
             // Generate bat file on initial load
             GenerateBatFile();
 
+#if UNITY_2020_2_OR_NEWER
             // Subscribe to package registration events to detect package updates
             Events.registeredPackages += OnPackagesRegistered;
+#endif
         }
 
+#if UNITY_2020_2_OR_NEWER
         // Called when packages are registered (installed/updated/removed)
         private static void OnPackagesRegistered(PackageRegistrationEventArgs args)
         {
@@ -46,6 +49,7 @@ namespace Nyamu
                 GenerateBatFile();
             }
         }
+#endif
 
         private static void GenerateBatFile()
         {

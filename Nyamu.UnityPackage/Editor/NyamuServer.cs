@@ -386,27 +386,25 @@ namespace Nyamu
 
         private static string RouteRequest(TcpHttpRequest request, TcpHttpResponse response)
         {
-            return request.Url.AbsolutePath switch
-            {
-                Constants.Endpoints.ScriptsCompile => HandleCompileAndWaitRequest(),
-                Constants.Endpoints.ScriptsCompileStatus => HandleCompileStatusRequest(),
-                Constants.Endpoints.TestsRunSingle => HandleTestsRunSingleRequest(request),
-                Constants.Endpoints.TestsRunAll => HandleTestsRunAllRequest(request),
-                Constants.Endpoints.TestsRunRegex => HandleTestsRunRegexRequest(request),
-                Constants.Endpoints.TestsRunStatus => HandleTestsStatusRequest(),
-                Constants.Endpoints.AssetsRefresh => HandleAssetsRefreshRequest(request),
-                Constants.Endpoints.AssetsRefreshStatus => HandleAssetsRefreshStatusRequest(request),
-                Constants.Endpoints.EditorStatus => HandleEditorStatusRequest(),
-                Constants.Endpoints.InternalMcpSettings => HandleMcpSettingsRequest(),
-                Constants.Endpoints.TestsRunCancel => HandleTestsCancelRequest(request),
-                Constants.Endpoints.ShadersCompileSingle => HandleCompileShaderRequest(request),
-                Constants.Endpoints.ShadersCompileAll => HandleCompileAllShadersRequest(request),
-                Constants.Endpoints.ShadersCompileRegex => HandleCompileShadersRegexRequest(request),
-                Constants.Endpoints.ShadersCompileStatus => HandleShaderCompilationStatusRequest(request),
-                Constants.Endpoints.MenuItemsExecute => HandleExecuteMenuItemRequest(request),
-                Constants.Endpoints.EditorExitPlayMode => HandleEditorExitPlayModeRequest(request),
-                _ => HandleNotFoundRequest(response)
-            };
+            var path = request.Url.AbsolutePath;
+            if (path == Constants.Endpoints.ScriptsCompile) return HandleCompileAndWaitRequest();
+            if (path == Constants.Endpoints.ScriptsCompileStatus) return HandleCompileStatusRequest();
+            if (path == Constants.Endpoints.TestsRunSingle) return HandleTestsRunSingleRequest(request);
+            if (path == Constants.Endpoints.TestsRunAll) return HandleTestsRunAllRequest(request);
+            if (path == Constants.Endpoints.TestsRunRegex) return HandleTestsRunRegexRequest(request);
+            if (path == Constants.Endpoints.TestsRunStatus) return HandleTestsStatusRequest();
+            if (path == Constants.Endpoints.AssetsRefresh) return HandleAssetsRefreshRequest(request);
+            if (path == Constants.Endpoints.AssetsRefreshStatus) return HandleAssetsRefreshStatusRequest(request);
+            if (path == Constants.Endpoints.EditorStatus) return HandleEditorStatusRequest();
+            if (path == Constants.Endpoints.InternalMcpSettings) return HandleMcpSettingsRequest();
+            if (path == Constants.Endpoints.TestsRunCancel) return HandleTestsCancelRequest(request);
+            if (path == Constants.Endpoints.ShadersCompileSingle) return HandleCompileShaderRequest(request);
+            if (path == Constants.Endpoints.ShadersCompileAll) return HandleCompileAllShadersRequest(request);
+            if (path == Constants.Endpoints.ShadersCompileRegex) return HandleCompileShadersRegexRequest(request);
+            if (path == Constants.Endpoints.ShadersCompileStatus) return HandleShaderCompilationStatusRequest(request);
+            if (path == Constants.Endpoints.MenuItemsExecute) return HandleExecuteMenuItemRequest(request);
+            if (path == Constants.Endpoints.EditorExitPlayMode) return HandleEditorExitPlayModeRequest(request);
+            return HandleNotFoundRequest(response);
         }
 
         private static string HandleCompileAndWaitRequest()
@@ -684,8 +682,9 @@ namespace Nyamu
             CompileShaderRequest toolRequest = null;
             try
             {
-                using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
-                var body = reader.ReadToEnd();
+                string body;
+                using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+                    body = reader.ReadToEnd();
                 // Parse as old format first, then convert to new
                 var oldRequest = JsonUtility.FromJson<CompileShaderRequest>(body);
                 if (oldRequest != null)
@@ -702,7 +701,7 @@ namespace Nyamu
                 return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
             }
 
-            toolRequest ??= new CompileShaderRequest { timeout = 30 };
+            if (toolRequest == null) toolRequest = new CompileShaderRequest { timeout = 30 };
 
             var response = _compileShaderTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
@@ -725,7 +724,7 @@ namespace Nyamu
                 return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
             }
 
-            toolRequest ??= new CompileAllShadersRequest { timeout = 120 };
+            if (toolRequest == null) toolRequest = new CompileAllShadersRequest { timeout = 120 };
 
             var response = _compileAllShadersTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
@@ -748,7 +747,7 @@ namespace Nyamu
                 return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
             }
 
-            toolRequest ??= new CompileShadersRegexToolRequest { timeout = 120 };
+            if (toolRequest == null) toolRequest = new CompileShadersRegexToolRequest { timeout = 120 };
 
             var response = _compileShadersRegexTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);

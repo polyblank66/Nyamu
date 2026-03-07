@@ -6,8 +6,8 @@ namespace Nyamu.Core.StateManagers
     // Manages shader compilation state with thread-safe access
     public class ShaderStateManager
     {
-        private readonly object _compileLock = new();
-        private readonly object _resultLock = new();
+        private readonly object _compileLock = new object();
+        private readonly object _resultLock = new object();
 
         private bool _isCompilingShaders;
         private CompileShaderResponse _lastSingleShaderResult;

@@ -20,7 +20,7 @@ namespace Nyamu.Http
         private TcpListener _listener;
         private CancellationTokenSource _cts;
         private Task _acceptTask;
-        private readonly ConcurrentDictionary<Task, byte> _activeHandlers = new();
+        private readonly ConcurrentDictionary<Task, byte> _activeHandlers = new ConcurrentDictionary<Task, byte>();
 
         internal TcpHttpServer(int port, Func<TcpHttpRequest, TcpHttpResponse, string> requestHandler)
         {
@@ -227,7 +227,7 @@ namespace Nyamu.Http
 
         private void HandleException(Exception ex)
         {
-            if (ex is SocketException or ThreadAbortException) return;
+            if (ex is SocketException || ex is ThreadAbortException) return;
             if (ex.Message.Contains("transport connection") ||
                 ex.Message.Contains("forcibly closed") ||
                 ex.Message.Contains("connection was aborted")) return;

@@ -3,7 +3,7 @@ namespace Nyamu.Core.StateManagers
     // Manages asset refresh state with thread-safe access
     public class AssetStateManager
     {
-        private readonly object _lock = new();
+        private readonly object _lock = new object();
         private bool _isRefreshing;
         private bool _isMonitoringRefresh;
         private bool _unityIsUpdating;

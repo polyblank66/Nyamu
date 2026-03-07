@@ -42,31 +42,41 @@ namespace Nyamu
 			}
 		}
 
+#if UNITY_2021_3_OR_NEWER
 		[HideInCallstack]
+#endif
 		public static void LogDebug(string message)
 		{
 			LogInternal(message, LogLevel.Debug);
 		}
 
+#if UNITY_2021_3_OR_NEWER
 		[HideInCallstack]
+#endif
 		public static void LogInfo(string message)
 		{
 			LogInternal(message, LogLevel.Info);
 		}
 
+#if UNITY_2021_3_OR_NEWER
 		[HideInCallstack]
+#endif
 		public static void LogWarning(string message)
 		{
 			LogInternal(message, LogLevel.Warning);
 		}
 
+#if UNITY_2021_3_OR_NEWER
 		[HideInCallstack]
+#endif
 		public static void LogError(string message)
 		{
 			LogInternal(message, LogLevel.Error);
 		}
 
+#if UNITY_2021_3_OR_NEWER
 		[HideInCallstack]
+#endif
 		public static void LogException(string message, Exception exception)
 		{
 			LogError(message);
@@ -76,7 +86,9 @@ namespace Nyamu
 				Debug.unityLogger.LogException(exception);
 		}
 
+#if UNITY_2021_3_OR_NEWER
 		[HideInCallstack]
+#endif
 		private static void LogInternal(string message, LogLevel logLevel)
 		{
 			// Use cached min log level to avoid accessing NyamuSettings from non-main threads

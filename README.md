@@ -21,7 +21,7 @@ Check script compilation with Nyamu MCP tool
 | Windsurf             | ✅      | 1.13.5                     | 0.1.0         | 2026-01-02 |                                                  |
 | Gemini CLI           | ✅      | 0.22.5                     | 0.1.0         | 2026-01-04 |                                                  |
 | Rider + Junie        | ❌      | 2025.3.0.4 + 253.549.29    | 0.1.0         | 2025-12-13 | Error in the settings for the nyamu tool         |
-| Codex                | ❌      | 0.72.0                     | 0.1.0         | 2025-12-13 | Tool is not visible via the `/mcp` command       |
+| Codex                | ✅      | 0.124.0                    | 0.1.11        | 2026-04-24 |                                                  |
 
 ## Features
 

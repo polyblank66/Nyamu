@@ -30,6 +30,8 @@
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
 | `/editor-status` | GET | Get Editor state | None |
+| `/editor-enter-play-mode` | GET | Request Editor to enter Play Mode | None |
+| `/editor-exit-play-mode` | GET | Request Editor to exit Play Mode | None |
 
 ### Shader Compilation
 
@@ -100,6 +102,46 @@ GET /tests-run-regex?filter_regex=MyNamespace\.MyTests\.SpecificTest&mode=EditMo
 
 # Run all tests in a namespace:
 GET /tests-run-regex?filter_regex=MyNamespace\..*&mode=EditMode
+```
+
+### Editor Status
+
+**Endpoint:** `GET /editor-status`
+
+**Response Fields:**
+- `isCompiling`, `isRunningTests`, `isRefreshing`, `isWaitingForCompilation`: booleans
+- `isPlaying`: is the Editor currently in Play Mode
+- `isPaused`: is the Editor paused (only meaningful while `isPlaying` is true)
+- `isEnteringPlayMode`: a Play Mode entry has been requested but is not yet running
+- `isExitingPlayMode`: leaving Play Mode, Edit Mode is not yet restored
+- `stateAgeSeconds`: seconds since the last `EditorApplication.update` tick; `-1` if never sampled
+- `isStateStale`: `true` when `stateAgeSeconds` exceeds ~2s, meaning the Editor's main thread may not be ticking (mid-compile, mid-domain-reload, or blocked by a modal dialog) - treat the other fields as unreliable while this is true
+- `lastEditorUpdateUtc`: ISO 8601 timestamp of the last sample; `""` if never sampled
+
+`isEnteringPlayMode` and `isExitingPlayMode` are mutually exclusive and both short-lived: a domain reload begins almost immediately after either transition starts and takes the HTTP server down with it, so most callers observe `false → (connection gap) → new steady state` rather than catching the flag mid-flight.
+
+### Play Mode Transitions
+
+**Endpoints:** `GET /editor-enter-play-mode`, `GET /editor-exit-play-mode`
+
+Both requests are asynchronous by necessity: Unity applies `EditorApplication.isPlaying` at the end of the current editor frame and then reloads the script domain, which stops the Nyamu HTTP server for anywhere from a few hundred milliseconds to several seconds. The response you get back confirms only that **the request reached Unity's main thread**, not that the transition finished - poll `/editor-status` afterwards to confirm the outcome.
+
+**Response Fields:**
+- `success`: boolean
+- `status`: one of
+  - Enter: `requested`, `already_playing`, `blocked` (Unity is compiling), `main_thread_timeout`, `error`
+  - Exit: `exit_requested`, `not_playing`, `main_thread_timeout`, `error`
+- `message`: human-readable detail
+- `wasPlaying`: the Editor's play/transition state at the moment the request was processed
+
+`main_thread_timeout` means the Editor's main thread did not process the request within 3 seconds (compiling, mid-reload, or a blocked modal dialog) - the request may still apply later, so re-check `/editor-status` before retrying.
+
+**Example:**
+```bash
+# Enter Play Mode, then poll for confirmation
+GET /editor-enter-play-mode
+# ... wait 3-5s if the server is briefly unreachable ...
+GET /editor-status   # confirm isPlaying: true
 ```
 
 ### Test Status

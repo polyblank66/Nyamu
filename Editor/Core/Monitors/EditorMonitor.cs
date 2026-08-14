@@ -1,3 +1,5 @@
+using System;
+using System.Diagnostics;
 using UnityEditor;
 using Nyamu.Core.StateManagers;
 using Nyamu.Core.Interfaces;
@@ -30,11 +32,29 @@ namespace Nyamu.Core.Monitors
 
         private void OnEditorUpdate()
         {
-            // Execute main thread actions
+            // Execute main thread actions first, so a play mode request issued in
+            // this same tick is already reflected in the sample taken below.
             _unityThreadExecutor.Process();
 
-            // Update play mode state (thread-safe)
-            _state.IsPlaying = EditorApplication.isPlaying;
+            // Sample editor state. Unity only exposes the transition as the pair
+            // (isPlaying, isPlayingOrWillChangePlaymode); read together, within
+            // this single tick, they identify the phase unambiguously:
+            //
+            //   isPlaying | willChange | phase                | reported as
+            //   ----------|------------|----------------------|---------------------
+            //   false     | false      | idle in Edit Mode    | both flags false
+            //   false     | true       | entering Play Mode   | isEnteringPlayMode
+            //   true      | true       | playing              | both flags false
+            //   true      | false      | exiting Play Mode    | isExitingPlayMode
+            var isPlaying = EditorApplication.isPlaying;
+            var willChangePlaymode = EditorApplication.isPlayingOrWillChangePlaymode;
+            var isPaused = EditorApplication.isPaused;
+            var isEnteringPlayMode = willChangePlaymode && !isPlaying;
+            var isExitingPlayMode = isPlaying && !willChangePlaymode;
+
+            // Publish atomically (thread-safe)
+            _state.SetSnapshot(isPlaying, isPaused, isEnteringPlayMode, isExitingPlayMode,
+                DateTime.UtcNow, Stopwatch.GetTimestamp());
 
             // Refresh cached settings periodically
             _settingsMonitor.Update();

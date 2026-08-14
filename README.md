@@ -46,7 +46,11 @@ Check script compilation with Nyamu MCP tool
 * `tests_run_cancel` – Cancels running Unity test execution. Supports cancellation of EditMode tests by GUID or current test run. Note: Tool is only available with NUnit v2 (package: com.unity.ext.nunit)
 
 ### Editor Status
-* `editor_status` – Returns the current Unity Editor status, including compilation state, test execution state, and play mode state, for real-time monitoring.
+* `editor_status` – Returns the current Unity Editor status: compilation state, test execution state, play mode state (including whether it's paused, entering, or exiting Play Mode), asset refresh state, and how stale the cached state is (`stateAgeSeconds`, `isStateStale`). Works while the Editor is in Play Mode.
+
+### Play Mode Control
+* `editor_enter_play_mode` – Requests Unity to enter Play Mode. Unity applies the change at the end of the current editor frame and then reloads the script domain, so the Nyamu HTTP server is briefly unreachable afterwards. Reports that the request was accepted, not that Play Mode is already running — confirm with `editor_status`.
+* `editor_exit_play_mode` – Requests Unity to exit Play Mode back to Edit Mode. Same domain-reload caveat as above — confirm with `editor_status`.
 
 ### Menu Item Execution
 * `menu_items_execute` – Executes any Unity Editor menu item by its path. Useful for automating Unity Editor operations programmatically.

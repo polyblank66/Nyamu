@@ -963,7 +963,107 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n    \"isCompiling\": false,\n    \"isRunningTests\": false,\n    \"isPlaying\": false\n}"
+              "body": "{\n    \"isCompiling\": false,\n    \"isRunningTests\": false,\n    \"isPlaying\": false,\n    \"isRefreshing\": false,\n    \"isWaitingForCompilation\": false,\n    \"isPaused\": false,\n    \"isEnteringPlayMode\": false,\n    \"isExitingPlayMode\": false,\n    \"stateAgeSeconds\": 0.05,\n    \"isStateStale\": false,\n    \"lastEditorUpdateUtc\": \"2026-01-01T14:30:00.0000000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Editor Enter Play Mode",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/editor-enter-play-mode",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "editor-enter-play-mode"
+              ]
+            },
+            "description": "Requests Unity to enter Play Mode. Confirms only that the request reached the Editor's main thread - Unity applies it at end of frame and then reloads the script domain, so the server is briefly unreachable afterwards. Poll Editor Status to confirm the outcome."
+          },
+          "response": [
+            {
+              "name": "Requested",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/editor-enter-play-mode",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "editor-enter-play-mode"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Play Mode entry requested. Unity applies it at the end of the current editor frame and then reloads the script domain, so the Nyamu HTTP server is briefly unreachable. Poll editor_status until isPlaying is true.\",\n    \"status\": \"requested\",\n    \"wasPlaying\": false\n}"
+            }
+          ]
+        },
+        {
+          "name": "Editor Exit Play Mode",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/editor-exit-play-mode",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "editor-exit-play-mode"
+              ]
+            },
+            "description": "Requests Unity to exit Play Mode back to Edit Mode. Confirms only that the request reached the Editor's main thread - Unity applies it at end of frame and then reloads the script domain, so the server is briefly unreachable afterwards. Poll Editor Status to confirm the outcome."
+          },
+          "response": [
+            {
+              "name": "Not Playing",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/editor-exit-play-mode",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "editor-exit-play-mode"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Editor was not in Play Mode. No change was made.\",\n    \"status\": \"not_playing\",\n    \"wasPlaying\": false\n}"
             }
           ]
         }

@@ -60,6 +60,7 @@ namespace Nyamu
         {
             public const string AssetsRefresh = "/assets-refresh";
             public const string AssetsRefreshStatus = "/assets-refresh-status";
+            public const string EditorEnterPlayMode = "/editor-enter-play-mode";
             public const string EditorExitPlayMode = "/editor-exit-play-mode";
             public const string EditorStatus = "/editor-status";
             public const string InternalMcpSettings = "/internal-mcp-settings";
@@ -135,6 +136,7 @@ namespace Nyamu
         private static AssetsRefreshTool _assetsRefreshTool;
         private static ExecuteMenuItemTool _executeMenuItemTool;
         private static EditorExitPlayModeTool _editorExitPlayModeTool;
+        private static EditorEnterPlayModeTool _editorEnterPlayModeTool;
 
         // Step 4 Group B: test tools
         private static TestsRunSingleTool _testsRunSingleTool;
@@ -288,6 +290,7 @@ namespace Nyamu
             _assetsRefreshTool = new AssetsRefreshTool();
             _executeMenuItemTool = new ExecuteMenuItemTool();
             _editorExitPlayModeTool = new EditorExitPlayModeTool();
+            _editorEnterPlayModeTool = new EditorEnterPlayModeTool();
 
             // Create tools (Step 4 Group B: test tools)
             _testsRunSingleTool = new TestsRunSingleTool();
@@ -404,6 +407,7 @@ namespace Nyamu
                 Constants.Endpoints.ShadersCompileRegex => HandleCompileShadersRegexRequest(request),
                 Constants.Endpoints.ShadersCompileStatus => HandleShaderCompilationStatusRequest(request),
                 Constants.Endpoints.MenuItemsExecute => HandleExecuteMenuItemRequest(request),
+                Constants.Endpoints.EditorEnterPlayMode => HandleEditorEnterPlayModeRequest(request),
                 Constants.Endpoints.EditorExitPlayMode => HandleEditorExitPlayModeRequest(request),
                 _ => HandleNotFoundRequest(response)
             };
@@ -778,6 +782,19 @@ namespace Nyamu
             // Use new tool architecture
             var toolRequest = new ExecuteMenuItemRequest { menuItemPath = menuItemPath };
             var response = _executeMenuItemTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
+        }
+
+        private static string HandleEditorEnterPlayModeRequest(TcpHttpRequest request)
+        {
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleEditorEnterPlayModeRequest");
+
+            if (request.HttpMethod != "GET")
+                return "{\"status\":\"error\",\"message\":\"Method not allowed. Use GET.\"}";
+
+            // Use new tool architecture
+            var toolRequest = new EditorEnterPlayModeRequest();
+            var response = _editorEnterPlayModeTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
         }
 

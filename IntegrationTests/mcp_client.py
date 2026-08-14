@@ -292,6 +292,21 @@ class MCPClient:
             }
         })
 
+    async def editor_enter_play_mode(self) -> Dict[str, Any]:
+        """Enter Unity PlayMode
+
+        Returns:
+            MCP response with enter play mode request status.
+
+        Note:
+            Unity applies the transition at end of frame and then reloads the
+            domain, so the Nyamu HTTP server is briefly unreachable afterwards.
+        """
+        return await self._send_request("tools/call", {
+            "name": "editor_enter_play_mode",
+            "arguments": {}
+        })
+
     async def editor_exit_play_mode(self) -> Dict[str, Any]:
         """Exit Unity PlayMode
 

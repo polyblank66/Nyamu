@@ -24,9 +24,14 @@ async def test_editor_exit_play_mode_basic():
             import json
             response_data = json.loads(content["text"])
 
-            # Verify response values
+            # Verify response values. The Editor is normally not in Play Mode
+            # when this test runs, so "not_playing" is the expected status -
+            # regression test for the tool previously claiming
+            # "Successfully exited PlayMode" even when nothing changed.
             assert response_data["success"] is True
-            assert "Successfully exited PlayMode" in response_data["message"]
+            assert response_data["status"] in ("exit_requested", "not_playing")
+            if response_data["status"] == "not_playing":
+                assert "Successfully exited" not in response_data["message"]
         except RuntimeError as e:
             # Expected when Unity Editor is not running
             if "Unity HTTP server timeout" in str(e):

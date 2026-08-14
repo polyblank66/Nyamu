@@ -56,6 +56,13 @@ Available shader compilation tools:
 
 ### Editor Tools
 - `editor_status` - Get Unity Editor status including compilation, test execution, and play mode state (no params)
+  - Play mode fields: `isPlaying`, `isPaused`, `isEnteringPlayMode`, `isExitingPlayMode`
+  - Staleness fields: `stateAgeSeconds`, `isStateStale`, `lastEditorUpdateUtc` - use these to tell whether the cached state is still trustworthy (e.g. during a slow domain reload)
+  - Works while the Editor is in Play Mode
+- `editor_enter_play_mode` - Request Unity to enter Play Mode (no params)
+- `editor_exit_play_mode` - Request Unity to exit Play Mode back to Edit Mode (no params)
+  - Both tools report that the request was accepted, not that the transition is complete - poll `editor_status` to confirm
+  - Both trigger a domain reload: expect `-32603` for a few seconds after calling; wait 3-5s and retry, then confirm via `editor_status`
 
 ### Editor Log Tools
 Available editor log tools:

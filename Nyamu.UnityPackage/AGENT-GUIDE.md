@@ -123,6 +123,29 @@ Modifying Assets/Scripts/PlayerController.cs (fixing a bug)
 - Force refresh ensures clean state
 - **Response includes compilation errors** to verify the move was successful
 
+### Workflow 5: Entering and Exiting Play Mode
+
+```
+1. Call: editor_enter_play_mode
+2. Response confirms the REQUEST was accepted, not that Play Mode is running yet
+   ("status": "requested" - Unity applies it at end of frame, then reloads the domain)
+3. Expect a transient connection error (-32603) on the next call - this is normal
+4. Wait 3-5 seconds, then poll: editor_status
+5. Confirm: isPlaying === true and isStateStale === false
+6. ... do work while playing ...
+7. Call: editor_exit_play_mode
+8. Wait 3-5 seconds, then poll: editor_status until isPlaying === false
+```
+
+**Why request/confirm instead of a single blocking call:**
+- The transition triggers a domain reload, which is the same event that stops the HTTP server
+- Waiting for the reload to finish before responding would mean holding the connection across the very outage that kills it
+- `editor_status`'s `isEnteringPlayMode` / `isExitingPlayMode` flags are correct when observable, but both are short-lived - most callers see the transition as a gap in connectivity rather than catching the flag mid-flight
+
+**Response `status` values:**
+- Enter: `requested`, `already_playing` (no-op, not an error), `blocked` (Unity is compiling), `main_thread_timeout`, `error`
+- Exit: `exit_requested`, `not_playing` (no-op, not an error), `main_thread_timeout`, `error`
+
 ## Error Handling
 
 ### Error -32603: HTTP Request Failed
@@ -144,6 +167,7 @@ Modifying Assets/Scripts/PlayerController.cs (fixing a bug)
 - During `scripts_compile` - Unity is compiling
 - During `assets_refresh` - Unity is refreshing asset database
 - During `tests_run_*` - Unity Test Runner is initializing
+- During/after `editor_enter_play_mode` or `editor_exit_play_mode` - entering and exiting Play Mode both trigger a domain reload. Allow up to 30 seconds total before treating this as a real failure.
 
 **Example retry pattern:**
 ```
@@ -527,6 +551,13 @@ Progress: "Compiling StandardSpecular.shader (11/50)"
 - Increase timeout to 45-60 seconds
 - Check Unity console for hangs
 - Verify no infinite loops in Unity code
+
+### Issue: "Play Mode transition seems to hang"
+**Solution:**
+- `editor_enter_play_mode` / `editor_exit_play_mode` report that the *request* was accepted, not that the transition finished - they never wait for the domain reload
+- The connection error you see right after calling either tool is the domain reload doing its normal teardown, not a hang
+- Poll `editor_status` (not the play-mode tool again) until `isPlaying` reflects the state you expect and `isStateStale` is false
+- If `editor_status` itself stays unreachable for more than ~30 seconds, the Editor's main thread is genuinely stuck - check the Unity window for a modal dialog or a runaway script
 
 ### Issue: "MCP connection lost"
 **Solution:**

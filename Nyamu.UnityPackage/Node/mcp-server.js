@@ -331,6 +331,22 @@ class MCPServer {
                         required: []
                     }
                 },
+                editor_enter_play_mode: {
+                    description: "Enters Unity Play Mode. Unity applies the change at the end of the current editor frame and then reloads the script domain, so the Nyamu HTTP server drops for a few hundred milliseconds to several seconds. This tool reports that the request was accepted, not that Play Mode is already running - confirm with editor_status. Expect a transient connection error on the next call; wait 3-5 seconds and retry.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
+                        required: []
+                    }
+                },
+                editor_exit_play_mode: {
+                    description: "Exits Unity Play Mode and returns to Edit Mode. Unity applies the change at the end of the current editor frame and then reloads the script domain, so the Nyamu HTTP server drops for a few hundred milliseconds to several seconds. This tool reports that the request was accepted, not that Edit Mode is already restored - confirm with editor_status. Expect a transient connection error on the next call; wait 3-5 seconds and retry.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {},
+                        required: []
+                    }
+                },
                 editor_log_grep: {
                     description: "Searches Unity Editor logs with regex patterns and returns matching lines with surrounding context. Answers questions like: What errors occurred during compilation? When did a specific warning appear? What happened before this exception? Supports JavaScript regex syntax and filtering by error/warning/info severity levels.",
                     inputSchema: {
@@ -414,7 +430,7 @@ class MCPServer {
                     }
                 },
                 editor_status: {
-                    description: "Returns Unity Editor's current state: Is it compiling? Running tests? In play mode? Provides real-time status that answers: What is Unity doing right now?",
+                    description: "Returns Unity Editor's current state: Is it compiling? Running tests? In play mode? Paused? Mid Play Mode transition? Also reports how stale the cached state is (stateAgeSeconds, isStateStale), so you can tell whether the Editor's main thread is still ticking. Answers: What is Unity doing right now?",
                     inputSchema: {
                         type: "object",
                         properties: {},
@@ -755,6 +771,8 @@ class MCPServer {
                     return await this.callEditorLogGrep(id, args.pattern, args.case_sensitive || false, args.context_lines || 0, args.line_limit || 1000, args.log_type || 'all');
                 case 'menu_items_execute':
                     return await this.callExecuteMenuItem(id, args.menu_item_path);
+                case 'editor_enter_play_mode':
+                    return await this.callEditorEnterPlayMode(id);
                 case 'editor_exit_play_mode':
                     return await this.callEditorExitPlayMode(id);
                 default:
@@ -1393,7 +1411,7 @@ class MCPServer {
             };
 
         } catch (error) {
-            throw new Error(`Failed to get editor status: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to get editor status');
         }
     }
 
@@ -1805,6 +1823,22 @@ class MCPServer {
         }
     }
 
+    async callEditorEnterPlayMode(id) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const response = await this.makeHttpRequest(`/editor-enter-play-mode`);
+            const formattedText = this.responseFormatter.formatJsonResponse(response);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: formattedText }] }
+            };
+        } catch (error) {
+            this.rethrowUnityError(error, 'Failed to enter play mode');
+        }
+    }
+
     async callEditorExitPlayMode(id) {
         try {
             await this.ensureResponseFormatter();
@@ -1817,7 +1851,7 @@ class MCPServer {
                 result: { content: [{ type: 'text', text: formattedText }] }
             };
         } catch (error) {
-            throw new Error(`Failed to exit play mode: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to exit play mode');
         }
     }
 
@@ -2200,23 +2234,24 @@ class MCPServer {
     createUnityServerError(error) {
         // Detect Unity server unavailability vs temporary restart
         if (error.code === 'ECONNREFUSED') {
-            // Unity Editor not running or HTTP server not started
+            // Unity Editor not running, or the HTTP server is mid-domain-reload
+            // (a closed listener during a reload is transient, hence retryable: true)
             return new UnityUnavailableError(
                 `Unity Editor HTTP server unavailable at ${this.unityServerUrl}`,
                 {
                     errorType: 'unity_server_unavailable',
-                    instructions: 'INSTRUCTIONS FOR LLM: 1) Verify Unity Editor is running 2) Check if Unity HTTP server is active (should start automatically) 3) Test with: curl http://localhost:17932/compilation-status 4) If Unity is running but server is down, advise user to restart Unity Editor',
-                    retryable: false,
+                    instructions: 'INSTRUCTIONS FOR LLM: The Unity HTTP server is not accepting connections. The most common cause is a domain reload - entering or exiting Play Mode, finishing a compile, or refreshing assets stops the listener for a few hundred milliseconds to several seconds. First: wait 3-5 seconds and retry. If you just called editor_enter_play_mode or editor_exit_play_mode, keep retrying for up to 30 seconds before treating this as a real failure. If it still fails: 1) Verify Unity Editor is running 2) Check the Unity console for [Nyamu][Server] errors 3) Test with: curl http://localhost:17932/editor-status 4) If Unity is running but the server is down, advise the user to restart the Unity Editor.',
+                    retryable: true,
                     originalError: error.message
                 }
             );
         } else if (error.code === 'ECONNRESET' || error.code === 'EPIPE') {
             // Unity HTTP server restarting (temporary)
             return new UnityRestartingError(
-                'Unity HTTP server restarting during compilation/asset refresh',
+                'Unity HTTP server restarting (domain reload in progress)',
                 {
                     errorType: 'unity_server_restarting',
-                    instructions: 'INSTRUCTIONS FOR LLM: This is normal behavior during Unity compilation. Wait 3-5 seconds and retry the operation. Unity automatically restarts HTTP server during script compilation and asset database refresh.',
+                    instructions: 'INSTRUCTIONS FOR LLM: This is normal, not a bug. The Unity HTTP server restarts on every domain reload, and script compilation, asset database refresh, and entering or exiting Play Mode all trigger one. Wait 3-5 seconds and retry the same operation, up to 3-5 times. After a Play Mode transition, allow up to 30 seconds total.',
                     retryable: true,
                     originalError: error.message
                 }
@@ -2229,14 +2264,24 @@ class MCPServer {
 
     createUnityTimeoutError() {
         return new UnityRestartingError(
-            'Unity HTTP server timeout - likely restarting during compilation',
+            'Unity HTTP server timeout - the Editor main thread did not respond',
             {
                 errorType: 'unity_server_restarting',
-                instructions: 'INSTRUCTIONS FOR LLM: Unity server timeout usually indicates compilation or asset refresh in progress. Wait 3-5 seconds and retry the operation.',
+                instructions: 'INSTRUCTIONS FOR LLM: The request reached Unity but the Editor did not answer within 15 seconds. Usual causes: a long compile, an asset database refresh, a slow domain reload after a Play Mode transition, or a modal dialog blocking the Editor. Wait 3-5 seconds and retry. If editor_status also times out repeatedly, the Editor main thread is blocked - ask the user to check the Unity window for a modal dialog or a runaway script.',
                 retryable: true,
                 originalError: 'Request timeout after 15 seconds'
             }
         );
+    }
+
+    // Preserves UnityUnavailableError / UnityRestartingError so handleToolCall's
+    // instanceof check can forward data.instructions and data.retryable to the
+    // agent. Wrapping them in a plain Error (as most call* handlers below still
+    // do) silently discards that retry advice.
+    rethrowUnityError(error, context) {
+        if (error instanceof UnityUnavailableError || error instanceof UnityRestartingError)
+            throw error;
+        throw new Error(`${context}: ${error.message}`);
     }
 
     async checkUnityServerHealth() {

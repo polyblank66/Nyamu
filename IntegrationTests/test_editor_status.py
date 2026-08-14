@@ -83,6 +83,51 @@ async def test_editor_status_response_structure(mcp_client, unity_state_manager)
 
 @pytest.mark.mcp
 @pytest.mark.protocol
+@pytest.mark.asyncio
+async def test_editor_status_play_mode_fields(mcp_client, unity_state_manager):
+    """Test that editor_status reports pause/transition/staleness fields"""
+    response = await mcp_client.editor_status()
+    status_text = response["result"]["content"][0]["text"]
+    data = json.loads(status_text)
+
+    bool_fields = ("isPaused", "isEnteringPlayMode", "isExitingPlayMode", "isStateStale")
+    for field in bool_fields:
+        assert field in data
+        assert isinstance(data[field], bool)
+
+    assert "stateAgeSeconds" in data
+    assert isinstance(data["stateAgeSeconds"], (int, float))
+    assert "lastEditorUpdateUtc" in data
+    assert isinstance(data["lastEditorUpdateUtc"], str)
+
+    # isEnteringPlayMode and isExitingPlayMode are derived from the same frame
+    # and are mutually exclusive by construction - never both true.
+    assert not (data["isEnteringPlayMode"] and data["isExitingPlayMode"])
+
+    # A live, idle Editor must report fresh, non-transitioning state.
+    assert data["isStateStale"] is False
+    assert 0 <= data["stateAgeSeconds"] < 2.0
+    assert data["isEnteringPlayMode"] is False
+    assert data["isExitingPlayMode"] is False
+
+
+@pytest.mark.mcp
+@pytest.mark.protocol
+def test_editor_status_play_mode_fields_direct(unity_base_url):
+    """Test editor-status HTTP endpoint directly for the play mode fields"""
+    response = requests.get(f"{unity_base_url}/editor-status")
+    data = response.json()
+
+    for field in ("isPaused", "isEnteringPlayMode", "isExitingPlayMode", "isStateStale"):
+        assert field in data
+        assert isinstance(data[field], bool)
+    assert isinstance(data["stateAgeSeconds"], (int, float))
+    assert isinstance(data["lastEditorUpdateUtc"], str)
+    assert not (data["isEnteringPlayMode"] and data["isExitingPlayMode"])
+
+
+@pytest.mark.mcp
+@pytest.mark.protocol
 def test_editor_status_endpoint_direct(unity_base_url):
     """Test editor-status HTTP endpoint directly"""
     response = requests.get(f"{unity_base_url}/editor-status")

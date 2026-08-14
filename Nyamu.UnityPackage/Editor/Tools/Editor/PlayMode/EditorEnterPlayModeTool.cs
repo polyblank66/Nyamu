@@ -3,33 +3,38 @@ using Nyamu.Core.Interfaces;
 
 namespace Nyamu.Tools.Editor.PlayMode
 {
-    // Tool for exiting Unity PlayMode
-    public class EditorExitPlayModeTool : INyamuTool<EditorExitPlayModeRequest, EditorExitPlayModeResponse>
+    // Tool for entering Unity PlayMode
+    public class EditorEnterPlayModeTool : INyamuTool<EditorEnterPlayModeRequest, EditorEnterPlayModeResponse>
     {
-        public string Name => "editor_exit_play_mode";
+        public string Name => "editor_enter_play_mode";
 
-        public Task<EditorExitPlayModeResponse> ExecuteAsync(
-            EditorExitPlayModeRequest request,
+        public Task<EditorEnterPlayModeResponse> ExecuteAsync(
+            EditorEnterPlayModeRequest request,
             IExecutionContext context)
         {
-            var result = PlayModeSwitch.Request(context, false);
-            var response = new EditorExitPlayModeResponse { wasPlaying = result.WasPlaying };
+            var result = PlayModeSwitch.Request(context, true);
+            var response = new EditorEnterPlayModeResponse { wasPlaying = result.WasPlaying };
 
             switch (result.Outcome)
             {
                 case PlayModeSwitchOutcome.Requested:
                     response.success = true;
-                    response.status = "exit_requested";
-                    response.message = "Play Mode exit requested. Unity applies it at the end of the " +
+                    response.status = "requested";
+                    response.message = "Play Mode entry requested. Unity applies it at the end of the " +
                         "current editor frame and then reloads the script domain, so the Nyamu HTTP " +
-                        "server is briefly unreachable. Poll editor_status until isPlaying and " +
-                        "isExitingPlayMode are both false and isStateStale is false.";
+                        "server is briefly unreachable. Poll editor_status until isPlaying is true.";
                     break;
 
                 case PlayModeSwitchOutcome.NoChange:
                     response.success = true;
-                    response.status = "not_playing";
-                    response.message = "Editor was not in Play Mode. No change was made.";
+                    response.status = "already_playing";
+                    response.message = "Editor was already in Play Mode. No change was made.";
+                    break;
+
+                case PlayModeSwitchOutcome.Blocked:
+                    response.success = false;
+                    response.status = "blocked";
+                    response.message = result.ErrorMessage ?? "Unity is not ready to enter Play Mode.";
                     break;
 
                 case PlayModeSwitchOutcome.Timeout:
@@ -44,7 +49,7 @@ namespace Nyamu.Tools.Editor.PlayMode
                 default:
                     response.success = false;
                     response.status = "error";
-                    response.message = result.ErrorMessage ?? "Failed to exit Play Mode.";
+                    response.message = result.ErrorMessage ?? "Failed to enter Play Mode.";
                     break;
             }
 

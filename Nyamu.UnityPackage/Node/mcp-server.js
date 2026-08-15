@@ -298,8 +298,44 @@ class ResponseFormatter {
             return JSON.stringify(truncatedObj);
         }
 
-        // For other JSON, fall back to string truncation
-        return this.formatResponse(jsonString);
+        // For other JSON (e.g. test status with a large cached failure
+        // message), shrink oversized string fields *before* serializing so
+        // the result stays valid JSON. Truncating the already-serialized
+        // string can cut a string value in half and leave an unescaped
+        // control character (like a raw newline from truncationMessage)
+        // inside what looks like an open string literal, which breaks
+        // JSON.parse on the client.
+        const shrunkObj = this.truncateLargeStrings(jsonObj, 1000);
+        const shrunkString = JSON.stringify(shrunkObj);
+
+        if (shrunkString.length <= this.availableContentSpace) {
+            return shrunkString;
+        }
+
+        // Still too big - fall back to plain string truncation as a last resort
+        return this.formatResponse(shrunkString);
+    }
+
+    // Recursively cap long string values so a serialized object stays
+    // bounded without truncating the raw JSON text (which can break escape
+    // sequences and produce invalid JSON).
+    truncateLargeStrings(value, maxLen) {
+        if (typeof value === 'string') {
+            return value.length > maxLen
+                ? `${value.substring(0, maxLen)}... (truncated, ${value.length} chars total)`
+                : value;
+        }
+        if (Array.isArray(value)) {
+            return value.map(item => this.truncateLargeStrings(item, maxLen));
+        }
+        if (value && typeof value === 'object') {
+            const result = {};
+            for (const key of Object.keys(value)) {
+                result[key] = this.truncateLargeStrings(value[key], maxLen);
+            }
+            return result;
+        }
+        return value;
     }
 }
 

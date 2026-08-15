@@ -221,7 +221,26 @@ async def unity_state_manager(mcp_client, worker_project_path, request):
     # Determine cleanup level needed for this test
     cleanup_level = _get_cleanup_level(request)
 
-    # Light pre-test check - skip for protocol tests that don't need Unity state
+    # Wait for any leftover compilation/test run from a previous test to
+    # settle before this test starts. This runs even for "protocol" tests:
+    # the protocol marker means "verify the MCP tool contract", not "never
+    # touches Unity state" - several protocol-marked tests do call
+    # tests_run_single/tests_run_all against real Unity tests. Without this
+    # wait, a test can begin while Unity is still finishing the previous
+    # test's PlayMode domain reload (or a still-running test), inherit a
+    # busy Test Runner, and fail with "no new test run ID detected" or a
+    # client-side timeout - this only surfaces under randomized test
+    # ordering, where the previous test in the sequence varies. It's cheap
+    # when Unity is already idle (returns on the first poll), so it doesn't
+    # undermine the "protocol tests are fast" intent for tests that truly
+    # don't touch Unity.
+    from unity_helper import wait_for_unity_idle
+    try:
+        await wait_for_unity_idle(mcp_client, timeout=30)
+    except Exception:
+        pass  # Non-critical if this fails - the test will surface any real problem
+
+    # Heavier pre-test refresh - skip for protocol tests that don't need it
     if cleanup_level != "noop":
         try:
             await manager.assets_refresh(force=False)

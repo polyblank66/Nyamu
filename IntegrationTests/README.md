@@ -161,6 +161,9 @@ pytest test_compile_status.py
 pytest test_test_status.py
 pytest test_editor_status.py
 
+# Code execution tests
+pytest test_code_execute.py
+
 # Test execution and cancellation
 pytest test_run_tests_filters.py
 pytest test_tests_cancel.py
@@ -504,6 +507,38 @@ response = await mcp_client.editor_exit_play_mode()
 ```
 
 **Returns:** Success status and confirmation message indicating PlayMode has been exited.
+
+### 9. `code_execute`
+Compiles and runs an ad-hoc C# snippet in the Unity Editor.
+
+**Parameters:**
+- `code` (required): the C# snippet
+- `mode` (optional, default: "auto"): "auto" | "expression" | "statements" | "class"
+- `usings` (optional): extra namespaces to add
+- `entry_point` (optional, default: "Execute"): entry point method for `mode="class"`
+- `run_on_main_thread` (optional, default: true): true has full Editor API access but can freeze the Editor if the snippet blocks; false runs on a worker thread and never freezes the Editor, but any UnityEngine/UnityEditor API call throws
+- `timeout` (optional, default: 60): how long the call polls for a result before returning the last observed status
+- `background` (optional, default: false): if true, returns the executionId immediately instead of waiting for the result
+
+**Usage:**
+```python
+response = await mcp_client.code_execute("AssetDatabase.FindAssets(\"t:Material\").Length")
+```
+
+**Returns:** `outcome`, `resultType`, `result`, captured `logs`/`stdout`, compiler `errors`/`warnings` (with `line`/`file` in the snippet's own coordinates), and (on `runtime_exception`) `exceptionType`/`exceptionMessage`/`stackTrace`.
+
+**Known cost:** each call permanently loads a small assembly into the Editor process until the next domain reload (`assembliesLoadedThisSession` in the response tracks this) - by design, not a bug.
+
+### 10. `code_execute_status`
+Fetches the status/result of a `code_execute` run by executionId.
+
+**Parameters:**
+- `execution_id` (optional): omit or pass an empty string for the most recently started execution
+
+**Usage:**
+```python
+response = await mcp_client.code_execute_status(execution_id)
+```
 
 ## Understanding MCP Error -32603
 

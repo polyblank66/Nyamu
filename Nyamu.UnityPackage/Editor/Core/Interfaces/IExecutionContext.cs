@@ -14,6 +14,7 @@ namespace Nyamu.Core.Interfaces
         AssetStateManager AssetState { get; }
         EditorStateManager EditorState { get; }
         SettingsStateManager SettingsState { get; }
+        CodeExecutionStateManager CodeExecutionState { get; }
 
         CompilationMonitor CompilationMonitor { get; }
         EditorMonitor EditorMonitor { get; }

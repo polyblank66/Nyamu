@@ -40,9 +40,6 @@ namespace Nyamu.Tools.Editor.PlayMode
             var result = new PlayModeSwitchResult();
             var tcs = new TaskCompletionSource<bool>();
 
-            // This action must never call context.UnityExecutor.Enqueue -
-            // UnityThreadExecutor.Process() invokes queued actions while holding
-            // the queue lock, so a re-entrant Enqueue would self-deadlock.
             context.UnityExecutor.Enqueue(() =>
             {
                 try

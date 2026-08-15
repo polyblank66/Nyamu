@@ -52,6 +52,10 @@ Check script compilation with Nyamu MCP tool
 * `editor_enter_play_mode` – Requests Unity to enter Play Mode. Unity applies the change at the end of the current editor frame and then reloads the script domain, so the Nyamu HTTP server is briefly unreachable afterwards. Reports that the request was accepted, not that Play Mode is already running — confirm with `editor_status`.
 * `editor_exit_play_mode` – Requests Unity to exit Play Mode back to Edit Mode. Same domain-reload caveat as above — confirm with `editor_status`.
 
+### Code Execution
+* `code_execute` – Compiles and runs an ad-hoc C# snippet inside the Unity Editor — useful for reflecting over project types, inspecting the current `Selection`/`AssetDatabase`, or testing an idea without entering Play Mode. Runs on the Unity main thread by default, so a blocking snippet freezes the Editor for that duration and cannot be cancelled; set `run_on_main_thread: false` for pure computation/reflection that never freezes the Editor. Each execution permanently loads a small assembly into the Editor process until the next domain reload — a known, bounded cost, not a bug. `Debug.Log`/`Warning`/`Error` output and `Console` stdout/stderr are captured. Always asynchronous on the Unity side; the tool call polls internally and returns the final result, or pass `background: true` to get the `executionId` back immediately instead.
+* `code_execute_status` – Fetches the status/result of a `code_execute` run by `executionId` (or the most recent run if omitted). Use to poll a `background: true` execution or re-check a result after a timed-out `code_execute` call.
+
 ### Menu Item Execution
 * `menu_items_execute` – Executes any Unity Editor menu item by its path. Useful for automating Unity Editor operations programmatically.
 

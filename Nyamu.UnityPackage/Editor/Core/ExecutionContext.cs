@@ -15,6 +15,7 @@ namespace Nyamu.Core
         public AssetStateManager AssetState { get; }
         public EditorStateManager EditorState { get; }
         public SettingsStateManager SettingsState { get; }
+        public CodeExecutionStateManager CodeExecutionState { get; }
 
         public CompilationMonitor CompilationMonitor { get; }
         public EditorMonitor EditorMonitor { get; }
@@ -29,6 +30,7 @@ namespace Nyamu.Core
             AssetStateManager assetState,
             EditorStateManager editorState,
             SettingsStateManager settingsState,
+            CodeExecutionStateManager codeExecutionState,
             CompilationMonitor compilationMonitor,
             EditorMonitor editorMonitor,
             SettingsMonitor settingsMonitor,
@@ -41,6 +43,7 @@ namespace Nyamu.Core
             AssetState = assetState;
             EditorState = editorState;
             SettingsState = settingsState;
+            CodeExecutionState = codeExecutionState;
             CompilationMonitor = compilationMonitor;
             EditorMonitor = editorMonitor;
             SettingsMonitor = settingsMonitor;

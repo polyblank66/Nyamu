@@ -1,5 +1,7 @@
 # Nyamu MCP Server - Agent Guide
 
+> This is documentation intended for AI agents, not for human reading.
+
 This guide provides best practices and workflows for AI coding agents working with the Nyamu MCP server for Unity development.
 
 ## Quick Reference

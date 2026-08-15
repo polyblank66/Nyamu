@@ -292,6 +292,23 @@ class MCPClient:
             }
         })
 
+    async def menu_items_execute(self, menu_item_path: str) -> Dict[str, Any]:
+        """Execute a Unity Editor menu item by its full path
+
+        Args:
+            menu_item_path: Full menu path as shown in Unity's menu bar
+                           (e.g. "GameObject/Create Empty")
+
+        Returns:
+            MCP response with menu item execution status.
+        """
+        return await self._send_request("tools/call", {
+            "name": "menu_items_execute",
+            "arguments": {
+                "menu_item_path": menu_item_path
+            }
+        })
+
     async def editor_enter_play_mode(self) -> Dict[str, Any]:
         """Enter Unity PlayMode
 

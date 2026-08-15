@@ -6,7 +6,8 @@ namespace Nyamu.Tools.Editor
     [Serializable]
     public class ExecuteMenuItemResponse
     {
-        public string status;
+        public bool success;
+        public string status;   // ok | not_executed | main_thread_timeout | error
         public string message;
         public string menuItemPath;
     }

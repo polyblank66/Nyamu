@@ -497,7 +497,7 @@ class MCPServer {
                     }
                 },
                 menu_items_execute: {
-                    description: "Executes any Unity Editor menu command by its path (e.g., 'Assets/Create/C# Script', 'GameObject/Create Empty'). Returns success/failure status. This is the programmatic equivalent of clicking menu items in Unity's UI.",
+                    description: "Executes any Unity Editor menu command by its path (e.g., 'Assets/Create/C# Script', 'GameObject/Create Empty'). This is the programmatic equivalent of clicking menu items in Unity's UI. Returns status: 'ok' (executed), 'not_executed' (bad path, or disabled by the item's validate function), 'main_thread_timeout' (Unity's main thread did not finish it within 3s - it may still complete, so re-check before retrying rather than treating this as a failure), or 'error'.",
                     inputSchema: {
                         type: "object",
                         properties: {

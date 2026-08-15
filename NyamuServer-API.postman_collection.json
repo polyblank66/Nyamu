@@ -1096,7 +1096,7 @@
                 }
               ]
             },
-            "description": "Executes a Unity Editor menu item by its full path.\n\n**Query Parameters:**\n- `menuItemPath` (required): Full path of the menu item to execute\n\n**Response:**\n- Success: `{\"status\":\"ok\", \"message\":\"Menu item executed successfully\", \"menuItemPath\":\"...\"}`\n- Not found/failed: `{\"status\":\"error\", \"message\":\"MenuItem not found or execution failed\", \"menuItemPath\":\"...\"}`"
+            "description": "Executes a Unity Editor menu item by its full path.\n\n**Query Parameters:**\n- `menuItemPath` (required): Full path of the menu item to execute\n\n**Response:** `{\"success\":bool, \"status\":\"...\", \"message\":\"...\", \"menuItemPath\":\"...\"}`\n- `ok`: Unity ran the menu item\n- `not_executed`: Unity refused it - the path may not exist, or the item's validate function disabled it right now\n- `main_thread_timeout`: Unity's main thread did not finish the item within 3000ms (compiling, reloading, a modal dialog, or a long-running item) - it may still complete\n- `error`: missing `menuItemPath` parameter, or the Unity API threw"
           },
           "response": [
             {
@@ -1132,10 +1132,10 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n    \"status\": \"ok\",\n    \"message\": \"Menu item executed successfully\",\n    \"menuItemPath\": \"Assets/Create/Folder\"\n}"
+              "body": "{\n    \"success\": true,\n    \"status\": \"ok\",\n    \"message\": \"Menu item executed successfully\",\n    \"menuItemPath\": \"Assets/Create/Folder\"\n}"
             },
             {
-              "name": "Not Found",
+              "name": "Not Executed",
               "originalRequest": {
                 "method": "GET",
                 "header": [],
@@ -1167,7 +1167,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n    \"status\": \"error\",\n    \"message\": \"MenuItem not found or execution failed\",\n    \"menuItemPath\": \"Bogus/Menu/Item\"\n}"
+              "body": "{\n    \"success\": false,\n    \"status\": \"not_executed\",\n    \"message\": \"Unity refused to execute this menu item. The path may not exist, or the item's validate function disabled it right now. Menu paths are case-sensitive and must match the menu bar exactly (e.g. 'GameObject/Create Empty').\",\n    \"menuItemPath\": \"Bogus/Menu/Item\"\n}"
             }
           ]
         }

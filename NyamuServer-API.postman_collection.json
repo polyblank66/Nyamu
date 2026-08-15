@@ -1069,6 +1069,216 @@
         }
       ],
       "description": "Endpoints for monitoring Unity Editor state."
+    },
+    {
+      "name": "Code Execution",
+      "item": [
+        {
+          "name": "Execute Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"code\": \"1 + 1\",\n    \"mode\": \"auto\",\n    \"usings\": [],\n    \"entryPoint\": \"Execute\",\n    \"runOnMainThread\": true,\n    \"background\": false,\n    \"timeout\": 60\n}"
+            },
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/code-execute",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "code-execute"
+              ]
+            },
+            "description": "Compiles and runs an ad-hoc C# snippet in the Unity Editor. Always answers immediately with an executionId - the HTTP handler only enqueues the work on the main thread, it never blocks for the compile+run itself. Poll Code Execution Status for the result.\n\n**Request Body:**\n- `code` (required): the C# snippet\n- `mode` (optional): \"auto\" | \"expression\" | \"statements\" | \"class\" (default: \"auto\")\n- `usings` (optional): extra namespaces on top of the defaults\n- `entryPoint` (optional): entry point method name for `mode: \"class\"` (default: \"Execute\")\n- `runOnMainThread` (optional): true runs with full Editor API access but can freeze the Editor if the snippet blocks; false runs on a worker thread and never freezes the Editor, but any UnityEngine/UnityEditor API call throws (default: true)\n- `background`: ignored by this endpoint - it always returns immediately regardless\n- `timeout` (optional): seconds (default: 60), currently unused at the HTTP layer (enforced by the MCP client's poll loop)"
+          },
+          "response": [
+            {
+              "name": "Queued",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"code\": \"1 + 1\"\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/code-execute",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "code-execute"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ok\",\n    \"executionId\": \"e704b2963f004b03b80ea5ff26c8fbd6\",\n    \"phase\": \"queued\",\n    \"message\": \"Code execution queued.\"\n}"
+            },
+            {
+              "name": "Busy",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"code\": \"1 + 1\"\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/code-execute",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "code-execute"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"error\",\n    \"executionId\": \"\",\n    \"phase\": \"\",\n    \"message\": \"Another code_execute is already running. Poll code_execute_status or wait for it to finish.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Code Execution Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/code-execute-status?execution_id=",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "code-execute-status"
+              ],
+              "query": [
+                {
+                  "key": "execution_id",
+                  "value": "",
+                  "description": "executionId returned by Execute Code. Omit or leave empty for the most recently started execution."
+                }
+              ]
+            },
+            "description": "Gets the status/result of a code_execute run by executionId.\n\n**Response Fields:**\n- `phase`: \"queued\" | \"compiling\" | \"compiled\" | \"executing\" | \"completed\" | \"failed\"\n- `outcome`: \"success\" | \"compile_error\" | \"runtime_exception\" | \"no_entry_point\" | \"editor_busy\" | \"build_rejected\" | \"main_thread_timeout\" | \"async_timeout\" | \"worker_thread_timeout\" | \"unsupported_return\" | \"busy\" | \"internal_error\" (\"none\" while still running)\n- `isDone`: boolean\n- `result`, `resultType`: the formatted return value\n- `logs`, `stdout`: captured output\n- `errors`, `warnings`: compiler messages, with `line`/`file` in the snippet's own coordinates\n- `exceptionType`, `exceptionMessage`, `stackTrace`: populated when `outcome` is `runtime_exception`\n- `assembliesLoadedThisSession`: how many code_execute assemblies have accumulated since the last domain reload"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/code-execute-status?execution_id=e704b2963f004b03b80ea5ff26c8fbd6",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "code-execute-status"
+                  ],
+                  "query": [
+                    {
+                      "key": "execution_id",
+                      "value": "e704b2963f004b03b80ea5ff26c8fbd6"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ok\",\n    \"executionId\": \"e704b2963f004b03b80ea5ff26c8fbd6\",\n    \"phase\": \"completed\",\n    \"outcome\": \"success\",\n    \"isDone\": true,\n    \"resolvedMode\": \"expression\",\n    \"fallbackUsed\": false,\n    \"resultType\": \"System.Int32\",\n    \"result\": \"2\",\n    \"logs\": \"\",\n    \"logsTruncated\": false,\n    \"stdout\": \"\",\n    \"exceptionType\": \"\",\n    \"exceptionMessage\": \"\",\n    \"stackTrace\": \"\",\n    \"errors\": [],\n    \"warnings\": [],\n    \"compileSeconds\": 2.3,\n    \"executeSeconds\": 0.0007,\n    \"startedUtc\": \"2026-08-14T21:57:58.6238305Z\",\n    \"finishedUtc\": \"2026-08-14T21:58:00.9403267Z\",\n    \"assemblyName\": \"Nyamu_Exec_e704b2963f004b03b80ea5ff26c8fbd6\",\n    \"assembliesLoadedThisSession\": 1,\n    \"message\": \"Execution completed.\"\n}"
+            },
+            {
+              "name": "Compile Error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/code-execute-status?execution_id=eca3a4c834754ac18c21bf85cf62bd53",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "code-execute-status"
+                  ],
+                  "query": [
+                    {
+                      "key": "execution_id",
+                      "value": "eca3a4c834754ac18c21bf85cf62bd53"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ok\",\n    \"executionId\": \"eca3a4c834754ac18c21bf85cf62bd53\",\n    \"phase\": \"failed\",\n    \"outcome\": \"compile_error\",\n    \"isDone\": true,\n    \"resolvedMode\": \"expression\",\n    \"fallbackUsed\": true,\n    \"resultType\": \"\",\n    \"result\": \"\",\n    \"logs\": \"\",\n    \"logsTruncated\": false,\n    \"stdout\": \"\",\n    \"exceptionType\": \"\",\n    \"exceptionMessage\": \"\",\n    \"stackTrace\": \"\",\n    \"errors\": [\n        {\n            \"file\": \"NyamuUserCode.cs\",\n            \"line\": 3,\n            \"column\": 19,\n            \"severity\": \"error\",\n            \"message\": \"error CS1026: ) expected\"\n        }\n    ],\n    \"warnings\": [],\n    \"compileSeconds\": 4.19,\n    \"executeSeconds\": 0.0,\n    \"startedUtc\": \"2026-08-14T21:58:13.1944086Z\",\n    \"finishedUtc\": \"2026-08-14T21:58:17.3883922Z\",\n    \"assemblyName\": \"Nyamu_Exec_eca3a4c834754ac18c21bf85cf62bd53\",\n    \"assembliesLoadedThisSession\": 1,\n    \"message\": \"Compilation failed with 2 error(s).\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Endpoints for compiling and running ad-hoc C# snippets in the Unity Editor."
     }
   ],
   "variable": [

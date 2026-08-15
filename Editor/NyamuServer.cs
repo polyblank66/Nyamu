@@ -41,6 +41,8 @@ using Nyamu.Tools.Editor;
 using Nyamu.Tools.Settings;
 using Nyamu.Tools.Assets;
 using Nyamu.Tools.Editor.PlayMode;
+using Nyamu.Tools.CodeExecution;
+using Nyamu.CodeExecution;
 using Nyamu.TestExecution;
 // ReSharper disable InconsistentlySynchronizedField
 
@@ -60,6 +62,8 @@ namespace Nyamu
         {
             public const string AssetsRefresh = "/assets-refresh";
             public const string AssetsRefreshStatus = "/assets-refresh-status";
+            public const string CodeExecute = "/code-execute";
+            public const string CodeExecuteStatus = "/code-execute-status";
             public const string EditorEnterPlayMode = "/editor-enter-play-mode";
             public const string EditorExitPlayMode = "/editor-exit-play-mode";
             public const string EditorStatus = "/editor-status";
@@ -114,6 +118,7 @@ namespace Nyamu
         private static AssetStateManager _assetStateManager;
         private static EditorStateManager _editorStateManager;
         private static SettingsStateManager _settingsStateManager;
+        private static CodeExecutionStateManager _codeExecutionStateManager;
         private static UnityThreadExecutor _unityThreadExecutor;
         private static Core.ExecutionContext _executionContext;
 
@@ -150,6 +155,10 @@ namespace Nyamu
         private static CompileShaderTool _compileShaderTool;
         private static CompileAllShadersTool _compileAllShadersTool;
         private static CompileShadersRegexTool _compileShadersRegexTool;
+
+        // Step 5: code execution tools
+        private static CodeExecuteTool _codeExecuteTool;
+        private static CodeExecuteStatusTool _codeExecuteStatusTool;
 
         static Server()
         {
@@ -245,6 +254,7 @@ namespace Nyamu
             _assetStateManager = new AssetStateManager();
             _editorStateManager = new EditorStateManager();
             _settingsStateManager = new SettingsStateManager();
+            _codeExecutionStateManager = new CodeExecutionStateManager();
 
             // Create Unity thread executor (owns the main thread action queue)
             _unityThreadExecutor = new UnityThreadExecutor();
@@ -272,6 +282,7 @@ namespace Nyamu
                 _assetStateManager,
                 _editorStateManager,
                 _settingsStateManager,
+                _codeExecutionStateManager,
                 _compilationMonitor,
                 _editorMonitor,
                 _settingsMonitor,
@@ -304,6 +315,10 @@ namespace Nyamu
             _compileShaderTool = new CompileShaderTool();
             _compileAllShadersTool = new CompileAllShadersTool();
             _compileShadersRegexTool = new CompileShadersRegexTool();
+
+            // Create tools (Step 5: code execution tools)
+            _codeExecuteTool = new CodeExecuteTool();
+            _codeExecuteStatusTool = new CodeExecuteStatusTool();
         }
 
         private static void Cleanup()
@@ -317,12 +332,15 @@ namespace Nyamu
 
             // Cleanup monitors
             _compilationMonitor?.Cleanup();
-            _editorMonitor?.Cleanup();
             SaveTimestampsCache();
+            NyamuGlobals.Clear();
 
-            // Stop HTTP server (releases port, waits for in-flight handlers)
+            // Stop HTTP server (releases port, waits for in-flight handlers) before unsubscribing
+            // the EditorMonitor drainer, so any work already enqueued (e.g. by code_execute) gets
+            // a chance to run during the handler-drain window instead of being stranded.
             _httpServer?.Stop();
             _httpServer = null;
+            _editorMonitor?.Cleanup();
 
             NyamuLogger.LogDebug($"[Nyamu][Server] Cleanup finished (total elapsed: {(DateTime.UtcNow - cleanupStart).TotalMilliseconds:F0}ms)");
         }
@@ -409,6 +427,8 @@ namespace Nyamu
                 Constants.Endpoints.MenuItemsExecute => HandleExecuteMenuItemRequest(request),
                 Constants.Endpoints.EditorEnterPlayMode => HandleEditorEnterPlayModeRequest(request),
                 Constants.Endpoints.EditorExitPlayMode => HandleEditorExitPlayModeRequest(request),
+                Constants.Endpoints.CodeExecute => HandleCodeExecuteRequest(request),
+                Constants.Endpoints.CodeExecuteStatus => HandleCodeExecuteStatusRequest(request),
                 _ => HandleNotFoundRequest(response)
             };
         }
@@ -808,6 +828,43 @@ namespace Nyamu
             // Use new tool architecture
             var toolRequest = new EditorExitPlayModeRequest();
             var response = _editorExitPlayModeTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
+        }
+
+        private static string HandleCodeExecuteRequest(TcpHttpRequest request)
+        {
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCodeExecuteRequest");
+
+            if (request.HttpMethod != "POST")
+                return "{\"status\":\"error\",\"message\":\"Method not allowed. Use POST.\"}";
+
+            CodeExecuteRequest toolRequest;
+            try
+            {
+                var bodyText = new StreamReader(request.InputStream).ReadToEnd();
+                toolRequest = JsonUtility.FromJson<CodeExecuteRequest>(bodyText);
+            }
+            catch
+            {
+                return "{\"status\":\"error\",\"message\":\"Invalid request body.\"}";
+            }
+
+            toolRequest ??= new CodeExecuteRequest();
+
+            var response = _codeExecuteTool.ExecuteAsync(toolRequest, _executionContext).Result;
+            return JsonUtility.ToJson(response);
+        }
+
+        private static string HandleCodeExecuteStatusRequest(TcpHttpRequest request)
+        {
+            NyamuLogger.LogDebug("[Nyamu][Server] Entering HandleCodeExecuteStatusRequest");
+
+            if (request.HttpMethod != "GET")
+                return "{\"status\":\"error\",\"message\":\"Method not allowed. Use GET.\"}";
+
+            var executionId = ExtractQueryParameter(request.Url.Query ?? "", "execution_id");
+            var toolRequest = new CodeExecuteStatusRequest { executionId = executionId };
+            var response = _codeExecuteStatusTool.ExecuteAsync(toolRequest, _executionContext).Result;
             return JsonUtility.ToJson(response);
         }
 

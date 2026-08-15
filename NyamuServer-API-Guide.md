@@ -48,6 +48,13 @@
 |----------|--------|---------|------------|
 | `/menu-items-execute` | POST | Execute Unity menu item | `menu_item_path` |
 
+### Code Execution
+
+| Endpoint | Method | Purpose | Parameters |
+|----------|--------|---------|------------|
+| `/code-execute` | POST | Compile and run an ad-hoc C# snippet | `code`, `mode`, `usings`, `entryPoint`, `runOnMainThread`, `background`, `timeout` |
+| `/code-execute-status` | GET | Get status/result of a code_execute run | `execution_id` (optional) |
+
 **Note:** Editor log tools (`editor_log_path`, `editor_log_head`, `editor_log_tail`, `editor_log_grep`) are provided at the MCP layer by mcp-server.js, not as HTTP endpoints. They read the Unity Editor log file directly from the file system.
 
 ## Detailed Endpoint Documentation
@@ -142,6 +149,56 @@ Both requests are asynchronous by necessity: Unity applies `EditorApplication.is
 GET /editor-enter-play-mode
 # ... wait 3-5s if the server is briefly unreachable ...
 GET /editor-status   # confirm isPlaying: true
+```
+
+### Code Execution
+
+**Endpoints:** `POST /code-execute`, `GET /code-execute-status`
+
+`POST /code-execute` always answers immediately with `{"status", "executionId", "phase"}` - the HTTP handler only enqueues the work on the Unity main thread, it never blocks for the compile+run itself. Poll `/code-execute-status?execution_id=<id>` for the result.
+
+**Request body (`/code-execute`):**
+```json
+{
+  "code": "AssetDatabase.FindAssets(\"t:Material\").Length",
+  "mode": "auto",
+  "usings": [],
+  "entryPoint": "Execute",
+  "runOnMainThread": true,
+  "background": false,
+  "timeout": 60
+}
+```
+- `mode`: `auto` | `expression` | `statements` | `class`
+- `runOnMainThread`: `true` (default) runs on Unity's main thread with full API access, but a blocking snippet freezes the Editor for its duration and cannot be cancelled. `false` runs on a worker thread - never freezes the Editor, but any UnityEngine/UnityEditor API call throws.
+- `background`: ignored by the raw HTTP endpoint (it always returns immediately) - this flag only changes polling behaviour at the MCP layer.
+
+**Phases (`/code-execute-status` → `phase`):** `queued` → `compiling` → `compiled` → `executing` → `completed` | `failed`
+
+**Outcome values (`/code-execute-status` → `outcome`):**
+| Outcome | Meaning |
+|---|---|
+| `success` | ran to completion |
+| `compile_error` | see `errors[]` (`file`, `line`, `column`, `severity`, `message`) - line numbers are in the snippet's own coordinates, not the generated wrapper's |
+| `runtime_exception` | see `exceptionType`, `exceptionMessage`, `stackTrace` |
+| `no_entry_point` | `mode: "class"` with no (or an ambiguous) matching entry point method |
+| `editor_busy` | Unity was compiling when the run tried to start |
+| `build_rejected` | `AssemblyBuilder.Build()` refused to start |
+| `main_thread_timeout` | the compiled call never ran on the main thread (domain reload / modal dialog) |
+| `async_timeout` | a returned `Task` did not complete in time |
+| `worker_thread_timeout` | `runOnMainThread: false` and the snippet did not return in time |
+| `unsupported_return` | the snippet returned an `IEnumerator` (not driven in this version) |
+| `busy` | another `code_execute` is already in flight |
+| `internal_error` | Nyamu's own fault |
+
+**Example:**
+```bash
+POST /code-execute
+{"code": "1 + 1", "mode": "auto", "runOnMainThread": true, "timeout": 60}
+# => {"status":"ok","executionId":"…","phase":"queued","message":"Code execution queued."}
+
+GET /code-execute-status?execution_id=…
+# => {"status":"ok","phase":"completed","outcome":"success","result":"2","resultType":"System.Int32", ...}
 ```
 
 ### Test Status

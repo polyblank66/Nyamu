@@ -331,6 +331,65 @@ class MCPServer {
                         required: []
                     }
                 },
+                code_execute: {
+                    description: "Compiles and runs an ad-hoc C# snippet inside the Unity Editor - useful for reflecting over project types, inspecting the current Selection/AssetDatabase, or testing an idea without entering Play Mode. Runs on the Unity main thread by default, so a snippet that blocks (an infinite loop, a long sleep) freezes the Editor for that duration and CANNOT be cancelled - set run_on_main_thread=false for pure computation/reflection that doesn't touch Unity APIs (that runs on a worker thread and never freezes the Editor). Each execution permanently loads a small assembly into the Editor's process until the next domain reload (script compile or Play Mode transition) - this is a known, bounded leak, not a bug. Debug.Log/Warning/Error output and Console stdout/stderr during the run are captured and returned. This tool is always asynchronous on the Unity side: it waits for and returns the final result by polling internally (use background=true to instead get the executionId back immediately and fetch the result later with code_execute_status). Only one execution may be in flight at a time.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            code: {
+                                type: "string",
+                                description: "The C# snippet to compile and run. Shape depends on 'mode': a bare expression ('AssetDatabase.FindAssets(\"t:Material\").Length'), a block of statements ending in an optional 'return <value>;', or (mode=class) a complete type definition with a public static parameterless entry point method (default name 'Execute')."
+                            },
+                            mode: {
+                                type: "string",
+                                description: "How to interpret 'code'. 'auto' detects expression vs statements vs a full class/type declaration. Set explicitly if auto-detection guesses wrong.",
+                                enum: ["auto", "expression", "statements", "class"],
+                                default: "auto"
+                            },
+                            usings: {
+                                type: "array",
+                                items: { type: "string" },
+                                description: "Extra 'using' namespaces to add on top of the defaults (System, System.Linq, System.Collections.Generic, UnityEngine, UnityEditor, etc.). Each entry can be given as \"Some.Namespace\" or \"using Some.Namespace;\".",
+                                default: []
+                            },
+                            entry_point: {
+                                type: "string",
+                                description: "Only used when mode resolves to 'class': the name of the public static parameterless method to invoke.",
+                                default: "Execute"
+                            },
+                            run_on_main_thread: {
+                                type: "boolean",
+                                description: "true (default) runs on Unity's main thread with full API access but can freeze the Editor for the duration of the call if the snippet blocks. false runs on a worker thread - safe and non-blocking, but any UnityEngine/UnityEditor API call will throw.",
+                                default: true
+                            },
+                            background: {
+                                type: "boolean",
+                                description: "If true, return the executionId immediately instead of waiting for the result. Fetch the result later with code_execute_status.",
+                                default: false
+                            },
+                            timeout: {
+                                type: "number",
+                                description: "How long (seconds) this call polls for a result before returning the last observed status. Does not stop the execution itself.",
+                                default: 60
+                            }
+                        },
+                        required: ["code"]
+                    }
+                },
+                code_execute_status: {
+                    description: "Fetches the status/result of a code_execute run by executionId (or the most recent run if execution_id is omitted). Use this to poll a background=true execution, or to re-check a result after a code_execute call timed out waiting.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            execution_id: {
+                                type: "string",
+                                description: "The executionId returned by code_execute. Omit or pass an empty string for the most recently started execution.",
+                                default: ""
+                            }
+                        },
+                        required: []
+                    }
+                },
                 editor_enter_play_mode: {
                     description: "Enters Unity Play Mode. Unity applies the change at the end of the current editor frame and then reloads the script domain, so the Nyamu HTTP server drops for a few hundred milliseconds to several seconds. This tool reports that the request was accepted, not that Play Mode is already running - confirm with editor_status. Expect a transient connection error on the next call; wait 3-5 seconds and retry.",
                     inputSchema: {
@@ -745,6 +804,10 @@ class MCPServer {
                     return await this.callTestsRunRegex(id, args.test_filter_regex, args.test_mode || 'EditMode', args.timeout || 60, progressToken);
                 case 'assets_refresh':
                     return await this.callAssetsRefresh(id, args);
+                case 'code_execute':
+                    return await this.callCodeExecute(id, args, progressToken);
+                case 'code_execute_status':
+                    return await this.callCodeExecuteStatus(id, args.execution_id || '');
                 case 'editor_status':
                     return await this.callEditorStatus(id);
                 case 'scripts_compile_status':
@@ -1852,6 +1915,126 @@ class MCPServer {
             };
         } catch (error) {
             this.rethrowUnityError(error, 'Failed to exit play mode');
+        }
+    }
+
+    async callCodeExecute(id, args, progressToken) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const body = JSON.stringify({
+                code: args.code,
+                mode: args.mode || 'auto',
+                usings: args.usings || [],
+                entryPoint: args.entry_point || 'Execute',
+                runOnMainThread: args.run_on_main_thread !== false,
+                background: !!args.background,
+                timeout: args.timeout || 60,
+                maxLogEntries: 200,
+                maxResultChars: 4000,
+                asyncBudgetMs: 30000
+            });
+
+            const start = await this.makeHttpPostRequest('/code-execute', body);
+
+            if (start.status !== 'ok') {
+                // Not a protocol failure (e.g. "another execution is already running", or
+                // disabled) - the message is the useful part, so return it as content rather
+                // than throwing.
+                const formattedText = this.responseFormatter.formatJsonResponse(start);
+                return {
+                    jsonrpc: '2.0', id,
+                    result: { content: [{ type: 'text', text: formattedText }] }
+                };
+            }
+
+            if (args.background) {
+                const formattedText = this.responseFormatter.formatJsonResponse(start);
+                return {
+                    jsonrpc: '2.0', id,
+                    result: { content: [{ type: 'text', text: formattedText }] }
+                };
+            }
+
+            const timeoutMs = (args.timeout || 60) * 1000;
+            const startTime = Date.now();
+            const executionId = start.executionId;
+
+            const phaseProgress = { queued: 0, compiling: 1, compiled: 2, executing: 3 };
+            let lastPhase = null;
+            let consecutivePollFailures = 0;
+
+            while (Date.now() - startTime < timeoutMs) {
+                try {
+                    const status = await this.makeHttpRequest(`/code-execute-status?execution_id=${encodeURIComponent(executionId)}`);
+                    consecutivePollFailures = 0;
+
+                    if (status.phase !== lastPhase) {
+                        const progress = phaseProgress[status.phase] ?? 4;
+                        this.sendProgressNotification(progressToken, progress, 4, `code_execute: ${status.phase}`);
+                        lastPhase = status.phase;
+                    }
+
+                    if (status.isDone) {
+                        const formattedText = this.responseFormatter.formatJsonResponse(status);
+                        return {
+                            jsonrpc: '2.0', id,
+                            result: { content: [{ type: 'text', text: formattedText }] }
+                        };
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } catch (pollError) {
+                    if (pollError instanceof UnityRestartingError || pollError instanceof UnityUnavailableError) {
+                        consecutivePollFailures++;
+                        // User code can trigger a domain reload (AssetDatabase.Refresh(), entering
+                        // Play Mode, ...), which destroys the in-memory execution record. Tolerate
+                        // a bounded run of failures rather than looping until the outer timeout.
+                        if (consecutivePollFailures >= 15) {
+                            const formattedText = this.responseFormatter.formatResponse(
+                                `code_execute: lost contact with Unity while waiting for executionId ${executionId} ` +
+                                `(the Editor likely reloaded its domain mid-execution, so the result was lost). ` +
+                                `Call code_execute_status with this executionId to check, or run code_execute again.`
+                            );
+                            return {
+                                jsonrpc: '2.0', id,
+                                result: { content: [{ type: 'text', text: formattedText }] }
+                            };
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        continue;
+                    }
+                    throw pollError;
+                }
+            }
+
+            const formattedText = this.responseFormatter.formatResponse(
+                `code_execute timed out after ${args.timeout || 60}s while waiting for a result ` +
+                `(last observed phase: ${lastPhase ?? 'unknown'}). The execution itself is not stopped by this ` +
+                `timeout. Call code_execute_status with execution_id "${executionId}" to check on it later.`
+            );
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: formattedText }] }
+            };
+        } catch (error) {
+            this.rethrowUnityError(error, 'Failed to execute code');
+        }
+    }
+
+    async callCodeExecuteStatus(id, executionId) {
+        try {
+            await this.ensureResponseFormatter();
+
+            const status = await this.makeHttpRequest(`/code-execute-status?execution_id=${encodeURIComponent(executionId)}`);
+            const formattedText = this.responseFormatter.formatJsonResponse(status);
+
+            return {
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: formattedText }] }
+            };
+        } catch (error) {
+            this.rethrowUnityError(error, 'Failed to get code execution status');
         }
     }
 

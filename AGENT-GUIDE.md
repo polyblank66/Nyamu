@@ -146,6 +146,39 @@ Modifying Assets/Scripts/PlayerController.cs (fixing a bug)
 - Enter: `requested`, `already_playing` (no-op, not an error), `blocked` (Unity is compiling), `main_thread_timeout`, `error`
 - Exit: `exit_requested`, `not_playing` (no-op, not an error), `main_thread_timeout`, `error`
 
+### Workflow 6: Executing Ad-Hoc C#
+
+```
+1. Call: code_execute with { code: "AssetDatabase.FindAssets(\"t:Material\").Length" }
+2. The call waits internally and returns the final result - no separate poll needed
+   for the common case. Response includes: outcome, resultType, result, logs, errors.
+3. For a long-running or exploratory snippet, pass background: true instead:
+   a. Response returns immediately with an executionId (phase: "queued")
+   b. Poll: code_execute_status with that executionId until isDone === true
+```
+
+**When to reach for it:**
+- Reflecting over project types ("what methods does X have?")
+- Inspecting live Editor state (`Selection`, `AssetDatabase`, loaded assets) without a temporary test script
+- Testing a one-off idea before writing it into a real script
+
+**When not to:**
+- Anything that legitimately needs Play Mode (physics, coroutines running over multiple frames)
+- Long loops or blocking calls with `run_on_main_thread` left at its default `true` - the Editor freezes for the duration and the call cannot be cancelled. Prefer `run_on_main_thread: false` for pure computation, or keep snippets short.
+
+**Code shapes (`mode` parameter, default `auto`):**
+- `expression` - a single value, e.g. `"AssetDatabase.FindAssets(\"t:Material\").Length"`
+- `statements` - a block, optionally ending with `return <value>;`
+- `class` - a full type definition; `entry_point` names the public static parameterless method to call (default `Execute`)
+- `auto` detects the shape; if the guess produces a compile error it is retried once with the other shape (statements ↔ expression) before reporting an error - this is reported back via `resolvedMode` and `fallbackUsed`.
+
+**Outcome values:** `success`, `compile_error`, `runtime_exception`, `no_entry_point`, `editor_busy`, `build_rejected`, `main_thread_timeout`, `async_timeout`, `worker_thread_timeout`, `unsupported_return`, `busy`, `internal_error`.
+
+**Known costs, by design:**
+- Each execution compiles into and permanently loads a small assembly (visible as `assembliesLoadedThisSession`) that is only released on the next domain reload (a script compile or Play Mode transition).
+- Only one `code_execute` may be in flight at a time; a concurrent call is rejected outright rather than queued.
+- State does not persist between calls except through `Nyamu.CodeExecution.NyamuGlobals` (a small in-memory bag, cleared on every domain reload) - available by default in every snippet.
+
 ## Error Handling
 
 ### Error -32603: HTTP Request Failed
@@ -519,6 +552,18 @@ Progress: "Compiling Standard.shader (10/50)"
 Progress: "Compiling StandardSpecular.shader (11/50)"
 ```
 
+### Code Execution Progress
+```
+code_execute sends progress including the current phase:
+- queued (0/4) -> compiling (1/4) -> compiled (2/4) -> executing (3/4) -> done (4/4)
+```
+
+**Example progress:**
+```
+Progress: "code_execute: compiling"
+Progress: "code_execute: executing"
+```
+
 ### Handling Progress in MCP Clients
 
 **Important:** MCP clients must properly handle progress notifications:
@@ -558,6 +603,16 @@ Progress: "Compiling StandardSpecular.shader (11/50)"
 - The connection error you see right after calling either tool is the domain reload doing its normal teardown, not a hang
 - Poll `editor_status` (not the play-mode tool again) until `isPlaying` reflects the state you expect and `isStateStale` is false
 - If `editor_status` itself stays unreachable for more than ~30 seconds, the Editor's main thread is genuinely stuck - check the Unity window for a modal dialog or a runaway script
+
+### Issue: "code_execute reports compile_error at a line that doesn't match my code"
+**Solution:**
+- The reported `line` and `file` should already be in your snippet's own coordinates (via a `#line` directive in the generated wrapper) - if they still look off, double check `mode`: an explicitly-forced `mode` skips the auto-detection retry that fixes a wrong expression/statements guess. Try `mode: "auto"` or the other explicit mode.
+
+### Issue: "The Editor froze after calling code_execute"
+**Solution:**
+- Expected if `run_on_main_thread` was left at its default `true` and the snippet blocks (an infinite loop, a long `Thread.Sleep`, a wait on something that never signals) - the Editor's main thread is doing exactly what the snippet told it to, and there is no safe way to cancel it.
+- Wait it out, or restart the Editor if it must stop immediately.
+- For future calls: use `run_on_main_thread: false` for pure computation/reflection, and keep main-thread snippets short.
 
 ### Issue: "MCP connection lost"
 **Solution:**

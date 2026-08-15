@@ -1071,6 +1071,110 @@
       "description": "Endpoints for monitoring Unity Editor state."
     },
     {
+      "name": "Menu Execution",
+      "item": [
+        {
+          "name": "Execute Menu Item",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:{{nyamu-port}}/menu-items-execute?menuItemPath=Assets/Create/Folder",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "{{nyamu-port}}",
+              "path": [
+                "menu-items-execute"
+              ],
+              "query": [
+                {
+                  "key": "menuItemPath",
+                  "value": "Assets/Create/Folder",
+                  "description": "Full path of the Unity menu item to execute (e.g., \"Assets/Create/Folder\")"
+                }
+              ]
+            },
+            "description": "Executes a Unity Editor menu item by its full path.\n\n**Query Parameters:**\n- `menuItemPath` (required): Full path of the menu item to execute\n\n**Response:**\n- Success: `{\"status\":\"ok\", \"message\":\"Menu item executed successfully\", \"menuItemPath\":\"...\"}`\n- Not found/failed: `{\"status\":\"error\", \"message\":\"MenuItem not found or execution failed\", \"menuItemPath\":\"...\"}`"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/menu-items-execute?menuItemPath=Assets/Create/Folder",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "menu-items-execute"
+                  ],
+                  "query": [
+                    {
+                      "key": "menuItemPath",
+                      "value": "Assets/Create/Folder"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ok\",\n    \"message\": \"Menu item executed successfully\",\n    \"menuItemPath\": \"Assets/Create/Folder\"\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:{{nyamu-port}}/menu-items-execute?menuItemPath=Bogus/Menu/Item",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "{{nyamu-port}}",
+                  "path": [
+                    "menu-items-execute"
+                  ],
+                  "query": [
+                    {
+                      "key": "menuItemPath",
+                      "value": "Bogus/Menu/Item"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"error\",\n    \"message\": \"MenuItem not found or execution failed\",\n    \"menuItemPath\": \"Bogus/Menu/Item\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Endpoints for executing Unity Editor menu items by path."
+    },
+    {
       "name": "Code Execution",
       "item": [
         {

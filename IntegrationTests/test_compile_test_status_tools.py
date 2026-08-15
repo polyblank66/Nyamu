@@ -198,7 +198,24 @@ async def test_test_status_consistency_with_http_endpoint(mcp_client, unity_stat
     http_response = requests.get(f"{unity_base_url}/tests-run-status")
     http_data = http_response.json()
 
-    # Should match exactly
+    # The MCP tool caps long cached test failure messages to stay within its
+    # response size limit; the raw HTTP endpoint does not. Allow a truncated
+    # message to be a prefix of the original, then compare everything else
+    # (including all other test result fields) exactly.
+    mcp_results = mcp_data.get("testResults", {}).get("results", [])
+    http_results = http_data.get("testResults", {}).get("results", [])
+
+    for mcp_result, http_result in zip(mcp_results, http_results):
+        mcp_message = mcp_result.get("message", "")
+        http_message = http_result.get("message", "")
+        if mcp_message != http_message:
+            assert "... (truncated," in mcp_message, (
+                f"Message mismatch without truncation marker: {mcp_message!r} vs {http_message!r}"
+            )
+            prefix = mcp_message.split("... (truncated,")[0]
+            assert http_message.startswith(prefix)
+            mcp_result["message"] = http_result["message"] = None
+
     assert mcp_data == http_data
 
 

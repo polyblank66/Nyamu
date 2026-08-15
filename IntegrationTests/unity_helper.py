@@ -58,14 +58,21 @@ class UnityStateManager:
             lightweight: If True, only does basic refresh and compilation check (legacy)
         """
         try:
+            # Always confirm Unity has settled before handing off to
+            # whatever test runs next. The "noop" level (protocol-marked
+            # tests) still skips it below - "protocol" means "verify the
+            # MCP tool contract", not "never touches Unity state", so a
+            # protocol test can still have kicked off a real Unity test
+            # run that hasn't finished yet. Skipping this wait is what let
+            # a still-running Test Runner leak into the next test under
+            # randomized ordering.
+            await wait_for_unity_idle(self.mcp_client, timeout=30)
+
             # Handle new cleanup level system
             if cleanup_level == "noop":
-                # No-op cleanup for pure protocol tests that never touch Unity
-                print("Skipping Unity state cleanup - protocol test only")
+                # No further cleanup for pure protocol tests
+                print("Skipping further Unity state cleanup - protocol test only")
                 return True
-
-            # Wait for Unity to be idle before cleanup
-            await wait_for_unity_idle(self.mcp_client, timeout=30)
 
             if cleanup_level == "minimal":
                 # NEW: Minimal now checks for stale file references

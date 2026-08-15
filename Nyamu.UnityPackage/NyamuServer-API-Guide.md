@@ -203,7 +203,7 @@ GET /code-execute-status?execution_id=…
 
 ### Test Status
 
-**Endpoint:** `GET /tests-status`
+**Endpoint:** `GET /tests-run-status`
 
 **Response Fields:**
 - `status`: "running" or "idle"
@@ -216,7 +216,7 @@ GET /code-execute-status?execution_id=…
 
 ### Cancel Tests
 
-**Endpoint:** `GET /tests-cancel?guid=`
+**Endpoint:** `GET /tests-run-cancel?guid=`
 
 **Parameters:**
 - `guid` (optional): Test run GUID to cancel. If not provided, cancels current running test.
@@ -224,10 +224,10 @@ GET /code-execute-status?execution_id=…
 **Examples:**
 ```bash
 # Cancel current test run
-GET /tests-cancel
+GET /tests-run-cancel
 
 # Cancel specific test run
-GET /tests-cancel?guid=abc123def456
+GET /tests-run-cancel?guid=abc123def456
 ```
 
 ## Usage Examples
@@ -239,16 +239,16 @@ GET /tests-cancel?guid=abc123def456
 GET /editor-status
 
 # Trigger compilation
-GET /compilation-trigger
+GET /scripts-compile
 
 # Wait for compilation to complete
-GET /compilation-status
+GET /scripts-compile-status
 
 # Run all EditMode tests
 GET /tests-run-all?mode=EditMode
 
 # Check test status
-GET /tests-status
+GET /tests-run-status
 ```
 
 ### CI/CD Integration
@@ -258,22 +258,22 @@ GET /tests-status
 GET /editor-status
 
 # 2. Compile project
-GET /compilation-trigger
+GET /scripts-compile
 
 # 3. Check compilation status
-GET /compilation-status
+GET /scripts-compile-status
 
 # 4. Run EditMode tests
 GET /tests-run-all?mode=EditMode
 
 # 5. Check test results
-GET /tests-status
+GET /tests-run-status
 
 # 6. Run PlayMode tests
 GET /tests-run-all?mode=PlayMode
 
 # 7. Check final test results
-GET /tests-status
+GET /tests-run-status
 ```
 
 ### Advanced Testing Patterns

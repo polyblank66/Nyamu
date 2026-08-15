@@ -15,23 +15,14 @@ for the change in progress at the time. Recorded here so they aren't lost.
    sites (compile, test, shader, menu-item, asset-refresh handlers) have the
    same defect and should get the same treatment.
 
-2. **Stale endpoint names in `NyamuServer-API-Guide.md`**: `/compilation-trigger`
-   and `/compilation-status` (now `/scripts-compile`, `/scripts-compile-status`),
-   and `/tests-status` / `/tests-cancel` (now `/tests-run-status`,
-   `/tests-run-cancel`) - see the "Usage Examples" and "Test Status" / "Cancel
-   Tests" sections. The same dead `/compilation-status` URL appeared in
-   `mcp-server.js`'s `ECONNREFUSED` error instructions and was corrected in
-   passing; the guide's own examples were left alone to keep that change
-   scoped.
-
-3. **`menu_items_execute` is absent from the Postman collection**, and it is
+2. **`menu_items_execute` is absent from the Postman collection**, and it is
    documented as `POST` with a `menu_item_path` body parameter in
    `NyamuServer-API-Guide.md` while the implementation reads a `GET` query
    string parameter `menuItemPath`
    (`Nyamu.UnityPackage/Editor/NyamuServer.cs`, `HandleExecuteMenuItemRequest`).
    Docs and implementation disagree; pick one and fix the other.
 
-4. **`ExecuteMenuItemTool` reports a misleading message on timeout** - its
+3. **`ExecuteMenuItemTool` reports a misleading message on timeout** - its
    bounded 1-second poll
    (`Nyamu.UnityPackage/Editor/Tools/Editor/ExecuteMenuItemTool.cs:45-48`)
    falls through to `"MenuItem execution failed"`, conflating "menu item not
@@ -43,7 +34,7 @@ for the change in progress at the time. Recorded here so they aren't lost.
 
 ## From: Execute Code tool (2026-08-15)
 
-5. **`Task.Run`-queued work was observed to never start inside this Unity
+4. **`Task.Run`-queued work was observed to never start inside this Unity
    Editor process.** While implementing `code_execute`'s `run_on_main_thread:
    false` path, a `Task.Run(...)` closure containing nothing but a trivial
    `entry.Invoke(null, null)` call on a freshly loaded assembly never began
@@ -62,7 +53,7 @@ for the change in progress at the time. Recorded here so they aren't lost.
    proper investigation before any other feature reaches for `Task.Run` from
    Editor-side Nyamu code.
 
-6. **`Application.logMessageReceivedThreaded`'s add/remove accessors are not
+5. **`Application.logMessageReceivedThreaded`'s add/remove accessors are not
    actually safe to call off the main thread**, despite the name: subscribing
    (`+=`) from a background thread throws `UnityException: SetLogCallbackDefined
    can only be called from the main thread`. "Threaded" only describes
@@ -70,7 +61,7 @@ for the change in progress at the time. Recorded here so they aren't lost.
    because it silently killed the `code_execute` worker thread before
    `entry.Invoke` ever ran (an unhandled exception on a raw `Thread` just
    ends that thread) - which looked identical to the `Task.Run` starvation
-   issue above (item 5) until logged output proved otherwise. Fixed in
+   issue above (item 4) until logged output proved otherwise. Fixed in
    `Nyamu.UnityPackage/Editor/Tools/CodeExecution/CodeRunner.cs` by moving
    capture start/stop (the `Application.logMessageReceivedThreaded`
    subscription and `Console.SetOut`/`SetError`) onto the main thread, leaving

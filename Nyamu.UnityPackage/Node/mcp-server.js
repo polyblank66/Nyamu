@@ -989,7 +989,7 @@ class MCPServer {
             throw new Error(`Compilation timeout after ${timeoutSeconds} seconds`);
 
         } catch (error) {
-            throw new Error(`Failed to compile and wait: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to compile and wait');
         }
     }
 
@@ -1101,7 +1101,7 @@ class MCPServer {
             throw new Error(`Test execution timeout after ${timeoutSeconds} seconds`);
 
         } catch (error) {
-            throw new Error(`Failed to run tests: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to run tests');
         }
     }
 
@@ -1210,7 +1210,7 @@ class MCPServer {
             throw new Error(`Test execution timed out after ${timeoutSeconds} seconds`);
 
         } catch (error) {
-            throw new Error(`Failed to run tests: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to run tests');
         }
     }
 
@@ -1319,7 +1319,7 @@ class MCPServer {
             throw new Error(`Test execution timed out after ${timeoutSeconds} seconds`);
 
         } catch (error) {
-            throw new Error(`Failed to run tests: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to run tests');
         }
     }
 
@@ -1402,7 +1402,7 @@ class MCPServer {
             throw new Error(`Asset refresh timeout after ${timeout} seconds`);
 
         } catch (error) {
-            throw new Error(`Failed to refresh assets: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to refresh assets');
         }
     }
 
@@ -1500,7 +1500,7 @@ class MCPServer {
             };
 
         } catch (error) {
-            throw new Error(`Failed to get compile status: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to get compile status');
         }
     }
 
@@ -1526,7 +1526,7 @@ class MCPServer {
             };
 
         } catch (error) {
-            throw new Error(`Failed to get test status: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to get test status');
         }
     }
 
@@ -1558,7 +1558,7 @@ class MCPServer {
             };
 
         } catch (error) {
-            throw new Error(`Failed to cancel tests: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to cancel tests');
         }
     }
 
@@ -1578,7 +1578,7 @@ class MCPServer {
                 result: { content: [{ type: 'text', text: finalText }] }
             };
         } catch (error) {
-            throw new Error(`Failed to compile shader: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to compile shader');
         }
     }
 
@@ -1653,7 +1653,7 @@ class MCPServer {
             // Timeout
             throw new Error(`Shader compilation timed out after ${timeoutSeconds} seconds`);
         } catch (error) {
-            throw new Error(`Failed to compile all shaders with progress: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to compile all shaders with progress');
         }
     }
 
@@ -1684,7 +1684,7 @@ class MCPServer {
                 result: { content: [{ type: 'text', text: finalText }] }
             };
         } catch (error) {
-            throw new Error(`Failed to compile shaders by regex: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to compile shaders by regex');
         }
     }
 
@@ -1749,7 +1749,7 @@ class MCPServer {
             // Timeout
             throw new Error(`Shader compilation timed out after ${timeoutSeconds} seconds`);
         } catch (error) {
-            throw new Error(`Failed to compile shaders by regex with progress: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to compile shaders by regex with progress');
         }
     }
 
@@ -1766,7 +1766,7 @@ class MCPServer {
                 result: { content: [{ type: 'text', text: formattedText }] }
             };
         } catch (error) {
-            throw new Error(`Failed to get shader compilation status: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to get shader compilation status');
         }
     }
 
@@ -1882,7 +1882,7 @@ class MCPServer {
                 result: { content: [{ type: 'text', text: formattedText }] }
             };
         } catch (error) {
-            throw new Error(`Failed to execute menu item: ${error.message}`);
+            this.rethrowUnityError(error, 'Failed to execute menu item');
         }
     }
 

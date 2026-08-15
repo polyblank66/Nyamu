@@ -5,17 +5,7 @@ for the change in progress at the time. Recorded here so they aren't lost.
 
 ## From: Play Mode observability and control over MCP (2026-08-14)
 
-1. **Most `call*` handlers in `mcp-server.js` destroy typed Unity errors** by
-   wrapping them in `throw new Error(...)`, so the `instanceof
-   UnityUnavailableError || UnityRestartingError` check in `handleToolCall`
-   fails and the agent loses `data.instructions` / `data.retryable`. A
-   `rethrowUnityError(error, context)` helper was added and applied to
-   `callEditorStatus`, `callEditorExitPlayMode`, `callEditorEnterPlayMode`,
-   `callCodeExecute`, and `callCodeExecuteStatus` only. The remaining ~17 call
-   sites (compile, test, shader, menu-item, asset-refresh handlers) have the
-   same defect and should get the same treatment.
-
-2. **`ExecuteMenuItemTool` reports a misleading message on timeout** - its
+1. **`ExecuteMenuItemTool` reports a misleading message on timeout** - its
    bounded 1-second poll
    (`Nyamu.UnityPackage/Editor/Tools/Editor/ExecuteMenuItemTool.cs:45-48`)
    falls through to `"MenuItem execution failed"`, conflating "menu item not
@@ -27,7 +17,7 @@ for the change in progress at the time. Recorded here so they aren't lost.
 
 ## From: Execute Code tool (2026-08-15)
 
-3. **`Task.Run`-queued work was observed to never start inside this Unity
+2. **`Task.Run`-queued work was observed to never start inside this Unity
    Editor process.** While implementing `code_execute`'s `run_on_main_thread:
    false` path, a `Task.Run(...)` closure containing nothing but a trivial
    `entry.Invoke(null, null)` call on a freshly loaded assembly never began
@@ -46,7 +36,7 @@ for the change in progress at the time. Recorded here so they aren't lost.
    proper investigation before any other feature reaches for `Task.Run` from
    Editor-side Nyamu code.
 
-4. **`Application.logMessageReceivedThreaded`'s add/remove accessors are not
+3. **`Application.logMessageReceivedThreaded`'s add/remove accessors are not
    actually safe to call off the main thread**, despite the name: subscribing
    (`+=`) from a background thread throws `UnityException: SetLogCallbackDefined
    can only be called from the main thread`. "Threaded" only describes
@@ -54,7 +44,7 @@ for the change in progress at the time. Recorded here so they aren't lost.
    because it silently killed the `code_execute` worker thread before
    `entry.Invoke` ever ran (an unhandled exception on a raw `Thread` just
    ends that thread) - which looked identical to the `Task.Run` starvation
-   issue above (item 3) until logged output proved otherwise. Fixed in
+   issue above (item 2) until logged output proved otherwise. Fixed in
    `Nyamu.UnityPackage/Editor/Tools/CodeExecution/CodeRunner.cs` by moving
    capture start/stop (the `Application.logMessageReceivedThreaded`
    subscription and `Console.SetOut`/`SetError`) onto the main thread, leaving

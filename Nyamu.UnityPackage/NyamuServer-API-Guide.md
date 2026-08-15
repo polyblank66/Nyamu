@@ -46,7 +46,7 @@
 
 | Endpoint | Method | Purpose | Parameters |
 |----------|--------|---------|------------|
-| `/menu-items-execute` | POST | Execute Unity menu item | `menu_item_path` |
+| `/menu-items-execute` | GET | Execute Unity menu item | `menuItemPath` |
 
 ### Code Execution
 

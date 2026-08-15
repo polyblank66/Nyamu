@@ -1,5 +1,7 @@
 # Nyamu Server API Guide
 
+> This is developer documentation for anyone who wants to build their own analog of the intermediate server (`mcp-server.js`).
+
 ## HTTP API Endpoints
 
 ### Compilation Endpoints

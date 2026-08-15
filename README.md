@@ -73,7 +73,9 @@ Check script compilation with Nyamu MCP tool
 * **Unity**: 2021.3.45f2 or later (not a hard requirement—this is simply the version used for testing)
 * **Node.js**: Required to run the intermediate server
 
-### 1. Install the Package via Unity Package Manager (Git URL)
+### 1. Install the Package
+
+#### Option 1: Unity Package Manager with Git URL (Recommended)
 
 1. Open the Unity Editor
 2. Open **Window → Package Manager**
@@ -87,6 +89,34 @@ Check script compilation with Nyamu MCP tool
 6. Click **Add**
 
 Unity will install the Nyamu package directly from the GitHub repository.
+
+<details>
+<summary>Option 2: Install via .unitypackage</summary>
+
+1. Download the latest `.unitypackage` file from the [Releases page](https://github.com/polyblank66/Nyamu/releases)
+2. In the Unity Editor, open **Assets → Import Package → Custom Package...**
+3. Select the downloaded `.unitypackage` file
+4. In the import dialog, make sure all files are selected, then click **Import**
+
+</details>
+
+<details>
+<summary>Option 3: Install via OpenUPM</summary>
+
+Prerequisites: [Node.js v16 or above](https://nodejs.org/en/download/) and [openupm-cli](https://github.com/openupm/openupm-cli#openupm-cli).
+
+```
+# Install openupm-cli
+npm install -g openupm-cli
+
+# Go to your unity project directory
+cd YOUR_UNITY_PROJECT_DIR
+
+# Install package: dev.polyblank.nyamu
+openupm add dev.polyblank.nyamu
+```
+
+</details>
 
 ### 2. Add the MCP Server to the AI Agent
 

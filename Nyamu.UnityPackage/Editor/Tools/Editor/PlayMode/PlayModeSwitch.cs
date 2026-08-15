@@ -24,8 +24,9 @@ namespace Nyamu.Tools.Editor.PlayMode
     // Shared enqueue + bounded-wait for the enter/exit Play Mode tools.
     //
     // Deadline rationale:
-    //  - Must stay well under the Node client's 15s HTTP timeout (mcp-server.js)
-    //    so the agent always receives structured JSON, never an opaque timeout.
+    //  - Must stay well under the Node client's 5s HTTP timeout (mcp-server.js,
+    //    makeHttpRequest's req.setTimeout) so the agent always receives
+    //    structured JSON, never an opaque timeout.
     //  - EditorApplication.update throttles when the Editor is unfocused, so 3s
     //    still buys several ticks.
     //  - Server.Cleanup() unsubscribes EditorMonitor.OnEditorUpdate before

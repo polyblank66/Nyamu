@@ -151,6 +151,27 @@ GET /editor-enter-play-mode
 GET /editor-status   # confirm isPlaying: true
 ```
 
+### Execute Menu Item
+
+**Endpoint:** `GET /menu-items-execute?menuItemPath=<path>`
+
+Enqueues `EditorApplication.ExecuteMenuItem(menuItemPath)` on the Unity main thread and waits up to 3 seconds for it to run.
+
+**Response Fields:**
+- `success`: boolean
+- `status`: one of
+  - `ok`: Unity ran the menu item
+  - `not_executed`: Unity refused it - the path may not exist, or the item's validate function disabled it right now. Menu paths are case-sensitive and must match the menu bar exactly (e.g. `GameObject/Create Empty`)
+  - `main_thread_timeout`: the main thread did not finish the item within 3 seconds (compiling, mid-reload, a blocked modal dialog, or the item itself is long-running) - it may still complete, so re-check before retrying
+  - `error`: missing `menuItemPath`, or the Unity API threw
+- `message`: human-readable detail
+- `menuItemPath`: echoes the requested path
+
+**Example:**
+```bash
+GET /menu-items-execute?menuItemPath=Assets/Create/Folder
+```
+
 ### Code Execution
 
 **Endpoints:** `POST /code-execute`, `GET /code-execute-status`

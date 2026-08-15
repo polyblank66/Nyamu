@@ -5,42 +5,17 @@ for the change in progress at the time. Recorded here so they aren't lost.
 
 ## From: Play Mode observability and control over MCP (2026-08-14)
 
-1. **`UnityThreadExecutor.Process()` invokes queued actions while holding the
-   queue lock** (`Nyamu.UnityPackage/Editor/Core/UnityThreadExecutor.cs:21-28`).
-   Any action that transitively calls `Enqueue` self-deadlocks the Unity main
-   thread, and a slow action blocks every HTTP handler thread trying to
-   enqueue (handlers run on ThreadPool threads,
-   `Nyamu.UnityPackage/Editor/Http/TcpHttpServer.cs:114`). Fix: drain the
-   queue into a local list under the lock, then invoke outside it. While
-   there, consider wrapping each invocation in try/catch so one throwing
-   action doesn't abort the rest of the batch (today an exception escapes
-   into `EditorApplication.update`). Nothing triggers this today - it's a
-   trap for future tools. The new `PlayModeSwitch.Request` helper
-   (`Nyamu.UnityPackage/Editor/Tools/Editor/PlayMode/PlayModeSwitch.cs`)
-   deliberately never calls `Enqueue` from within its own enqueued action, and
-   carries a comment explaining why.
-
-2. **Most `call*` handlers in `mcp-server.js` destroy typed Unity errors** by
+1. **Most `call*` handlers in `mcp-server.js` destroy typed Unity errors** by
    wrapping them in `throw new Error(...)`, so the `instanceof
    UnityUnavailableError || UnityRestartingError` check in `handleToolCall`
    fails and the agent loses `data.instructions` / `data.retryable`. A
    `rethrowUnityError(error, context)` helper was added and applied to
-   `callEditorStatus`, `callEditorExitPlayMode`, and `callEditorEnterPlayMode`
-   only. The remaining ~17 call sites (compile, test, shader, menu-item,
-   asset-refresh handlers) have the same defect and should get the same
-   treatment.
+   `callEditorStatus`, `callEditorExitPlayMode`, `callEditorEnterPlayMode`,
+   `callCodeExecute`, and `callCodeExecuteStatus` only. The remaining ~17 call
+   sites (compile, test, shader, menu-item, asset-refresh handlers) have the
+   same defect and should get the same treatment.
 
-3. **`Server.Cleanup()` unsubscribes the queue drainer before stopping the
-   HTTP server** (`Nyamu.UnityPackage/Editor/NyamuServer.cs`:
-   `_editorMonitor?.Cleanup()` runs before `_httpServer?.Stop()`), so once a
-   domain reload begins the `UnityThreadExecutor` queue is guaranteed never
-   to drain again. The Play Mode tools work around this with a bounded
-   3-second wait (`PlayModeSwitch.MainThreadDeadlineMs`) rather than blocking
-   forever, but reversing the cleanup order would fix the root cause and
-   remove the need for that workaround (and for any other tool that enqueues
-   main-thread work and waits on it).
-
-4. **Stale endpoint names in `NyamuServer-API-Guide.md`**: `/compilation-trigger`
+2. **Stale endpoint names in `NyamuServer-API-Guide.md`**: `/compilation-trigger`
    and `/compilation-status` (now `/scripts-compile`, `/scripts-compile-status`),
    and `/tests-status` / `/tests-cancel` (now `/tests-run-status`,
    `/tests-run-cancel`) - see the "Usage Examples" and "Test Status" / "Cancel
@@ -49,14 +24,14 @@ for the change in progress at the time. Recorded here so they aren't lost.
    passing; the guide's own examples were left alone to keep that change
    scoped.
 
-5. **`menu_items_execute` is absent from the Postman collection**, and it is
+3. **`menu_items_execute` is absent from the Postman collection**, and it is
    documented as `POST` with a `menu_item_path` body parameter in
    `NyamuServer-API-Guide.md` while the implementation reads a `GET` query
    string parameter `menuItemPath`
    (`Nyamu.UnityPackage/Editor/NyamuServer.cs`, `HandleExecuteMenuItemRequest`).
    Docs and implementation disagree; pick one and fix the other.
 
-6. **`ExecuteMenuItemTool` reports a misleading message on timeout** - its
+4. **`ExecuteMenuItemTool` reports a misleading message on timeout** - its
    bounded 1-second poll
    (`Nyamu.UnityPackage/Editor/Tools/Editor/ExecuteMenuItemTool.cs:45-48`)
    falls through to `"MenuItem execution failed"`, conflating "menu item not
@@ -65,3 +40,40 @@ for the change in progress at the time. Recorded here so they aren't lost.
    `Nyamu.UnityPackage/Editor/Tools/Editor/PlayMode/PlayModeSwitch.cs` is a
    reasonable shape to copy: distinct outcomes for not-found vs. blocked vs.
    timed-out vs. errored, each with its own honest message.
+
+## From: Execute Code tool (2026-08-15)
+
+5. **`Task.Run`-queued work was observed to never start inside this Unity
+   Editor process.** While implementing `code_execute`'s `run_on_main_thread:
+   false` path, a `Task.Run(...)` closure containing nothing but a trivial
+   `entry.Invoke(null, null)` call on a freshly loaded assembly never began
+   executing - not even the first line - until a separate watchdog
+   (`Task.Delay(...).ContinueWith(...)`) timed it out. `Task.Delay` and
+   `TcpHttpServer`'s own per-connection `Task.Run` calls
+   (`Nyamu.UnityPackage/Editor/Http/TcpHttpServer.cs:114`) both work fine, so
+   the ThreadPool isn't universally broken in this environment - something
+   about scheduling a fresh work item at that particular moment (main-thread
+   dispatch mid-`EditorApplication.update`, freshly `Assembly.Load`ed code, or
+   some interaction between the two) starves it. Root cause not fully
+   diagnosed. Worked around in
+   `Nyamu.UnityPackage/Editor/Tools/CodeExecution/CodeRunner.cs`
+   (`InvokeOnWorkerThread`) by using a dedicated background `Thread` instead
+   of `Task.Run`, which was observed to start immediately every time. Worth a
+   proper investigation before any other feature reaches for `Task.Run` from
+   Editor-side Nyamu code.
+
+6. **`Application.logMessageReceivedThreaded`'s add/remove accessors are not
+   actually safe to call off the main thread**, despite the name: subscribing
+   (`+=`) from a background thread throws `UnityException: SetLogCallbackDefined
+   can only be called from the main thread`. "Threaded" only describes
+   thread-safe *delivery* of an already-registered callback. This was caught
+   because it silently killed the `code_execute` worker thread before
+   `entry.Invoke` ever ran (an unhandled exception on a raw `Thread` just
+   ends that thread) - which looked identical to the `Task.Run` starvation
+   issue above (item 5) until logged output proved otherwise. Fixed in
+   `Nyamu.UnityPackage/Editor/Tools/CodeExecution/CodeRunner.cs` by moving
+   capture start/stop (the `Application.logMessageReceivedThreaded`
+   subscription and `Console.SetOut`/`SetError`) onto the main thread, leaving
+   only the `entry.Invoke` call itself on the worker thread. Worth checking
+   whether any other Nyamu code subscribes to Unity log/console callbacks
+   from a non-main thread.

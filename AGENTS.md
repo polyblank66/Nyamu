@@ -64,6 +64,17 @@ Available shader compilation tools:
   - Both tools report that the request was accepted, not that the transition is complete - poll `editor_status` to confirm
   - Both trigger a domain reload: expect `-32603` for a few seconds after calling; wait 3-5s and retry, then confirm via `editor_status`
 
+### Code Execution Tools
+- `code_execute` - Compile and run an ad-hoc C# snippet in the Unity Editor (params: code required, mode, usings, entry_point, run_on_main_thread, timeout, background)
+  - Use it to reflect over project types, inspect `Selection`/`AssetDatabase`, or test an idea without entering Play Mode
+  - `run_on_main_thread` defaults to `true` - a blocking snippet (infinite loop, long sleep) freezes the Editor for that duration and **cannot be cancelled**. Set `run_on_main_thread: false` for pure computation/reflection that never touches a UnityEngine/UnityEditor API; that path never freezes the Editor
+  - Each execution permanently loads a small assembly into the Editor process until the next domain reload (a script compile or Play Mode transition) - expected, bounded, not a bug
+  - `Debug.Log`/`Warning`/`Error` output and `Console` stdout/stderr during the run are captured in the response
+  - Always asynchronous on the Unity side; the tool call itself polls internally and returns the final result. Set `background: true` to get the `executionId` back immediately instead
+  - Only one execution may be in flight at a time
+- `code_execute_status` - Fetch the status/result of a run by `execution_id` (params: execution_id, omit for the most recent run)
+  - Use to poll a `background: true` execution, or to re-check a result after a `code_execute` call timed out waiting
+
 ### Editor Log Tools
 Available editor log tools:
 - `editor_log_path` - Get Unity Editor log file path (no params)

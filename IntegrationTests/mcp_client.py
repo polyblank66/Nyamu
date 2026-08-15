@@ -318,6 +318,36 @@ class MCPClient:
             "arguments": {}
         })
 
+    async def code_execute(self, code: str, mode: str = "auto", usings=None, entry_point: str = "Execute",
+                            run_on_main_thread: bool = True, timeout: int = 60,
+                            background: bool = False) -> Dict[str, Any]:
+        """Compile and run an ad-hoc C# snippet in the Unity Editor
+
+        Automatically retries on Unity HTTP server restart (-32603 errors), since a
+        snippet is free to trigger a domain reload (AssetDatabase.Refresh(), entering
+        Play Mode, ...) mid-execution.
+        """
+        return await self._send_unity_request_with_retry("tools/call", {
+            "name": "code_execute",
+            "arguments": {
+                "code": code,
+                "mode": mode,
+                "usings": usings or [],
+                "entry_point": entry_point,
+                "run_on_main_thread": run_on_main_thread,
+                "timeout": timeout,
+                "background": background
+            }
+        })
+
+    async def code_execute_status(self, execution_id: str = "") -> Dict[str, Any]:
+        """Fetch the status/result of a code_execute run by executionId (or the most
+        recent run if execution_id is omitted)"""
+        return await self._send_unity_request_with_retry("tools/call", {
+            "name": "code_execute_status",
+            "arguments": {"execution_id": execution_id}
+        })
+
     async def shaders_compile_single(self, shader_name: str, timeout: int = 30) -> Dict[str, Any]:
         """Compile a single shader with fuzzy name matching
 

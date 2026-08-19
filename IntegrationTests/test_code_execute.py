@@ -84,6 +84,38 @@ async def test_compile_error_reports_user_line_numbers(mcp_client, unity_state_m
 @pytest.mark.mcp
 @pytest.mark.essential
 @pytest.mark.asyncio
+async def test_auto_mode_retries_with_the_other_wrapper(mcp_client, unity_state_manager):
+    """A multi-line expression is auto-detected as statements and fails to compile, so
+    the orchestrator must retry once as an expression.
+
+    The retry is deliberately dispatched on the next main-thread tick rather than from
+    AssemblyBuilder's buildFinished callback: Unity raises that callback from inside its
+    own loop over the registered builders, and starting a build there registers a new one
+    mid-enumeration (InvalidOperationException out of IsAnyAssemblyBuilderCompiling).
+    """
+    status = _payload(await mcp_client.code_execute("40 +\n2", mode="auto"))
+    assert status["outcome"] == "success", status
+    assert status["fallbackUsed"] is True
+    assert status["resolvedMode"] == "expression"
+    assert status["result"] == "42"
+    assert status["errors"] == []
+
+
+@pytest.mark.mcp
+@pytest.mark.asyncio
+async def test_explicit_mode_is_never_retried(mcp_client, unity_state_manager):
+    """The retry covers auto-detection guesses only. An explicitly requested mode must be
+    reported as it failed, not silently rewritten into a shape the caller did not ask for."""
+    status = _payload(await mcp_client.code_execute("40 +\n2", mode="statements"))
+    assert status["outcome"] == "compile_error"
+    assert status["fallbackUsed"] is False
+    assert status["resolvedMode"] == "statements"
+    assert len(status["errors"]) > 0
+
+
+@pytest.mark.mcp
+@pytest.mark.essential
+@pytest.mark.asyncio
 async def test_runtime_exception_is_reported(mcp_client, unity_state_manager):
     status = _payload(await mcp_client.code_execute(
         'throw new System.InvalidOperationException("boom");'

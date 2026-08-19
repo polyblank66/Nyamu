@@ -171,6 +171,17 @@ namespace Nyamu
             
             NyamuLogger.LogDebug("[Nyamu][Server] Initialize started");
 
+            // Asset import workers run this InitializeOnLoad too. Their bind would succeed
+            // (SO_REUSEADDR shares the port on Windows) and silently take over traffic meant
+            // for the Editor, so they must never start the server. See NyamuProcess.
+            if (NyamuProcess.IsAssetImportWorker)
+            {
+                NyamuLogger.LogDebug("[Nyamu][Server] Asset import worker process - HTTP server not started");
+                return;
+            }
+
+            NyamuProcess.CaptureProjectPath();
+
             // Cancel any deferred recovery from a previous initialization attempt.
             // After domain reload, EditorApplication.update subscriptions are cleared, but
             // _deferredRecoveryActive may still be true if "Disable Domain Reload" is on.

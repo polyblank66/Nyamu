@@ -48,7 +48,11 @@ namespace Nyamu.Tools.Editor
                 isExitingPlayMode = snapshot.IsExitingPlayMode,
                 stateAgeSeconds = stateAgeSeconds,
                 isStateStale = neverSampled || stateAgeSeconds > StaleThresholdSeconds,
-                lastEditorUpdateUtc = neverSampled ? "" : snapshot.LastUpdateUtc.ToString("o")
+                lastEditorUpdateUtc = neverSampled ? "" : snapshot.LastUpdateUtc.ToString("o"),
+                // Identity of the answering process: one port must belong to one Editor,
+                // and a caller that suddenly talks to a different one has to notice.
+                processId = NyamuProcess.Id,
+                projectPath = NyamuProcess.ProjectPath
             };
 
             return Task.FromResult(response);

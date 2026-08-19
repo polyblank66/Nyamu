@@ -341,9 +341,11 @@ class ResponseFormatter {
 
 class MCPServer {
     constructor(port = 17932) {
+        this.port = port;
         this.unityServerUrl = `http://localhost:${port}`;
         this.configManager = new ConfigManager(this.unityServerUrl);
         this.responseFormatter = null; // Will be initialized after first config load
+        this.serverIdentity = null; // { processId, projectPath } of the Unity process last seen on this port
         this.stdinBuffer = Buffer.alloc(0);
         this.activeProtocol = null; // 'content-length' | 'newline'
         this.capabilities = {
@@ -525,7 +527,7 @@ class MCPServer {
                     }
                 },
                 editor_status: {
-                    description: "Returns Unity Editor's current state: Is it compiling? Running tests? In play mode? Paused? Mid Play Mode transition? Also reports how stale the cached state is (stateAgeSeconds, isStateStale), so you can tell whether the Editor's main thread is still ticking. Answers: What is Unity doing right now?",
+                    description: "Returns Unity Editor's current state: Is it compiling? Running tests? In play mode? Paused? Mid Play Mode transition? Also reports how stale the cached state is (stateAgeSeconds, isStateStale), so you can tell whether the Editor's main thread is still ticking, and which Unity process answered (processId, projectPath) - if projectPath is not the project you are working on, every Nyamu result describes the wrong Editor. Answers: What is Unity doing right now?",
                     inputSchema: {
                         type: "object",
                         properties: {},
@@ -1495,8 +1497,12 @@ class MCPServer {
 
             // Call Unity editor-status endpoint
             const statusResponse = await this.makeHttpRequest('/editor-status');
+            const identityWarning = this.trackServerIdentity(statusResponse);
 
-            const formattedText = this.responseFormatter.formatJsonResponse(statusResponse);
+            let formattedText = this.responseFormatter.formatJsonResponse(statusResponse);
+            if (identityWarning) {
+                formattedText += `\n\nWARNING: ${identityWarning}`;
+            }
 
             return {
                 jsonrpc: '2.0',
@@ -1512,6 +1518,37 @@ class MCPServer {
         } catch (error) {
             this.rethrowUnityError(error, 'Failed to get editor status');
         }
+    }
+
+    // One MCP port must belong to exactly one Unity Editor. If another process starts
+    // answering - a second Editor bound to the same port, or an asset import worker
+    // running an older Nyamu build - every tool result silently describes the wrong
+    // project, so make the switch visible instead of leaving it to be guessed from
+    // symptoms. Returns an agent-visible warning, or null when nothing looks wrong.
+    trackServerIdentity(status) {
+        // Missing field: an Editor running a Nyamu build older than this client.
+        if (!status || typeof status.processId !== 'number' || status.processId <= 0) {
+            return null;
+        }
+
+        const current = { processId: status.processId, projectPath: status.projectPath || '' };
+        const previous = this.serverIdentity;
+        this.serverIdentity = current;
+
+        if (!previous || previous.processId === current.processId) {
+            return null;
+        }
+
+        if (previous.projectPath && current.projectPath && previous.projectPath !== current.projectPath) {
+            const message = `Port ${this.port} is now answered by a different Unity project: ${current.projectPath} (pid ${current.processId}), previously ${previous.projectPath} (pid ${previous.processId}). Two Unity processes share this port, so results may come from the wrong one - check Project Settings > Nyamu for the port.`;
+            logger?.log('WARN', message);
+            return message;
+        }
+
+        // Same project, new pid: the Editor was restarted. Expected, but worth a log line
+        // when tracking down why cached state suddenly reset.
+        logger?.logInfo(`Unity Editor process on port ${this.port} changed: ${previous.processId} -> ${current.processId}`);
+        return null;
     }
 
     async callCompileStatus(id) {

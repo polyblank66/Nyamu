@@ -18,6 +18,14 @@ namespace Nyamu
         [InitializeOnLoadMethod]
         private static void Initialize()
         {
+            // Asset import workers run InitializeOnLoadMethod as well - keep them out of the
+            // project's .nyamu files and the port registry the Editor owns.
+            if (NyamuProcess.IsAssetImportWorker)
+            {
+                NyamuLogger.LogDebug("[Nyamu][BatGenerator] Asset import worker process - bat file generation skipped");
+                return;
+            }
+
             // Generate bat file on initial load
             GenerateBatFile();
 

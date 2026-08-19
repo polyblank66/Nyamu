@@ -16,5 +16,7 @@ namespace Nyamu.Tools.Editor
         public double stateAgeSeconds;      // seconds since the last EditorApplication.update tick; -1 if never sampled
         public bool isStateStale;           // true when the cached state can no longer be trusted
         public string lastEditorUpdateUtc;  // ISO 8601 ("o"); "" if never sampled
+        public int processId;               // OS process id of the Unity process that answered
+        public string projectPath;          // project root of that process; tells which Editor replied
     }
 }

@@ -297,3 +297,25 @@ async def test_editor_status_consistency_with_test_status(mcp_client, unity_stat
 
     # isRunningTests should match between the two endpoints
     assert editor_data["isRunningTests"] == test_data["isRunning"]
+
+@pytest.mark.mcp
+@pytest.mark.protocol
+def test_editor_status_reports_answering_process(unity_base_url):
+    """Test that editor-status identifies which Unity process answered.
+
+    One port must belong to exactly one Editor. Unity also runs InitializeOnLoad in
+    every AssetImportWorker, and the listener uses SO_REUSEADDR, so without a guard a
+    worker binds the same port and silently serves (or black-holes) MCP requests.
+    """
+    response = requests.get(f"{unity_base_url}/editor-status")
+    data = response.json()
+
+    assert isinstance(data["processId"], int)
+    assert data["processId"] > 0
+    assert isinstance(data["projectPath"], str)
+    assert "Nyamu.UnityTestProject" in data["projectPath"]
+
+    # The answering process must be stable across calls: a different pid on the same
+    # port means a second Unity process is competing for it.
+    second = requests.get(f"{unity_base_url}/editor-status").json()
+    assert second["processId"] == data["processId"]

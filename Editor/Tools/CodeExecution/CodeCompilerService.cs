@@ -39,7 +39,6 @@ namespace Nyamu.Tools.CodeExecution
                     referencesOptions = ReferencesOptions.UseEngineModules,
                     buildTarget = EditorUserBuildSettings.activeBuildTarget,
                     buildTargetGroup = EditorUserBuildSettings.selectedBuildTargetGroup,
-                    additionalReferences = CollectProjectReferences(),
                     additionalDefines = new[] { "NYAMU_CODE_EXECUTION" }
                 };
 
@@ -49,6 +48,11 @@ namespace Nyamu.Tools.CodeExecution
                 builder.compilerOptions.ApiCompatibilityLevel = ApiCompatibilityLevel.NET_Unity_4_8;
                 builder.compilerOptions.CodeOptimization = CodeOptimization.Debug; // emits a .pdb for line-accurate stack traces
                 builder.compilerOptions.AllowUnsafeCode = false;
+
+                // Must run after compilerOptions is configured: defaultReferences depends on the
+                // API compatibility level, and CollectProjectReferences has to know which
+                // assemblies the builder already brings in on its own.
+                builder.additionalReferences = CollectProjectReferences(CollectDefaultReferenceFileNames(builder));
 
                 record.AssemblyName = assemblyName;
                 record.Dir = dir;
@@ -81,7 +85,31 @@ namespace Nyamu.Tools.CodeExecution
             }
         }
 
-        static string[] CollectProjectReferences()
+        // File names of the references AssemblyBuilder adds by itself. They never appear in
+        // additionalReferences, so the dedupe there cannot see them - anything we pass that shares
+        // a name with one of them reaches Roslyn as a second copy of the same assembly identity.
+        static HashSet<string> CollectDefaultReferenceFileNames(AssemblyBuilder builder)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var defaults = builder.defaultReferences;
+                if (defaults != null)
+                {
+                    foreach (var r in defaults)
+                        if (!string.IsNullOrEmpty(r))
+                            names.Add(Path.GetFileName(r));
+                }
+            }
+            catch
+            {
+                // Best-effort: PreferredReferenceOrder below still keeps the copy the builder uses.
+            }
+
+            return names;
+        }
+
+        static string[] CollectProjectReferences(HashSet<string> defaultReferenceFileNames)
         {
             var refs = new List<string>();
             foreach (var asm in CompilationPipeline.GetAssemblies(AssembliesType.Editor))
@@ -93,13 +121,25 @@ namespace Nyamu.Tools.CodeExecution
             }
 
             // Dedupe by file name, not full path: two different paths resolving to the same
-            // assembly identity produce CS1703 and fail the whole build.
+            // assembly identity produce CS1703 and fail the whole build. Unity ships every facade
+            // twice - NetStandard/compat/2.1.0/shims/netstandard/X.dll and
+            // UnityReferenceAssemblies/unity-4.8-api/Facades/X.dll - and the project references
+            // both copies, so which one survives the dedupe is decided by enumeration order.
             return refs
                 .Where(r => !string.IsNullOrEmpty(r))
+                .Where(r => !defaultReferenceFileNames.Contains(Path.GetFileName(r)))
                 .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-                .Select(g => g.First())
+                .Select(g => g.OrderBy(PreferredReferenceOrder).First())
                 .ToArray();
         }
+
+        // Only reached for a name the exclusion above let through. AssemblyBuilder draws its own
+        // framework references from the NetStandard compat profile regardless of
+        // ApiCompatibilityLevel, so keep that copy: it matches the builder's path exactly and
+        // Roslyn merges the two silently, where the unity-4.8-api facade is a different file whose
+        // identity unifies with it - which is what raises CS1703.
+        static int PreferredReferenceOrder(string path) =>
+            path.Replace('\\', '/').IndexOf("/NetStandard/", StringComparison.OrdinalIgnoreCase) >= 0 ? 0 : 1;
 
         public static void CleanupTempFiles(CodeExecutionRecord record)
         {

@@ -215,8 +215,23 @@ async def test_editor_status_during_compilation(unity_state_manager):
         # Wait briefly for compilation to potentially start
         await asyncio.sleep(0.5)
 
-        # Check status with client2 (separate client to avoid stream conflicts)
-        status_response = await client2.editor_status()
+        # Check status with client2 (separate client to avoid stream conflicts).
+        # editor_status has no server-side retry for the domain-reload gap
+        # (compilation finishing triggers one) - the client is expected to
+        # retry, same contract as _poll_status in test_editor_play_mode.py.
+        max_retries = 5
+        retry_delay = 3.0  # matches MCPClient._send_unity_request_with_retry's default
+        for attempt in range(max_retries):
+            try:
+                status_response = await client2.editor_status()
+                break
+            except RuntimeError as e:
+                error_str = str(e).lower()
+                is_domain_reload_gap = "unavailable" in error_str or "restarting" in error_str
+                if attempt < max_retries - 1 and is_domain_reload_gap:
+                    await asyncio.sleep(retry_delay)
+                    continue
+                raise
         status_text = status_response["result"]["content"][0]["text"]
         status_data = json.loads(status_text)
 

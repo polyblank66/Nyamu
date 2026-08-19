@@ -44,12 +44,16 @@ namespace Nyamu.Tools.CodeExecution
             {
                 // If the mode was auto-detected, retry once with the other wrapper shape before
                 // giving up - a bare expression and a statement block are easy to confuse and the
-                // agent shouldn't burn a whole turn on a guess.
+                // agent shouldn't burn a whole turn on a guess. Deferred to the next tick for the
+                // same reason as the invoke below: buildFinished can be raised from inside Unity's
+                // own loop over its assembly builders (AssemblyBuilder.status completes the build
+                // while EditorCompilation.IsAnyAssemblyBuilderCompiling enumerates), and starting
+                // a build there registers a new builder mid-enumeration.
                 if (!record.FallbackUsed &&
                     string.Equals(record.Request.mode, "auto", StringComparison.OrdinalIgnoreCase) &&
                     (record.ResolvedMode == "expression" || record.ResolvedMode == "statements"))
                 {
-                    RetryWithFallback(record, context);
+                    context.UnityExecutor.Enqueue(() => RetryWithFallback(record, context));
                     return;
                 }
 

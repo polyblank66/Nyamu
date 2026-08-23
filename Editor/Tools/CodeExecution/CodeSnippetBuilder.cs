@@ -65,6 +65,14 @@ namespace Nyamu.Tools.CodeExecution
         {
             var prefix = new StringBuilder();
 
+            // Duplicate using directives are legal C# - they only raise CS0105 - and here they are
+            // routine rather than a mistake: class mode is auto-detected precisely when the snippet
+            // opens with its own usings, and any caller-supplied 'usings' entry that repeats a
+            // default collides too. The warning would reach the agent through the response's
+            // warnings[] with nothing to act on, so it is suppressed at the source. Pragma scope is
+            // lexical, so this still covers duplicates written past the #line directive below.
+            prefix.Append("#pragma warning disable CS0105\n");
+
             if (mode != "class")
             {
                 foreach (var u in DefaultUsings)
@@ -80,6 +88,15 @@ namespace Nyamu.Tools.CodeExecution
             }
             else
             {
+                // Class mode gets the same defaults as every other mode. It went without them for
+                // a while, which made a bare 'Application' or 'EditorApplication' fail with CS0103
+                // even though the tool documents those namespaces as always available. The cost is
+                // that System and UnityEngine now both being in scope can make an unqualified
+                // Random or Object ambiguous (CS0104) - the same trade the other modes already
+                // make, and the compiler names both candidates so it is a one-line fix for the
+                // caller.
+                foreach (var u in DefaultUsings)
+                    prefix.Append("using ").Append(u).Append(";\n");
                 foreach (var u in NormalizeUsings(request.usings))
                     prefix.Append("using ").Append(u).Append(";\n");
                 prefix.Append("#line 1 \"").Append(VirtualFileName).Append("\"\n");

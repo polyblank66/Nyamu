@@ -9,6 +9,24 @@ import os
 import sys
 from typing import Dict, Any, Optional
 
+
+class MCPError(RuntimeError):
+    """A JSON-RPC error from the MCP server, with its structured data preserved.
+
+    str() keeps the original "MCP error: {...}" text so existing assertions and
+    log output are unchanged; the parsed fields are what the retry logic needs.
+    The server already classifies transport failures and flags them retryable -
+    reading that beats guessing from the message text.
+    """
+
+    def __init__(self, error_obj):
+        super().__init__(f"MCP error: {error_obj}")
+        self.error_obj = error_obj or {}
+        self.data = self.error_obj.get("data") or {}
+        self.error_type = self.data.get("errorType")
+        self.retryable = bool(self.data.get("retryable"))
+
+
 class MCPClient:
     def __init__(self, mcp_server_path: str = None):
         """
@@ -107,7 +125,7 @@ class MCPClient:
             # Check if this is our response (has 'id' matching our request)
             if "id" in response and response["id"] == self.request_id:
                 if "error" in response:
-                    raise RuntimeError(f"MCP error: {response['error']}")
+                    raise MCPError(response["error"])
                 return response
 
             # Unexpected message format
@@ -127,8 +145,15 @@ class MCPClient:
                 error_str = str(e)
                 # Check for Unity server issues (-32603) that can be retried
                 if "-32603" in error_str:
-                    # Don't retry timeout errors - they should be passed through
-                    if "timeout" in error_str.lower():
+                    server_says_retryable = getattr(e, "retryable", False)
+
+                    # Tool-level timeouts ("Compilation timeout after 30 seconds") are real
+                    # failures and must reach the test. They arrive as plain errors with no
+                    # data, so the server's own flag separates them from a transport timeout,
+                    # which is flagged retryable and asks to be retried. Matching on the word
+                    # "timeout" alone also read the whole stringified error, instructions
+                    # included, and would trip on any wording change there.
+                    if "timeout" in error_str.lower() and not server_says_retryable:
                         raise
 
                     retryable_errors = [
@@ -137,11 +162,22 @@ class MCPClient:
                         "Tool execution failed"  # General Unity tool execution issues
                     ]
 
-                    is_retryable = any(error_type in error_str for error_type in retryable_errors)
+                    # The server classifies transport failures itself and flags them
+                    # retryable: a listener closed mid-domain-reload
+                    # (unity_server_unavailable, from ECONNREFUSED) or one restarting
+                    # (unity_server_restarting, from ECONNRESET/EPIPE). Neither message
+                    # appears in the list above, so before this an ordinary domain reload
+                    # - which every compile and Play Mode transition causes - failed the
+                    # run outright instead of retrying.
+                    is_retryable = server_says_retryable or any(
+                        error_type in error_str for error_type in retryable_errors)
 
                     if is_retryable and attempt < max_retries - 1:
                         # Unity is having issues - wait and retry
-                        if "HTTP request failed" in error_str:
+                        if server_says_retryable:
+                            print(f"Unity server {getattr(e, 'error_type', None) or 'transport error'} "
+                                  f"(attempt {attempt + 1}/{max_retries}), waiting {retry_delay}s...")
+                        elif "HTTP request failed" in error_str:
                             print(f"Unity HTTP server restarting (attempt {attempt + 1}/{max_retries}), waiting {retry_delay}s...")
                         elif "Test execution failed to start" in error_str:
                             print(f"Unity Test Runner initializing (attempt {attempt + 1}/{max_retries}), waiting {retry_delay}s...")

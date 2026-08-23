@@ -3,9 +3,14 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace Nyamu.Tests
+// Test data for the Python integration tests under IntegrationTests/.
+// These are not tests of Nyamu itself - the failing ones fail by design.
+// The namespace is itself under test: test_run_tests_filters.py exercises namespace
+// filtering with the regex "Nyamu\.IntegrationTestData\..*".
+namespace Nyamu.IntegrationTestData
 {
-    public class NyamuPlayModeTests
+    [Category("IntegrationTestData")]
+    public class PlayModeTestData
     {
         [UnityTest]
         public IEnumerator SimplePlayModeTest()

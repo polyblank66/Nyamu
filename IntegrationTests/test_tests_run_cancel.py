@@ -56,7 +56,7 @@ async def test_cancel_running_editmode_test(unity_state_manager):
         # We'll use a test that should take some time to complete
         test_task = asyncio.create_task(
             client1.tests_run_single(
-                test_name="NyamuTests.LargeErrorMessageTest",  # Single test that takes time
+                test_name="IntegrationTestData.LargeErrorMessageTest",  # Single test that takes time
                 test_mode="EditMode",
                 timeout=60
             )
@@ -174,7 +174,7 @@ async def test_cancel_tests_during_long_test_execution():
         # Start a long-running EditMode test (non-concurrently)
         test_task = asyncio.create_task(
             client.tests_run_single(
-                test_name="NyamuTests.LargeErrorMessageTest",  # Single test that takes time
+                test_name="IntegrationTestData.LargeErrorMessageTest",  # Single test that takes time
                 test_mode="EditMode",
                 timeout=30
             )

@@ -6,19 +6,13 @@ namespace Nyamu.Core.Monitors
     // Keeps the Editor's main loop ticking while Play Mode runs without window focus.
     //
     // With "Run In Background" disabled in Player Settings, a playing Editor that loses window
-    // focus stops serving Nyamu entirely: not just the main-thread tools, but every endpoint,
-    // editor_status included. Nothing recovers until the Editor window is clicked again - and
-    // since editor_exit_play_mode is unreachable too, an agent that entered Play Mode cannot get
-    // itself out.
-    //
-    // The obvious half of the mechanism is the action queue: everything touching a Unity API is
-    // queued onto UnityThreadExecutor and drained from a single place - EditorApplication.update,
-    // via EditorMonitor.OnEditorUpdate - and Unity suspends that loop on focus loss. But that
-    // alone would leave TcpHttpServer answering, because it serves each connection on the thread
-    // pool and the status tools only read cached state. Observed behaviour says otherwise, so
-    // something suspends more than the Editor loop. The exact mechanism is not established; see
-    // Documentation/TODO.md. It does mean a server-side "honest timeout" cannot be the answer -
-    // a process that cannot reply cannot explain itself either.
+    // focus suspends its main loop. Everything touching a Unity API is queued onto
+    // UnityThreadExecutor and drained only from EditorApplication.update, via
+    // EditorMonitor.OnEditorUpdate, so without this guard every main-thread tool stalls -
+    // editor_exit_play_mode included, leaving an agent that entered Play Mode unable to get itself
+    // out until the window is clicked again. The HTTP endpoint itself stays up regardless:
+    // TcpHttpServer accepts and serves off the main thread, so the status tools keep answering and
+    // isStateStale reports the stalled loop.
     //
     // Application.runInBackground is a runtime-only override: Unity re-applies
     // PlayerSettings.runInBackground on every Play Mode entry, so forcing it here never writes to

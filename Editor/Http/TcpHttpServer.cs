@@ -38,7 +38,16 @@ namespace Nyamu.Http
             _listener = listener;
 
             _cts = new CancellationTokenSource();
-            _acceptTask = AcceptLoopAsync(_cts.Token);
+
+            // Off the main thread deliberately. Start() is called from the Unity main thread
+            // ([InitializeOnLoad] and EditorApplication.update), where SynchronizationContext.Current
+            // is UnitySynchronizationContext - awaiting on it posts continuations back to the main
+            // thread, and Unity pumps that context only from its main loop. A playing, unfocused
+            // Editor with "Run In Background" off suspends that loop, so the accept loop would stop
+            // accepting and every endpoint would go silent - clients hang on a connection the kernel
+            // completed into the backlog that nobody ever accepts. It also lets Stop(), which runs on
+            // the main thread, actually join this task instead of always timing out.
+            _acceptTask = Task.Run(() => AcceptLoopAsync(_cts.Token));
             NyamuLogger.LogDebug($"[Nyamu][TcpHttpServer] Listening on port {_port}");
         }
 
@@ -107,10 +116,12 @@ namespace Nyamu.Http
                 try
                 {
                     var clientTask = _listener.AcceptTcpClientAsync();
-                    var completed = await Task.WhenAny(clientTask, Task.Delay(-1, token));
+                    // ConfigureAwait(false) on both: Start() already moves this loop off the
+                    // Unity main thread, and these keep a future edit from silently putting it back.
+                    var completed = await Task.WhenAny(clientTask, Task.Delay(-1, token)).ConfigureAwait(false);
                     if (completed != clientTask) break;
 
-                    var client = await clientTask;
+                    var client = await clientTask.ConfigureAwait(false);
                     var handlerTask = Task.Run(() =>
                     {
                         try { ProcessRequest(client); }

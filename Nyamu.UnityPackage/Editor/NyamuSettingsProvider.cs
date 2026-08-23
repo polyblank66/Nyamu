@@ -35,7 +35,8 @@ namespace Nyamu
 
                 // Keywords for search functionality in Project Settings
                 provider.keywords = new[] {
-                    "Nyamu", "MCP", "Response", "Limit", "Character", "Truncation", "Message", "Server", "Port", "Log", "Logging", "Level", "Minimum"
+                    "Nyamu", "MCP", "Response", "Limit", "Character", "Truncation", "Message", "Server", "Port", "Log", "Logging", "Level", "Minimum",
+                    "Play", "Mode", "Background", "Focus", "Unfocused", "runInBackground"
                 };
 
                 return provider;
@@ -140,6 +141,34 @@ namespace Nyamu
                     settings.minLogLevel = newValue;
                     EditorUtility.SetDirty(settings);
                 }
+            }
+
+            EditorGUILayout.Space();
+
+            // Play Mode Configuration section
+            EditorGUILayout.LabelField("Play Mode Configuration", EditorStyles.boldLabel);
+
+            var keepPlayingProp = _settings.FindProperty("keepPlayModeRunningUnfocused");
+
+            // "Keep Play Mode Running Unfocused" does not fit the default label column and gets
+            // clipped. Widening the label column is what fixes it - the control's own width plays
+            // no part - and it is restored right after so the sections below keep their alignment.
+            var previousLabelWidth = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth = previousLabelWidth * 1.5f;
+            EditorGUILayout.PropertyField(keepPlayingProp, new GUIContent(
+                "Keep Play Mode Running Unfocused",
+                "Forces Application.runInBackground while playing, so MCP requests are still served " +
+                "when the Editor window is not focused. Runtime-only: Player Settings and builds are untouched."));
+            EditorGUIUtility.labelWidth = previousLabelWidth;
+
+            if (!keepPlayingProp.boolValue && !PlayerSettings.runInBackground)
+            {
+                EditorGUILayout.HelpBox(
+                    "With this off and Player Settings > Run In Background off, a playing Editor that loses " +
+                    "window focus stops serving Nyamu entirely - every tool, editor_status included - until " +
+                    "the Editor window is clicked again. editor_exit_play_mode is unreachable too, so an " +
+                    "agent that entered Play Mode cannot get itself out.",
+                    MessageType.Warning);
             }
 
             EditorGUILayout.Space();

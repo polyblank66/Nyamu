@@ -27,6 +27,12 @@ namespace Nyamu
 
         public bool manualPortMode;
 
+        // Forces Application.runInBackground on while the Editor is playing. Without it Unity
+        // suspends EditorApplication.update when a playing Editor loses focus, and every MCP tool
+        // that needs the main thread stalls until the window is clicked. Runtime-only override:
+        // PlayerSettings and builds are untouched. See PlayModeBackgroundGuard.
+        public bool keepPlayModeRunningUnfocused = true;
+
         // Singleton pattern for easy access
         private static NyamuSettings _instance;
 
@@ -216,6 +222,7 @@ namespace Nyamu
             enableTruncation = true;
             truncationMessage = "\n\n... (response truncated due to length limit)";
             minLogLevel = DefaultMinLogLevel;
+            keepPlayModeRunningUnfocused = true;
 
             // Reset to auto mode with free port
             manualPortMode = false;

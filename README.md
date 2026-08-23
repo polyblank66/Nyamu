@@ -181,6 +181,21 @@ Configuration is stored in `.nyamu/NyamuSettings.json` and can be edited manuall
 
 The system automatically calculates the available space for response content by subtracting MCP JSON overhead and truncation message length from the configured limit, ensuring maximum space for meaningful output.
 
+### Play Mode Without Focus
+
+With **Player Settings → Run In Background** disabled, a *playing* Editor that loses window focus
+stops serving Nyamu completely — every tool, `editor_status` included. Requests hang until you click
+the Editor window again, and because `editor_exit_play_mode` is unreachable too, an agent that entered
+Play Mode cannot get itself back out.
+
+Nyamu prevents this by forcing `Application.runInBackground` on while the Editor is playing. This is a
+runtime-only override: `PlayerSettings` is never written, so builds and version control are unaffected.
+
+Turn it off at Unity → Project Settings → **Nyamu MCP Server** → **Keep Play Mode Running Unfocused**
+if you need Unity's real focus-loss behaviour — for example when testing `OnApplicationFocus` or
+`OnApplicationPause`. Expect Nyamu to go unreachable while the Editor is unfocused in Play Mode when
+you do, and to come back as soon as the window is focused.
+
 ### Server Port Configuration
 
 Nyamu automatically assigns unique ports to each Unity Editor instance, allowing multiple projects to run simultaneously without conflicts. The generated `.nyamu/nyamu.bat` file includes the correct port configuration automatically.

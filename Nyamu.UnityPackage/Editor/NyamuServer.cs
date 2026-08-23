@@ -273,7 +273,8 @@ namespace Nyamu
             // Create monitors
             _compilationMonitor = new CompilationMonitor(_compilationStateManager);
             _settingsMonitor = new SettingsMonitor(_settingsStateManager);
-            _editorMonitor = new EditorMonitor(_editorStateManager, _unityThreadExecutor, _settingsMonitor);
+            _editorMonitor = new EditorMonitor(_editorStateManager, _unityThreadExecutor, _settingsMonitor,
+                new PlayModeBackgroundGuard());
 
             // Create test infrastructure
             _testCallbacks = new TestCallbacks(_testStateManager, _compilationMonitor.TimestampLock);

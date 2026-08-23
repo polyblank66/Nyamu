@@ -12,22 +12,27 @@ namespace Nyamu.Core.Monitors
         private readonly EditorStateManager _state;
         private readonly IUnityThreadExecutor _unityThreadExecutor;
         private readonly SettingsMonitor _settingsMonitor;
+        private readonly PlayModeBackgroundGuard _backgroundGuard;
 
-        public EditorMonitor(EditorStateManager state, IUnityThreadExecutor unityThreadExecutor, SettingsMonitor settingsMonitor)
+        public EditorMonitor(EditorStateManager state, IUnityThreadExecutor unityThreadExecutor,
+            SettingsMonitor settingsMonitor, PlayModeBackgroundGuard backgroundGuard)
         {
             _state = state;
             _unityThreadExecutor = unityThreadExecutor;
             _settingsMonitor = settingsMonitor;
+            _backgroundGuard = backgroundGuard;
         }
 
         public void Initialize()
         {
+            _backgroundGuard.Initialize();
             EditorApplication.update += OnEditorUpdate;
         }
 
         public void Cleanup()
         {
             EditorApplication.update -= OnEditorUpdate;
+            _backgroundGuard.Cleanup();
         }
 
         private void OnEditorUpdate()
@@ -55,6 +60,10 @@ namespace Nyamu.Core.Monitors
             // Publish atomically (thread-safe)
             _state.SetSnapshot(isPlaying, isPaused, isEnteringPlayMode, isExitingPlayMode,
                 DateTime.UtcNow, Stopwatch.GetTimestamp());
+
+            // Reuses this tick's sample. Without it Unity suspends the loop that runs this very
+            // method as soon as a playing Editor loses focus, stranding the action queue.
+            _backgroundGuard.Tick(isPlaying);
 
             // Refresh cached settings periodically
             _settingsMonitor.Update();

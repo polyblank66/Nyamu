@@ -45,10 +45,10 @@ jobs:
         if: steps.semantic.outputs.new_release_published == 'true'
         uses: actions/cache@v3
         with:
-          path: Nyamu.UnityTestProject/Library
-          key: Library-Nyamu-StandaloneLinux64
+          path: Nyamu.UnityPackageExporter/Library
+          key: Library-NyamuExporter-StandaloneLinux64
           restore-keys: |
-            Library-Nyamu-
+            Library-NyamuExporter-
             Library-
 
       # 5. Export UnityPackage (optional)
@@ -57,7 +57,7 @@ jobs:
         uses: game-ci/unity-builder@v4
         with:
           unityVersion: 2021.3.45f2
-          projectPath: Nyamu.UnityTestProject
+          projectPath: Nyamu.UnityPackageExporter
           buildMethod: ExportUnityPackage.Export
           targetPlatform: StandaloneLinux64
         env:
@@ -74,7 +74,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.semantic.outputs.new_release_version }}
-          files: Nyamu.UnityTestProject/Artifacts/dev.polyblank.nyamu-${{ steps.semantic.outputs.new_release_version }}.unitypackage
+          files: Nyamu.UnityPackageExporter/Artifacts/dev.polyblank.nyamu-${{ steps.semantic.outputs.new_release_version }}.unitypackage
 
 
       # 7. Create upm branch

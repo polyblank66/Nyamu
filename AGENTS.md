@@ -115,6 +115,10 @@ Log types: all (default), error, warning, info
 - MCP integration tests are located in the `IntegrationTests/` directory (at project root). These Python tests
   verify MCP server functionality including compilation, test execution, and response
   formatting. Run tests with `cd IntegrationTests && python -m pytest`.
+- The `Nyamu.UnityPackageExporter/` directory is a separate Unity project that builds the released
+  `.unitypackage`. It deliberately does NOT reference the Nyamu package, so embedding a copy of the
+  package under its `Assets/` cannot collide with an installed copy and rewrite the package .meta
+  GUIDs. It excludes `Nyamu.UnityPackage/Tests/` from the exported artifact.
 
 # Code Style Guidelines
 

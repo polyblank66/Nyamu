@@ -15,7 +15,7 @@ async def test_run_tests_filter_single_test(mcp_client, unity_state_manager):
     """Test running a single test using exact filter"""
     # Test specific EditMode test
     response = await mcp_client.tests_run_single(
-        test_name="NyamuTests.PassingTest1",
+        test_name="IntegrationTestData.PassingTest1",
         test_mode="EditMode",
         timeout=60
     )
@@ -42,7 +42,7 @@ async def test_run_tests_filter_multiple_tests_pipe_separator(mcp_client, unity_
     """Test running multiple tests using pipe separator"""
     # Test multiple EditMode tests using pipe separator (pipe works as regex OR)
     response = await mcp_client.tests_run_regex(
-        test_filter_regex="NyamuTests.PassingTest1|NyamuTests.PassingTest2",
+        test_filter_regex="IntegrationTestData.PassingTest1|IntegrationTestData.PassingTest2",
         test_mode="EditMode",
         timeout=60
     )
@@ -69,7 +69,7 @@ async def test_run_tests_filter_failing_test(mcp_client, unity_state_manager):
     """Test running a test that fails using filter"""
     # Test specific failing EditMode test
     response = await mcp_client.tests_run_single(
-        test_name="NyamuTests.FailingTest1",
+        test_name="IntegrationTestData.FailingTest1",
         test_mode="EditMode",
         timeout=60
     )
@@ -88,7 +88,7 @@ async def test_run_tests_filter_failing_test(mcp_client, unity_state_manager):
     assert "Passed: 0" in content_text
     # Should show failure details
     assert "Failed Tests:" in content_text
-    assert "NyamuTests.FailingTest1" in content_text
+    assert "IntegrationTestData.FailingTest1" in content_text
 
 
 @pytest.mark.mcp
@@ -99,7 +99,7 @@ async def test_run_tests_filter_playmode_with_namespace(mcp_client, unity_state_
     """Test running PlayMode test with namespace using filter"""
     # Test specific PlayMode test with namespace
     response = await mcp_client.tests_run_single(
-        test_name="Nyamu.Tests.NyamuPlayModeTests.SimplePlayModeTest",
+        test_name="Nyamu.IntegrationTestData.PlayModeTestData.SimplePlayModeTest",
         test_mode="PlayMode",
         timeout=60
     )
@@ -201,9 +201,9 @@ async def test_run_tests_regex_filter_failing_tests(mcp_client, unity_state_mana
 @pytest.mark.asyncio
 async def test_run_tests_regex_filter_namespace_pattern(mcp_client, unity_state_manager):
     """Test using regex filter to match namespace patterns"""
-    # Test regex filter that matches tests in Nyamu.Tests namespace
+    # Test regex filter that matches tests in Nyamu.IntegrationTestData namespace
     response = await mcp_client.tests_run_regex(
-        test_filter_regex="Nyamu\\.Tests\\..*",
+        test_filter_regex="Nyamu\\.IntegrationTestData\\..*",
         test_mode="PlayMode",
         timeout=60
     )
@@ -304,7 +304,7 @@ async def test_run_tests_filter_consistency_with_direct_call(mcp_client, unity_s
     """Test that MCP tool filter behavior matches direct Unity API calls"""
     # Run test with filter via MCP
     mcp_response = await mcp_client.tests_run_single(
-        test_name="NyamuTests.PassingTest1",
+        test_name="IntegrationTestData.PassingTest1",
         test_mode="EditMode",
         timeout=60
     )
@@ -312,7 +312,7 @@ async def test_run_tests_filter_consistency_with_direct_call(mcp_client, unity_s
     mcp_content = mcp_response["result"]["content"][0]["text"]
 
     # Verify the filtered test actually ran
-    assert "NyamuTests.PassingTest1" in mcp_content or "Total: 1" in mcp_content
+    assert "IntegrationTestData.PassingTest1" in mcp_content or "Total: 1" in mcp_content
     assert "Test Results:" in mcp_content
 
     # Should show that filtering worked (not all tests ran)

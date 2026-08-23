@@ -1,8 +1,13 @@
 using NUnit.Framework;
 using UnityEngine;
 
+// Test data for the Python integration tests under IntegrationTests/.
+// These are not tests of Nyamu itself - they are deliberately stable subjects that the
+// tests_run_* MCP tools are exercised against. The failing ones fail by design: keep
+// their names, outcomes and count in sync with the assertions in IntegrationTests/.
 [TestFixture]
-public class NyamuTests
+[Category("IntegrationTestData")]
+public class IntegrationTestData
 {
     [Test]
     public void PassingTest1()

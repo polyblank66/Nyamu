@@ -30,14 +30,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Copy README.md and CHANGELOG.md to Unity package
-      - name: Copy README.md and CHANGELOG.md to Unity package
+      # 3. Copy README.md, CHANGELOG.md and LICENSE.md to Unity package
+      - name: Copy README.md, CHANGELOG.md and LICENSE.md to Unity package
         run: |
-          cp README.md CHANGELOG.md Nyamu.UnityPackage/
+          cp README.md CHANGELOG.md LICENSE.md Nyamu.UnityPackage/
           git config --global user.name 'github-bot'
           git config --global user.email 'github-bot@users.noreply.github.com'
-          git add Nyamu.UnityPackage/README.md Nyamu.UnityPackage/CHANGELOG.md
-          git diff --staged --quiet || git commit -m "chore: copy README.md and CHANGELOG.md to Unity package [skip ci]"
+          git add Nyamu.UnityPackage/README.md Nyamu.UnityPackage/CHANGELOG.md Nyamu.UnityPackage/LICENSE.md
+          git diff --staged --quiet || git commit -m "chore: copy README.md, CHANGELOG.md and LICENSE.md to Unity package [skip ci]"
           git push
 
       # 4. Restore Unity Cache (optional)

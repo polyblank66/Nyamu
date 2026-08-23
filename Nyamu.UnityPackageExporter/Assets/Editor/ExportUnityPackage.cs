@@ -3,6 +3,12 @@ using UnityEngine;
 using System.IO;
 using System.Text.RegularExpressions;
 
+// Lives in Nyamu.UnityPackageExporter, a project that deliberately does NOT reference
+// dev.polyblank.nyamu. Exporting embeds a copy of the package under Assets/, and if the
+// same package were also installed under Packages/, Unity would see every asset GUID
+// twice and rewrite the .meta files to resolve the collision - corrupting the GUIDs the
+// released package ships with. Keeping the exporter in a package-free project means the
+// copied .meta files are imported exactly as they are stored in the repository.
 public static class ExportUnityPackage
 {
     // === SETTINGS ===
@@ -82,7 +88,7 @@ public static class ExportUnityPackage
     private static void CleanupTemp()
     {
         var fullTempPath = Path.GetFullPath(TempEmbeddedPath);
-        var metaPath = fullTempPath + ".meta"; // путь к Nyamu.meta
+        var metaPath = fullTempPath + ".meta"; // path to Nyamu.meta
 
         if (Directory.Exists(fullTempPath))
         {

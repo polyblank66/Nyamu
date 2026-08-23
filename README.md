@@ -5,6 +5,14 @@
 
 Designed by a Human 💖, coded by AI ✨
 
+## Why Nyamu Exists
+
+Hi! My name is Ivan, and I work as a programmer in gamedev. I started this project in September 2025 out of frustration with agentic coding in Unity: back then an LLM would routinely hand me code that didn't even compile. That's where the idea came from — let the agent check script compilation itself. Most other MCP servers still don't solve that task well (see [Similar Projects](#similar-projects)).
+
+In 2026 Unity shipped tooling of its own: the MCP server in the AI Assistant package, and the Unity CLI. Both require Unity 6. The official MCP server doesn't really solve the problem either: it expects the agent to edit scripts through its own dedicated tools, and only then do the compilation checks apply — in my experience, getting an agent to stay in that mode reliably is quite difficult. I haven't tried the Unity CLI yet, but I hope it does the job.
+
+Nyamu, on the other hand, works on Unity 2021.3 and newer — so it's for anyone whose project hasn't moved to Unity 6 yet, and for anyone who just wants a small server that does one thing well.
+
 ## Compatibility with Coding Agents and Tools
 
 Test Prompt: 

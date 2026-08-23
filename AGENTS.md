@@ -47,6 +47,9 @@ Test modes and timeouts:
 - PlayMode: Full runtime simulation (use 60-120s timeout)
 - Only EditMode tests can be cancelled via `tests_run_cancel`
 
+**Before running tests, read the "Test Assemblies" section below.** Some tests in this
+repository fail by design, so `tests_run_all` is never green - filter by namespace instead.
+
 ### Shader Compilation Tools
 Available shader compilation tools:
 - `shaders_compile_single` - Compile single shader with fuzzy name matching (params: shader_name required, timeout)
@@ -119,6 +122,37 @@ Log types: all (default), error, warning, info
   `.unitypackage`. It deliberately does NOT reference the Nyamu package, so embedding a copy of the
   package under its `Assets/` cannot collide with an installed copy and rewrite the package .meta
   GUIDs. It excludes `Nyamu.UnityPackage/Tests/` from the exported artifact.
+
+# Test Assemblies
+
+The repository contains two kinds of tests. They live in separate assemblies and serve
+opposite purposes - do not confuse them.
+
+## `Nyamu.EditorTests` - real tests of the package
+
+- Source: `Nyamu.UnityPackage/Tests/Editor/`, namespace `Nyamu.EditorTests`
+- These verify Nyamu itself. **They must always be green** - a failure here is a real bug.
+- Run only these: `tests_run_regex(test_filter_regex="Nyamu\.EditorTests\..*", test_mode="EditMode")`
+- They appear in the test project through `"testables"` in
+  `Nyamu.UnityTestProject/Packages/manifest.json`, and are stripped from the released
+  `.unitypackage` by `Nyamu.UnityPackageExporter`.
+
+## `Nyamu.IntegrationTestData.*` - test data, not tests
+
+- Source: `Nyamu.UnityTestProject/Assets/IntegrationTestData/`, category `IntegrationTestData`
+- EditMode: class `IntegrationTestData` (no namespace).
+  PlayMode: class `Nyamu.IntegrationTestData.PlayModeTestData`
+- These do **not** test Nyamu. They are deliberately stable subjects that the Python tests
+  in `IntegrationTests/` exercise the `tests_run_*` tools against.
+- **Three EditMode tests and four PlayMode tests fail on purpose. Do not "fix" them.**
+  `FailingTest1`, `FailingTest2` and `LargeErrorMessageTest` must keep failing with exactly
+  the messages the Python assertions expect.
+- Names, outcomes and counts are asserted from `IntegrationTests/`. Renaming a test, adding
+  one that matches `.*PassingTest.*`, or changing the PlayMode namespace breaks those Python
+  tests - change both sides in the same commit.
+
+Consequence: a bare `tests_run_all` never comes back green and is useless as a health check.
+Filter by namespace instead.
 
 # Code Style Guidelines
 

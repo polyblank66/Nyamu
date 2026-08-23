@@ -1,5 +1,3 @@
-Check out Design.md for the project design and goal definitions.
-
 # About MCP
 
 - This project uses the Nyamu MCP server, which enables triggering compilations
@@ -103,25 +101,48 @@ Log types: all (default), error, warning, info
 
 # Technology Choices
 
-- The project is built with Unity.
-- We use the Universal Render Pipeline (URP) for rendering.
-- UI Toolkit is used for building runtime user interfaces.
-- IMGUI may be used for editor-only UI elements.
+- The project is built with Unity. The package targets Unity 2021.3 and newer
+  (see `unity` / `unityRelease` in `Nyamu.UnityPackage/package.json`).
+- Nyamu is Editor-only. Every package assembly is restricted to the Editor platform;
+  there is no runtime or player-facing code.
+- IMGUI is used for the Editor UI (the settings provider). There is no render pipeline
+  package and no runtime UI framework in this repository - the shaders under
+  `Nyamu.UnityTestProject/Assets/TestShaders/` exist only as input for the
+  `shaders_compile_*` tools.
 
 # Directory Structure
 
-- Unity project files are located in the `Nyamu.UnityTestProject/` directory.
-- Editable project source files are located in the `Nyamu.UnityTestProject/Assets/` directory and its
-  subdirectories.
-- Read-only package source files are located in `Nyamu.UnityTestProject/Library/PackageCache/`. **Do not
-  modify** files in this directory.
-- MCP integration tests are located in the `IntegrationTests/` directory (at project root). These Python tests
-  verify MCP server functionality including compilation, test execution, and response
-  formatting. Run tests with `cd IntegrationTests && python -m pytest`.
-- The `Nyamu.UnityPackageExporter/` directory is a separate Unity project that builds the released
-  `.unitypackage`. It deliberately does NOT reference the Nyamu package, so embedding a copy of the
-  package under its `Assets/` cannot collide with an installed copy and rewrite the package .meta
-  GUIDs. It excludes `Nyamu.UnityPackage/Tests/` from the exported artifact.
+- `Nyamu.UnityPackage/` - **the product, and the only place package code is edited.**
+  This is the UPM package published to the `upm` branch and released as a
+  `.unitypackage`.
+  - `Editor/` - the HTTP server, the MCP tools and all Editor integration
+  - `Node/` - `mcp-server.js`, the stdio bridge MCP clients launch
+  - `Tests/Editor/` - the package's own tests (assembly `Nyamu.EditorTests`)
+- `Nyamu.UnityTestProject/` - the Unity project that hosts the package through a local
+  file reference (`"dev.polyblank.nyamu": "file:../../Nyamu.UnityPackage"` in
+  `Packages/manifest.json`). It serves two purposes:
+  1. it is the target that the Python integration tests drive over MCP;
+  2. it is the workspace for developing the package - open it in the Editor to compile,
+     run tests and exercise the tools against live changes.
+
+  Because the reference is a local path and not a copy, edits in `Nyamu.UnityPackage/`
+  take effect here immediately. Do not edit package code through this project.
+  - `Assets/` holds **fixtures only, never product code**: `IntegrationTestData/` for the
+    `tests_run_*` tools, `TestShaders/` (including a deliberately broken shader) for
+    `shaders_compile_*`, `TestModule/` plus `TestScript.cs` for multi-assembly
+    compilation, and `Scenes/Empty.unity` for Play Mode.
+  - `Library/PackageCache/` holds read-only third-party package sources.
+    **Do not modify** files in this directory.
+- `Nyamu.UnityPackageExporter/` - a separate Unity project that builds the released
+  `.unitypackage`. It deliberately does NOT reference the Nyamu package, so embedding a
+  copy of the package under its `Assets/` cannot collide with an installed copy and
+  rewrite the package .meta GUIDs. It excludes `Nyamu.UnityPackage/Tests/` from the
+  exported artifact.
+- `IntegrationTests/` - Python tests that verify MCP server behaviour (compilation, test
+  execution, response formatting) by driving `Nyamu.UnityTestProject` over MCP. Run them
+  with `cd IntegrationTests && python -m pytest`.
+- `Documentation/TODO.md` - findings that surfaced while investigating but were out of
+  scope for the change in progress. Record them there instead of losing them.
 
 # Test Assemblies
 

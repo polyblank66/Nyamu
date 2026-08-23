@@ -205,8 +205,8 @@ GET /menu-items-execute?menuItemPath=Assets/Create/Folder
 | `compile_error` | see `errors[]` (`file`, `line`, `column`, `severity`, `message`) - line numbers are in the snippet's own coordinates, not the generated wrapper's |
 | `runtime_exception` | see `exceptionType`, `exceptionMessage`, `stackTrace` |
 | `no_entry_point` | `mode: "class"` with no (or an ambiguous) matching entry point method |
-| `editor_busy` | Unity was compiling when the run tried to start |
-| `build_rejected` | `AssemblyBuilder.Build()` refused to start |
+| `editor_busy` | a script compilation or another assembly build was running when the run tried to start - transient, retry shortly. Matches what `editor_status` reports; a compilation that is only *pending* (Play Mode, assembly reloads locked) does not block a run |
+| `build_rejected` | the build could not be set up at all (see `message`) |
 | `main_thread_timeout` | the compiled call never ran on the main thread (domain reload / modal dialog) |
 | `async_timeout` | a returned `Task` did not complete in time |
 | `worker_thread_timeout` | `runOnMainThread: false` and the snippet did not return in time |

@@ -14,14 +14,10 @@ namespace Nyamu.Tools.CodeExecution
         {
             record.Phase = "compiling";
 
-            var started = CodeCompilerService.StartBuild(record, (rec, messages) => OnBuildFinished(rec, messages, context), out var error);
-            if (started)
-                return;
-
-            var outcome = error != null && error.StartsWith("Unity is compiling", StringComparison.Ordinal)
-                ? "editor_busy"
-                : "build_rejected";
-            record.Fail(outcome, error);
+            var started = CodeCompilerService.StartBuild(record, context.CompilationState.IsCompiling,
+                (rec, messages) => OnBuildFinished(rec, messages, context), out var error, out var outcome);
+            if (!started)
+                record.Fail(outcome, error);
         }
 
         static void OnBuildFinished(CodeExecutionRecord record, CompilerMessage[] messages, IExecutionContext context)
@@ -79,9 +75,10 @@ namespace Nyamu.Tools.CodeExecution
             var fallbackSource = CodeSnippetBuilder.BuildFallback(record.Request, record.ResolvedMode, out var fallbackMode, out var prologueLineCount);
             record.ApplyFallback(fallbackSource, fallbackMode, prologueLineCount);
 
-            var started = CodeCompilerService.StartBuild(record, (rec, messages) => OnBuildFinished(rec, messages, context), out var error);
+            var started = CodeCompilerService.StartBuild(record, context.CompilationState.IsCompiling,
+                (rec, messages) => OnBuildFinished(rec, messages, context), out var error, out var outcome);
             if (!started)
-                record.Fail("build_rejected", error);
+                record.Fail(outcome, error);
         }
 
         static CodeCompileMessage MapMessage(CodeExecutionRecord record, CompilerMessage m)

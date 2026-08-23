@@ -60,3 +60,24 @@ for the change in progress at the time. Recorded here so they aren't lost.
    synchronous `AcceptTcpClient()` loop, unblocked by `listener.Stop()` - the
    same workaround `CodeRunner.InvokeOnWorkerThread` already uses, for the same
    reason.
+
+## From: Integration test data rename (2026-08-24)
+
+1. **`tests_run_*` cannot filter by assembly or category, so no MCP call runs
+   only the package's real tests.** `TestExecutionService` populates Unity's
+   `Filter` with `testNames` and `groupNames` only
+   (`Nyamu.UnityPackage/Editor/TestExecution/TestExecutionService.cs:129`),
+   leaving `Filter.assemblyNames` and `Filter.categoryNames` unused. The
+   repository holds two disjoint sets of tests: `Nyamu.EditorTests`, which must
+   always be green, and `Nyamu.IntegrationTestData.*`, of which three EditMode
+   and four PlayMode members fail by design because they are the subjects the
+   Python tests in `IntegrationTests/` exercise the `tests_run_*` tools against.
+   `tests_run_all` therefore mixes the two and never comes back green, which
+   makes it useless as a health check. Unity's `Filter` has no exclusion
+   mechanism - "everything except the test data" can only be expressed as an
+   assembly or category whitelist - so the fix is to expose `assembly_names`
+   and `category_names` as parameters on `tests_run_all` and `tests_run_regex`.
+   The rename to `Nyamu.IntegrationTestData` and the
+   `[Category("IntegrationTestData")]` attributes were done in preparation.
+   Until the parameters exist the workaround is
+   `tests_run_regex(test_filter_regex="Nyamu\.EditorTests\..*")`.

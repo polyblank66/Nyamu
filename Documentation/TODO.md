@@ -42,23 +42,7 @@ for the change in progress at the time. Recorded here so they aren't lost.
 
 ## From: Play Mode focus stall (2026-08-23)
 
-1. **`code_execute` rejected two consecutive calls with `editor_busy` /
-   "Unity is compiling." while `editor_status` reported `isCompiling: false`
-   in between.** The gate is
-   `Nyamu.UnityPackage/Editor/Tools/CodeExecution/CodeCompilerService.cs:20`,
-   which reads `EditorApplication.isCompiling`. That flag is not the same
-   signal `CompilationStateManager` tracks off the `CompilationPipeline`
-   events: Unity also raises it while any `AssemblyBuilder` is running,
-   including the one `code_execute` itself uses. A builder left registered by
-   a previous execution therefore locks out every subsequent call, and the two
-   status sources disagree in a way no caller can act on - the agent is told
-   to wait for a compilation that `editor_status` says is not happening.
-   Worth checking against the fix in 3a1fb40 ("defer code_execute fallback
-   retry off buildFinished"), which touched exactly this lifecycle; it may be
-   an unfinished tail of that. At minimum the two should report the same
-   thing, or the rejection message should name the real reason.
-
-2. **A playing, unfocused Editor with "Run In Background" off stops serving
+1. **A playing, unfocused Editor with "Run In Background" off stops serving
    the Nyamu HTTP endpoint entirely - not just the main-thread tools.** The
    expected failure was partial: everything touching a Unity API is queued
    onto `UnityThreadExecutor` and drained only from `EditorApplication.update`

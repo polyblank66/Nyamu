@@ -15,11 +15,23 @@ namespace Nyamu.Tools.CodeExecution
     {
         const string OutputRoot = "Temp/Nyamu/CodeExecution";
 
-        public static bool StartBuild(CodeExecutionRecord record, Action<CodeExecutionRecord, CompilerMessage[]> onFinished, out string error)
+        // Transient: the Editor is busy right now and the same call will work shortly.
+        internal const string BusyOutcome = "editor_busy";
+
+        // Terminal: the build could not be set up at all.
+        internal const string RejectedOutcome = "build_rejected";
+
+        // projectIsCompiling comes from CompilationStateManager (what editor_status reports), not
+        // from EditorApplication.isCompiling: that one is also true for a compile that has merely
+        // been requested, which Unity can defer indefinitely, and which AssemblyBuilder.Build()
+        // does not care about. Gating on it stranded code_execute for whole sessions.
+        public static bool StartBuild(CodeExecutionRecord record, bool projectIsCompiling,
+            Action<CodeExecutionRecord, CompilerMessage[]> onFinished, out string error, out string outcome)
         {
-            if (EditorApplication.isCompiling)
+            if (projectIsCompiling)
             {
                 error = "Unity is compiling.";
+                outcome = BusyOutcome;
                 return false;
             }
 
@@ -71,16 +83,23 @@ namespace Nyamu.Tools.CodeExecution
                 if (!builder.Build())
                 {
                     builder.buildFinished -= OnBuildFinished;
-                    error = "AssemblyBuilder.Build() returned false. Unity refused to start the build.";
+                    // Build() returns false for exactly two reasons, both of them transient: a
+                    // script compilation task is running, or some other AssemblyBuilder is. A bad
+                    // builder state throws instead and lands in the catch below.
+                    error = "AssemblyBuilder.Build() returned false: a script compilation or another " +
+                            "assembly build is already running. This clears on its own - retry shortly.";
+                    outcome = BusyOutcome;
                     return false;
                 }
 
                 error = null;
+                outcome = null;
                 return true;
             }
             catch (Exception ex)
             {
                 error = $"Failed to start compilation: {ex.Message}";
+                outcome = RejectedOutcome;
                 return false;
             }
         }

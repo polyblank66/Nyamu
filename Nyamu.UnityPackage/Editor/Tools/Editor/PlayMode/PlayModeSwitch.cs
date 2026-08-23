@@ -53,7 +53,10 @@ namespace Nyamu.Tools.Editor.PlayMode
                     {
                         result.Outcome = PlayModeSwitchOutcome.NoChange;
                     }
-                    else if (targetIsPlaying && EditorApplication.isCompiling)
+                    // CompilationState, not EditorApplication.isCompiling: the latter is also
+                    // true for a compile that has only been requested, and Unity happily compiles
+                    // that one and then enters Play Mode. Same signal editor_status reports.
+                    else if (targetIsPlaying && context.CompilationState.IsCompiling)
                     {
                         result.Outcome = PlayModeSwitchOutcome.Blocked;
                         result.ErrorMessage =

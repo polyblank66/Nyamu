@@ -1,3 +1,27 @@
+# [0.2.0](https://github.com/polyblank66/Nyamu/compare/v0.1.11...v0.2.0) (2026-08-25)
+
+
+### Bug Fixes
+
+* avoid CS1703 in code_execute reference collection #AI ([5cdd69f](https://github.com/polyblank66/Nyamu/commit/5cdd69f6e8ca719ad2abb39e2c3250bc77b319f7)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+* defer code_execute fallback retry off buildFinished #AI ([ddaf6d9](https://github.com/polyblank66/Nyamu/commit/ddaf6d994cb6e755937c5844f6fc31c40060755f)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+* exclude package tests from the exported unitypackage #AI ([bff943e](https://github.com/polyblank66/Nyamu/commit/bff943ea654503a134df578b602800b3aaa9f929)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+* give code_execute class mode the default usings #AI ([2256df1](https://github.com/polyblank66/Nyamu/commit/2256df1d20dd7aa58bb355e4a014b8b4e6ec2de7)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+* honest status for execute_menu_item timeout vs not-found ([9352460](https://github.com/polyblank66/Nyamu/commit/9352460fc699ef1e4792846bc615783b21c7accf))
+* keep Unity idle-wait unconditional; truncate large JSON fields safely ([cdc173e](https://github.com/polyblank66/Nyamu/commit/cdc173e66545cfb876538317f7f67f50175da62d))
+* never start the MCP server in asset import worker processes #AI ([04ce8d8](https://github.com/polyblank66/Nyamu/commit/04ce8d8e5ce579a499ea4df287bb62a65dfd9b6e)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+* preserve typed Unity errors in remaining mcp-server.js call* handlers ([d1dc516](https://github.com/polyblank66/Nyamu/commit/d1dc51642d1192e5de231b3926bb3aa5d676fa4e))
+* retry editor_status on domain-reload gap during compilation test #AI ([7d00045](https://github.com/polyblank66/Nyamu/commit/7d000455aae55bd6890dde2b4355930c330cda46)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+* serve HTTP off the Unity main thread so an unfocused Play Mode cannot stall it #AI ([14b71fc](https://github.com/polyblank66/Nyamu/commit/14b71fc797dfa7db032aea7b723791dde01b5bdc)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+* stop gating code_execute and Play Mode on a pending compilation #AI ([04113a2](https://github.com/polyblank66/Nyamu/commit/04113a2352ea386e54296ca5b4e865cce53bcd62)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+
+
+### Features
+
+* add code_execute MCP tool for running ad-hoc C# in the Editor ([c267c18](https://github.com/polyblank66/Nyamu/commit/c267c186ba1399d8561d2974bba34697e965bb06))
+* add editor_enter_play_mode and expose editor_exit_play_mode over MCP ([d3d860b](https://github.com/polyblank66/Nyamu/commit/d3d860b492873800b2535d8cd47e8c35e5f406fe))
+* keep serving MCP in Play Mode when the Editor is unfocused #AI ([392f7e1](https://github.com/polyblank66/Nyamu/commit/392f7e17801f97e3e8ded8a8046690db065534fc)), closes [#AI](https://github.com/polyblank66/Nyamu/issues/AI)
+
 ## [0.1.11](https://github.com/polyblank66/Nyamu/compare/v0.1.10...v0.1.11) (2026-03-07)
 
 

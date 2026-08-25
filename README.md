@@ -5,6 +5,14 @@
 
 Designed by a Human 💖, coded by AI ✨
 
+## Why Nyamu Exists
+
+Hi! My name is Ivan, and I work as a programmer in gamedev. I started this project in September 2025 out of frustration with agentic coding in Unity: back then an LLM would routinely hand me code that didn't even compile. That's where the idea came from — let the agent check script compilation itself. Most other MCP servers still don't solve that task well (see [Similar Projects](#similar-projects)).
+
+In 2026 Unity shipped tooling of its own: the MCP server in the AI Assistant package, and the Unity CLI. Both require Unity 6. The official MCP server doesn't really solve the problem either: it expects the agent to edit scripts through its own dedicated tools, and only then do the compilation checks apply — in my experience, getting an agent to stay in that mode reliably is quite difficult. I haven't tried the Unity CLI yet, but I hope it does the job.
+
+Nyamu, on the other hand, works on Unity 2021.3 and newer — so it's for anyone whose project hasn't moved to Unity 6 yet, and for anyone who just wants a small server that does one thing well.
+
 ## Compatibility with Coding Agents and Tools
 
 Test Prompt: 
@@ -73,7 +81,9 @@ Check script compilation with Nyamu MCP tool
 * **Unity**: 2021.3.45f2 or later (not a hard requirement—this is simply the version used for testing)
 * **Node.js**: Required to run the intermediate server
 
-### 1. Install the Package via Unity Package Manager (Git URL)
+### 1. Install the Package
+
+#### Option 1: Unity Package Manager with Git URL (Recommended)
 
 1. Open the Unity Editor
 2. Open **Window → Package Manager**
@@ -87,6 +97,34 @@ Check script compilation with Nyamu MCP tool
 6. Click **Add**
 
 Unity will install the Nyamu package directly from the GitHub repository.
+
+<details>
+<summary>Option 2: Install via .unitypackage</summary>
+
+1. Download the latest `.unitypackage` file from the [Releases page](https://github.com/polyblank66/Nyamu/releases)
+2. In the Unity Editor, open **Assets → Import Package → Custom Package...**
+3. Select the downloaded `.unitypackage` file
+4. In the import dialog, make sure all files are selected, then click **Import**
+
+</details>
+
+<details>
+<summary>Option 3: Install via OpenUPM</summary>
+
+Prerequisites: [Node.js v16 or above](https://nodejs.org/en/download/) and [openupm-cli](https://github.com/openupm/openupm-cli#openupm-cli).
+
+```
+# Install openupm-cli
+npm install -g openupm-cli
+
+# Go to your unity project directory
+cd YOUR_UNITY_PROJECT_DIR
+
+# Install package: dev.polyblank.nyamu
+openupm add dev.polyblank.nyamu
+```
+
+</details>
 
 ### 2. Add the MCP Server to the AI Agent
 
@@ -151,6 +189,21 @@ Configuration is stored in `.nyamu/NyamuSettings.json` and can be edited manuall
 
 The system automatically calculates the available space for response content by subtracting MCP JSON overhead and truncation message length from the configured limit, ensuring maximum space for meaningful output.
 
+### Play Mode Without Focus
+
+With **Player Settings → Run In Background** disabled, a *playing* Editor that loses window focus
+stops serving Nyamu completely — every tool, `editor_status` included. Requests hang until you click
+the Editor window again, and because `editor_exit_play_mode` is unreachable too, an agent that entered
+Play Mode cannot get itself back out.
+
+Nyamu prevents this by forcing `Application.runInBackground` on while the Editor is playing. This is a
+runtime-only override: `PlayerSettings` is never written, so builds and version control are unaffected.
+
+Turn it off at Unity → Project Settings → **Nyamu MCP Server** → **Keep Play Mode Running Unfocused**
+if you need Unity's real focus-loss behaviour — for example when testing `OnApplicationFocus` or
+`OnApplicationPause`. Expect Nyamu to go unreachable while the Editor is unfocused in Play Mode when
+you do, and to come back as soon as the window is focused.
+
 ### Server Port Configuration
 
 Nyamu automatically assigns unique ports to each Unity Editor instance, allowing multiple projects to run simultaneously without conflicts. The generated `.nyamu/nyamu.bat` file includes the correct port configuration automatically.
@@ -172,3 +225,5 @@ For special cases where manual port assignment is needed, you can configure it a
 - [MCP for Unity](https://github.com/CoplayDev/unity-mcp) by [Coplay](https://github.com/CoplayDev) — a package with many tools for asset manipulation. Code change verification is limited and works only when changes are made through MCP code-manipulation tools. Verification is performed by running the Roslyn Compiler on the modified files only.
 
 - [MCP Unity](https://github.com/CoderGamester/mcp-unity) by [Miguel Tomas](https://github.com/CoderGamester) — another feature-rich package. Recent versions include a `recompile_scripts` tool for code verification, which relies on the Unity Editor compiler. When code changes involve structural modifications (such as adding or deleting files), an Asset Database Refresh is required. With this package, this can be triggered via a menu item called from the coding agent, but the user must configure the agent to do so.
+
+- [Official Unity MCP](https://docs.unity3d.com/Packages/com.unity.ai.assistant@2.17/manual/integration/unity-mcp-overview.html), part of the `com.unity.ai.assistant` package, can be installed on Unity 6 and newer. I haven't tried it in real projects, but judging by the tool set, the agent is expected to call dedicated tools to edit scripts, and only then will code compilation checks in the project work. In my experience, getting an agent to reliably work in that mode is quite difficult.
